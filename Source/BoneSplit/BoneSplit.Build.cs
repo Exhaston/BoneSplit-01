@@ -4,20 +4,31 @@ using UnrealBuildTool;
 
 public class BoneSplit : ModuleRules
 {
-	public BoneSplit(ReadOnlyTargetRules Target) : base(Target)
+	public BoneSplit(ReadOnlyTargetRules target) : base(target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
-
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
-
-		// Uncomment if you are using Slate UI
-		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 		
-		// Uncomment if you are using online features
-		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
+		PublicDependencyModuleNames.AddRange(
+		[
+			"Core", 
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"EnhancedInput",
+			"GameplayAbilities",
+			"GameplayTasks",
+			"GameplayTags",
+			"AIModule",
+			"CommonUI",
+			"UMG",
+			"Niagara",
+			"NavigationSystem",
+			"DeveloperSettings",
+			"AnimGraphRuntime"
+		]);
 
-		// To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
+		PrivateDependencyModuleNames.AddRange(
+		[
+		]);
 	}
 }
