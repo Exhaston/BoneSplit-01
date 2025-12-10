@@ -1,0 +1,36 @@
+{
+	"FileVersion": 3,
+	"Version": 10,
+	"VersionName": "1.0.9",
+	"FriendlyName": "ClientAuthoritativeCharacter",
+	"Description": "A plugin to make Clients Authoritative over their own Characters.",
+	"Category": "Other",
+	"CreatedBy": "Anton Hesselbom",
+	"CreatedByURL": "",
+	"DocsURL": "https://plastburk.github.io/ClientAuthoritativeCharacterDocs/",
+	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/10202a268d7646338bb5ed15dc763639",
+	"SupportURL": "",
+	"EngineVersion": "5.7.0",
+	"CanContainContent": false,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "ClientAuthoritativeCharacterSystem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Mac",
+				"Linux",
+				"IOS",
+				"Android"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		}
+	]
+}

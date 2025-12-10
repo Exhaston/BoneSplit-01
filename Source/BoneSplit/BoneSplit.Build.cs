@@ -24,7 +24,8 @@ public class BoneSplit : ModuleRules
 			"Niagara",
 			"NavigationSystem",
 			"DeveloperSettings",
-			"AnimGraphRuntime"
+			"AnimGraphRuntime",
+			"ClientAuthoritativeCharacterSystem"
 		]);
 
 		PrivateDependencyModuleNames.AddRange(
