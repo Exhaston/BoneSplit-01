@@ -17,4 +17,5 @@ class BONESPLIT_API ABSHubGameMode : public AGameMode
 public:
 	
 	explicit ABSHubGameMode(const FObjectInitializer& Initializer);
+	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName = L"") override;
 };

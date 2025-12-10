@@ -17,4 +17,6 @@ class BONESPLIT_API ABSRogueLiteGameMode : public AGameMode
 public:
 	
 	explicit ABSRogueLiteGameMode(const FObjectInitializer& Initializer);
+	
+	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName = L"") override;
 };

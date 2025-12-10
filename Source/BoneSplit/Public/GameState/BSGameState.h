@@ -6,6 +6,7 @@
 #include "GameFramework/GameState.h"
 #include "BSGameState.generated.h"
 
+class UBSTravelManager;
 /**
  * 
  */
@@ -17,4 +18,7 @@ class BONESPLIT_API ABSGameState : public AGameState
 public:
 	
 	explicit ABSGameState(const FObjectInitializer& Initializer);
+	
+	UPROPERTY()
+	TObjectPtr<UBSTravelManager> TravelManagerComponent;
 };

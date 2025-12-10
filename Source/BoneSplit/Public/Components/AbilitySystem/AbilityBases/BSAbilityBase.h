@@ -6,11 +6,20 @@
 #include "Abilities/GameplayAbility.h"
 #include "BSAbilityBase.generated.h"
 
+class ABSPredictableActor;
 /**
  * 
  */
-UCLASS()
+UCLASS(Abstract, BlueprintType, Blueprintable, DisplayName="Ability Base")
 class BONESPLIT_API UBSAbilityBase : public UGameplayAbility
 {
 	GENERATED_BODY()
+	
+public:
+	
+	UBSAbilityBase();           
+	
+	virtual void SpawnPredictedActor(const TSubclassOf<ABSPredictableActor> ActorToSpawn,
+	const FTransform& SpawnTransform,
+	const FGameplayAbilityTargetDataHandle& TargetData);
 };

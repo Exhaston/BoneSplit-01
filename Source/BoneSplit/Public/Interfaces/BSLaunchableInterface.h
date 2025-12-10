@@ -22,4 +22,6 @@ class BONESPLIT_API IBSLaunchableInterface
 	
 public:
 	
+	virtual void LaunchActor(FVector Direction, float Magnitude) = 0;
+	
 };
