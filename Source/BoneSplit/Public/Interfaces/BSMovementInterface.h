@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "BSLaunchableInterface.generated.h"
+#include "BSMovementInterface.generated.h"
 
+enum class EBSMovementRotationMode : uint8;
 // This class does not need to be modified.
 UINTERFACE()
-class UBSLaunchableInterface : public UInterface
+class UBSMovementInterface : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -16,12 +17,15 @@ class UBSLaunchableInterface : public UInterface
 /**
  * 
  */
-class BONESPLIT_API IBSLaunchableInterface
+class BONESPLIT_API IBSMovementInterface
 {
 	GENERATED_BODY()
 	
 public:
 	
+	
 	virtual void LaunchActor(FVector Direction, float Magnitude) = 0;
+	
+	virtual void SetMovementRotationMode(uint8 NewMovementMode) = 0;
 	
 };

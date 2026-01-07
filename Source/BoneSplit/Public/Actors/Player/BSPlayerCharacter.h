@@ -6,9 +6,13 @@
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativeCharacter.h"
 #include "GameplayTagContainer.h"
-#include "Interfaces/BSLaunchableInterface.h"
+#include "Interfaces/BSMovementInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
+class UCameraComponent;
+class USpringArmComponent;
+class UBSSaveGame;
+class UBSPersistantDataSubsystem;
 class ABSPlayerStart;
 struct FBSEquipmentInstance;
 struct FBSSaveData;
@@ -18,14 +22,21 @@ class UBSAttributeSet;
 class UBSInventoryComponent;
 class UBSAbilitySystemComponent;
 
+
+/**
+ * TODO: Document
+ * Reasoning for not utilizing the player state as a 
+ * hub for information is to simplify branching from network race conditions. 
+ * Avoid deleting the player, and if so save data first.
+ */
 UCLASS()
 class BONESPLIT_API ABSPlayerCharacter : public AClientAuthoritativeCharacter, 
-public IBSLaunchableInterface, public IAbilitySystemInterface
+public IBSMovementInterface, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
-	
+	                                     
 	// =================================================================================================================
 	// Defaults
 	// ================================================================================================================= 
@@ -37,6 +48,20 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	
 	virtual void OnRep_PlayerState() override;
+	
+	virtual void Tick(float DeltaSeconds) override;
+	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
+	// =================================================================================================================
+	// Camera
+	// ================================================================================================================= 
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TObjectPtr<USpringArmComponent> SpringArmComponent;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TObjectPtr<UCameraComponent> CameraComponent;
 	
 	// =================================================================================================================
 	// Asc
@@ -55,10 +80,15 @@ protected:
 public:
 	
 	// =================================================================================================================
-	// Launchable
+	// Movement Interface
 	// ================================================================================================================= 
 	
 	virtual void LaunchActor(FVector Direction, float Magnitude) override;
+	
+	virtual void SetMovementRotationMode(uint8 NewMovementMode) override;
+	
+	UPROPERTY()
+	bool bAligningToController = false;
 	
 	// =================================================================================================================
 	// Equipment
@@ -74,6 +104,7 @@ public:
 	int32 PlayerColor = 0;
 	
 protected:
+	
 	
 	int32 FindEquipmentIndexByTag(const FGameplayTag& Slot) const;
 	
@@ -109,13 +140,37 @@ private:
 	
 protected:
 	
+	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
 	virtual void InitializeCharacter();
+	
+	//Initializes default save data. This should always be applied before loading any save data as a fallback.
+	//Run only on authority.
+	virtual void InitializeDefaultData(UBSPersistantDataSubsystem* PersistantSubsystem);
 	
 	UFUNCTION(Server, Reliable)
 	virtual void Server_ReceiveClientSave(const FBSSaveData& SaveData);
 	
+	virtual void RestoreEffectsFromSave(const FBSSaveData& SaveData);
+	virtual void RestoreTagsFromSave(const FBSSaveData& SaveData);
+	virtual void RestoreEquipmentFromSave(const FBSSaveData& SaveData);
+	virtual void RestoreAttributesFromSave(const FBSSaveData& SaveData);
+	
 	UFUNCTION(Client, Reliable)
 	virtual void Client_InitComplete();
+	
+	UFUNCTION(BlueprintCallable)
+	void BP_SaveState();
+	
+	//Saves effects, tags, attributes, equipment and color. 
+	//bSaveToDisk: optional to save the stored save to persistent storage. 
+	//If not it is stored under the game instance lifetime.
+	UFUNCTION(Client, Reliable)
+	virtual void SaveState(bool bSaveToDisk = true);
+	
+	virtual void SaveGameplayEffects(FBSSaveData& SaveData, UBSSaveGame* SaveGame);
+	virtual void SaveGameplayTags(FBSSaveData& SaveData, UBSSaveGame* SaveGame);
+	virtual void SaveEquipment(FBSSaveData& SaveData);
+	virtual void SaveAttributes(FBSSaveData& SaveData);
 	
 	//Call Launch Actor instead. this is called internally because of Client Authoritative Movement
 	UFUNCTION(Client, Reliable)                                                 

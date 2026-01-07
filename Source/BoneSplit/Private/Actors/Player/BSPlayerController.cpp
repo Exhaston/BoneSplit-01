@@ -9,11 +9,12 @@
 #include "EnhancedInputSubsystems.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/TimelineComponent.h"
+#include "GameFramework/Character.h"
 
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-
+	
 }
 
 void ABSPlayerController::SetupInputComponent()
@@ -49,22 +50,30 @@ void ABSPlayerController::SetupInputComponent()
 	EnhancedInputComponent->BindActionValueLambda(LookAction, ETriggerEvent::Triggered, 
 	[this](const FInputActionValue& Value)
 	{
-		AddPitchInput(-Value.Get<FVector2D>().Y * CachedLookSpeed.Y);
-		AddYawInput(Value.Get<FVector2D>().X * CachedLookSpeed.X);
+		if (const float ValueY = Value.Get<FVector2D>().Y * CachedLookSpeed.Y; !FMath::IsNearlyZero(ValueY))
+		{
+			AddPitchInput(ValueY);
+		}
+		if (const float ValueX  = Value.Get<FVector2D>().X * CachedLookSpeed.X; !FMath::IsNearlyZero(ValueX))
+		{
+			AddYawInput(ValueX);
+		}
 	});	
+	
 	EnhancedInputComponent->BindActionValueLambda(FreeCamAction, ETriggerEvent::Started, 
 	[this](const FInputActionValue& Value)
 	{
+		if (!GetPawn()) return;
 		bFreeCamEnabled = !bFreeCamEnabled;
 		if (bFreeCamEnabled)
 		{
-			GetPawn()->bUseControllerRotationYaw = false;
+			GetAbilitySystemComponent()->AddLooseGameplayTag(
+				BSTags::Status_Stunned, 1, EGameplayTagReplicationState::CountToOwner);
 		}
 		else
 		{
-			//Reset first to make sure movement is reliable to input direction
-			SetControlRotation(GetPawn()->GetActorRotation()); 
-			GetPawn()->bUseControllerRotationYaw = true;
+			GetAbilitySystemComponent()->RemoveLooseGameplayTag(
+				BSTags::Status_Stunned, 1, EGameplayTagReplicationState::CountToOwner);
 		}
 	});
 	
@@ -76,12 +85,26 @@ void ABSPlayerController::SetupInputComponent()
 			const FVector2D InputDir = Value.Get<FVector2D>();
 			
 			const FVector WorldDir = 
-				GetPawn()->GetTransform().TransformVector(
-					FVector(InputDir.Y, InputDir.X, 0)).GetSafeNormal();
+				FVector(InputDir.Y, InputDir.X, 0);
 			
-			GetPawn()->AddMovementInput(WorldDir, InputDir.Length());
+			FVector NewDir;
+			
+			if (bControlDirectionInput)
+			{
+				FRotator AdjustedControlRotation = GetControlRotation();
+				AdjustedControlRotation.Pitch = 0; //Pitch isn't relevant, movement will also stop if looking down or up.
+				NewDir = AdjustedControlRotation.RotateVector(WorldDir);
+			}
+			else
+			{
+				NewDir = GetPawn()->GetTransform().TransformVector(WorldDir);
+			}
+			
+			GetPawn()->AddMovementInput(NewDir, InputDir.Length());
 		}
 	});
+	
+	BindJumpToAction(EnhancedInputComponent, JumpAction);
 	
 	// =================================================================================================================
 	// Quick Turn Timeline
@@ -116,25 +139,32 @@ void ABSPlayerController::SetupInputComponent()
 	// =================================================================================================================
 	
 	BindAbilityToAction(EnhancedInputComponent, 
-	JumpAction, static_cast<int32>(EBSAbilityInputID::Jump));
+	SpecialAction, Special);
 	
 	BindAbilityToAction(EnhancedInputComponent, 
-	SpecialAction, static_cast<int32>(EBSAbilityInputID::Special));
-	
-	BindAbilityToAction(EnhancedInputComponent, 
-	SoulAction, static_cast<int32>(EBSAbilityInputID::Soul));
+	SoulAction, Soul);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	HeadAction, static_cast<int32>(EBSAbilityInputID::Head));
+	HeadAction, Head);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	PrimaryArmAction, static_cast<int32>(EBSAbilityInputID::PrimaryArm));
+	PrimaryArmAction, PrimaryArm);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	SecondaryArmAction, static_cast<int32>(EBSAbilityInputID::SecondaryArm));
+	SecondaryArmAction,SecondaryArm);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	LegsAction, static_cast<int32>(EBSAbilityInputID::Legs)); 
+	LegsAction, Legs);
+}
+
+void ABSPlayerController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction)
+{
+	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
+	
+	if (ThisTickFunction.TickGroup == TG_PostPhysics)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("YEp"));
+	}
 }
 
 void ABSPlayerController::Tick(const float DeltaSeconds)
@@ -145,7 +175,7 @@ void ABSPlayerController::Tick(const float DeltaSeconds)
 	
 	for (auto& BufferedAbility : BufferedAbilities)
 	{
-		if (BufferedAbility.TimeRemaining <= 0 || TryActivatePawnAbility(BufferedAbility.ID))
+		if (BufferedAbility.TimeRemaining <= 0 || TryActivatePawnAbility(BufferedAbility.AbilityID))
 		{
 			BufferedAbility.bExpired = true;
 		}
@@ -165,23 +195,27 @@ void ABSPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	
-	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(InPawn))
-	{
-		UAbilitySystemComponent* Asc = AscInterface->GetAbilitySystemComponent();
-		check(Asc);
-		CachedAbilitySystemComponent = Asc;
-	}
+	SetupAsc(InPawn);
 }
 
 void ABSPlayerController::AcknowledgePossession(APawn* P)
 {
 	Super::AcknowledgePossession(P);
 	
-	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(P))
+	SetupAsc(P);
+}
+
+void ABSPlayerController::SetupAsc(APawn* InPawn)
+{
+	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(InPawn))
 	{
 		UAbilitySystemComponent* Asc = AscInterface->GetAbilitySystemComponent();
 		check(Asc);
 		CachedAbilitySystemComponent = Asc;
+		
+		//Technically this isn't required in the controller, as this is done in the player character.
+		//Only a failsafe for edge cases with replication race conditions.
+		CachedAbilitySystemComponent->InitAbilityActorInfo(InPawn, InPawn);
 	}
 }
 
@@ -199,6 +233,7 @@ bool ABSPlayerController::TryActivatePawnAbility(const int32 ID)
 	{
 		if (const FGameplayAbilitySpec* Spec = Asc->FindAbilitySpecFromInputID(ID))
 		{
+			GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Activate Ability"));
 			bool Success = false;
 			if (const UGameplayAbility* AbilityInstance = Spec->GetPrimaryInstance())
 			{
@@ -227,11 +262,11 @@ void ABSPlayerController::BufferAbility(int32 ID)
 {
 	BufferedAbilities.RemoveAll([ID](const FBSBufferedAbility& Ability)
 	{
-		return Ability.ID == ID;
+		return Ability.AbilityID == ID;
 	});
 	
 	FBSBufferedAbility NewBufferedAbility;
-	NewBufferedAbility.ID = ID;
+	NewBufferedAbility.AbilityID = ID;
 	NewBufferedAbility.TimeRemaining = BufferTime;
 	NewBufferedAbility.bExpired = false;
 	BufferedAbilities.Add(NewBufferedAbility);
@@ -249,6 +284,27 @@ void ABSPlayerController::BindAbilityToAction(UEnhancedInputComponent* EnhancedI
 	[this, ID](const FInputActionValue& Value)
 	{
 		ReleaseAbilityForPawn(ID);
+	});
+}
+
+void ABSPlayerController::BindJumpToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action)
+{
+	if (!Action) return;
+	EnhancedInputComponent->BindActionValueLambda(Action, ETriggerEvent::Started,
+	[this](const FInputActionValue& Value)
+	{
+		if (ACharacter* Character = GetPawn<ACharacter>())
+		{
+			Character->Jump();
+		}
+	});
+	EnhancedInputComponent->BindActionValueLambda(Action, ETriggerEvent::Completed,
+	[this](const FInputActionValue& Value)
+	{
+		if (ACharacter* Character = GetPawn<ACharacter>())
+		{
+			Character->StopJumping();
+		}
 	});
 }
 

@@ -110,3 +110,15 @@ UBSSaveGame* UBSPersistantDataSubsystem::GetOrLoadSaveGame(const APlayerControll
 	
 	return SaveGameInstance;
 }
+
+void UBSPersistantDataSubsystem::SaveGameToDiskSync(const APlayerController* PC) const
+{
+	if (!SaveGameInstance) return;
+	UGameplayStatics::SaveGameToSlot(
+		SaveGameInstance.Get(), "DefaultSave", PC->GetLocalPlayer()->GetPlatformUserIndex());
+}
+
+int32 UBSPersistantDataSubsystem::GetDifficultyLevel() const
+{
+	return DifficultyLevel;
+}

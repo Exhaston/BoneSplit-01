@@ -18,6 +18,13 @@ public:
 	
 	UBSGameplayEffect();
 	
+	//This effect will not last inbetween map loads.
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	bool bClearBetweenMaps = false;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	bool bClearOnHub = false;
+	
 #if WITH_EDITOR
 	
 	virtual bool CanEditChange(const FProperty* InProperty) const override;

@@ -47,3 +47,23 @@ float UBSAbilitySystemComponent::PlayMontageSimulated(
 	return AnimationLength;
 }
 
+bool UBSAbilitySystemComponent::CancelAbilitiesWithTag(const FGameplayTag InTag)
+{
+	bool Result = false;
+	
+	TArray<FGameplayAbilitySpec*> FoundSpecs;
+	GetActivatableGameplayAbilitySpecsByAllMatchingTags(
+		FGameplayTagContainer(InTag), FoundSpecs);
+
+	for (const auto FoundSpec : FoundSpecs)
+	{
+		if (FoundSpec->GetPrimaryInstance()->IsActive())
+		{
+			Result = true;
+			CancelAbilityHandle(FoundSpec->Handle);
+		}
+	}
+	
+	return Result;
+}
+

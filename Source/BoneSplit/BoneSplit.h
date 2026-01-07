@@ -8,15 +8,16 @@
 DEFINE_LOG_CATEGORY_STATIC(BoneSplit, Log, All);
 
 UENUM(BlueprintType)
-enum class EBSAbilityInputID : uint8
+enum EBSAbilityInputID : uint8
 {
-	Jump = 0,
-	Special = 1,
-	Soul = 2,
-	Head = 3,
-	PrimaryArm = 4,
-	SecondaryArm = 5,
-	Legs = 6
+	None = 0,
+	Jump = 1,
+	Special = 2,
+	Soul = 3,
+	Head = 4,
+	PrimaryArm = 5,
+	SecondaryArm = 6,
+	Legs = 7
 };
 	
 UENUM(BlueprintType)
@@ -36,6 +37,21 @@ enum class EBSPartyMode : uint8
 	Party_Open = 2
 };
 
+UENUM(BlueprintType)
+enum class EBSMoveState : uint8
+{
+	Moving,
+	Stopped,
+	InvalidPath
+};
+
+UENUM(BlueprintType)
+enum class EBSMovementRotationMode : uint8
+{
+	Ebs_Locked,
+	Ebs_ControlRotation
+};
+
 namespace BSTags
 {
 	// =================================================================================================================
@@ -53,6 +69,22 @@ namespace BSTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_CombatStarted);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_CombatEnded);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_EquipmentRefreshed);
+	
+	// =================================================================================================================
+	// Anim Events
+	// =================================================================================================================
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Generic_01);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Generic_02);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Generic_03);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Damage_01);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Damage_02);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Damage_03);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Heal_01);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Heal_02);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Heal_03);
 
 	// =================================================================================================================
 	// Equipment Tags
@@ -110,6 +142,8 @@ namespace BSTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Stunned);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Dead);
 	
+	static TArray<FGameplayTag> StopMoveTags = { Status_Dead, Status_Stunned };
+	
 	// =================================================================================================================
 	// Effect Tags
 	// =================================================================================================================
@@ -161,4 +195,7 @@ namespace BSConsoleVariables
 	extern TAutoConsoleVariable<float> CVarBSLookSensitivityY;
 	extern TAutoConsoleVariable<float> CVarBSCameraOffset;
 	extern TAutoConsoleVariable<bool> CVarBSBloomEnabled;
+	
+	extern TAutoConsoleVariable<bool> CVarBSDebugHitDetection;
+	extern TAutoConsoleVariable<float> CVarBSDebugHitDetectionDuration;
 }

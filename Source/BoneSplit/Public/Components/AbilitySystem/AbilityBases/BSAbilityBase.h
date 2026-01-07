@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "BoneSplit/BoneSplit.h"
 #include "BSAbilityBase.generated.h"
 
+enum EBSAbilityInputID : uint8;
 class ABSPredictableActor;
 /**
  * 
@@ -17,7 +19,12 @@ class BONESPLIT_API UBSAbilityBase : public UGameplayAbility
 	
 public:
 	
-	UBSAbilityBase();           
+	UBSAbilityBase();
+	
+	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input")
+	TEnumAsByte<EBSAbilityInputID> PlayerInputID = EBSAbilityInputID::None;
 	
 	virtual void SpawnPredictedActor(const TSubclassOf<ABSPredictableActor> ActorToSpawn,
 	const FTransform& SpawnTransform,

@@ -99,7 +99,7 @@ public:
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Initialization Data")
-	TArray<FGameplayTag> DefaultTags;
+	TMap<FGameplayTag, int32> DefaultTags;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Initialization Data")
 	TArray<TSubclassOf<UBSEquipment>> DefaultEquipment;

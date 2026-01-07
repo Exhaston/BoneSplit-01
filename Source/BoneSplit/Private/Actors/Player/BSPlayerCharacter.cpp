@@ -2,13 +2,16 @@
 
 
 #include "Actors/Player/BSPlayerCharacter.h"
+
 #include "Actors/Player/BSPlayerMovementComponent.h"
 #include "Actors/Player/BSSaveGame.h"
+#include "Camera/CameraComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
-#include "Components/AbilitySystem/BSAttributeSet.h"
+#include "Components/AbilitySystem/EffectBases/BSGameplayEffect.h"
 #include "Components/Inventory/BSEquipment.h"
 #include "Components/Inventory/BSEquipmentMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "GameInstance/BSPersistantDataSubsystem.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "GameState/BSTravelManager.h"
@@ -35,14 +38,29 @@ Super(ObjectInitializer
 	
 	GetMesh()->SetReceivesDecals(false);
 	GetMesh()->SetCollisionProfileName("CharacterMesh");
+	if (UBSEquipmentMeshComponent* EquipmentMesh = Cast<UBSEquipmentMeshComponent>(GetMesh()))
+	{
+		EquipmentMesh->MeshTag = BSTags::Equipment_Part_Chest;
+	}
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UBSAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 	
 	CREATE_EQUIPMENT_MESH(HeadComponent, "HeadMeshComponent", GetMesh());
+	HeadComponent->MeshTag = BSTags::Equipment_Part_Head;
 	CREATE_EQUIPMENT_MESH(ArmsComponent, "ArmsMeshComponent", GetMesh());
+	ArmsComponent->MeshTag = BSTags::Equipment_Part_Arms;
 	CREATE_EQUIPMENT_MESH(LegsComponent, "LegsMeshComponent", GetMesh());
+	LegsComponent->MeshTag = BSTags::Equipment_Part_Legs;                             
+	
+	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
+	SpringArmComponent->SetupAttachment(GetMesh());
+	SpringArmComponent->bUsePawnControlRotation = true;
+	
+	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
+	CameraComponent->SetupAttachment(SpringArmComponent, USpringArmComponent::SocketName);
+	bUseControllerRotationYaw = true;
 }
 
 void ABSPlayerCharacter::PossessedBy(AController* NewController)
@@ -57,6 +75,21 @@ void ABSPlayerCharacter::OnRep_PlayerState()
 	InitializeCharacter(); //Init for Client(s)
 }
 
+void ABSPlayerCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+}
+
+void ABSPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (IsLocallyControlled())
+	{
+		SaveState(true);
+	}
+	
+	Super::EndPlay(EndPlayReason);
+}
+
 void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -66,21 +99,6 @@ void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 
 void ABSPlayerCharacter::InitializeCharacter()
 {
-	
-	//TEST:::
-	const UBSCalendarEventSubsystem* TimeDateSubsystem = UBSCalendarEventSubsystem::Get(this);
-	check(TimeDateSubsystem);
-
-	for (auto EventTag : TimeDateSubsystem->GetCurrentEventTags())
-	{
-		GEngine->AddOnScreenDebugMessage(
-		-1,
-		10,
-		FColor::Green,
-		FString::Printf(TEXT("%s"), *EventTag.GetTagName().ToString())
-		);
-	}
-	
 	UBSPersistantDataSubsystem* PersistantSubsystem = UBSPersistantDataSubsystem::Get(this);
 	check(PersistantSubsystem);
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
@@ -91,34 +109,7 @@ void ABSPlayerCharacter::InitializeCharacter()
 	
 	if (HasAuthority())
 	{
-		
-		const UBSSaveGame* SaveGameCDO = GetDefault<UBSSaveGame>(PersistantSubsystem->SaveGameClass);
-
-		for (const auto DefaultAbility : SaveGameCDO->DefaultAbilities)
-		{
-			AbilitySystemComponent->GiveAbility(DefaultAbility);
-		}
-
-		for (const auto DefaultEffect : SaveGameCDO->DefaultEffects)
-		{
-			FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(
-				DefaultEffect, 1, AbilitySystemComponent->MakeEffectContext());
-
-			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data);
-		}
-		
-		for (auto NewTag : SaveGameCDO->DefaultTags)
-		{
-			AbilitySystemComponent->AddLooseGameplayTag(NewTag, 1, EGameplayTagReplicationState::TagAndCountToAll);
-		}
-		
-		//Default items are applied regardless of save data containing more equipment. 
-		//This is intentional as a fallback.
-		
-		for (const auto DefaultEquipment : SaveGameCDO->DefaultEquipment)
-		{
-			Server_ApplyEquipment(FBSEquipmentInstance(DefaultEquipment));
-		}
+		InitializeDefaultData(PersistantSubsystem);
 	}
 	
 	// =================================================================================================================
@@ -135,20 +126,181 @@ void ABSPlayerCharacter::InitializeCharacter()
 	}
 }
 
+#pragma region SaveGame
+
+void ABSPlayerCharacter::SaveGameplayEffects(FBSSaveData& SaveData, UBSSaveGame* SaveGame)
+{
+	const FGameplayEffectQuery Query = FGameplayEffectQuery::MakeQuery_MatchNoEffectTags(FGameplayTagContainer());
+	
+	for (TArray<FActiveGameplayEffectHandle> ActiveHandles = GetAbilitySystemComponent()->GetActiveEffects(Query);
+		const FActiveGameplayEffectHandle& Handle : ActiveHandles)
+	{
+		
+		const FActiveGameplayEffect* ActiveEffect = GetAbilitySystemComponent()->GetActiveGameplayEffect(Handle);
+		
+		if (!ActiveEffect) continue;
+		
+		if (ActiveEffect->Spec.Def->DurationPolicy == EGameplayEffectDurationType::Instant)
+		{
+			continue;
+		}
+		
+		if (!ActiveEffect->Spec.Def->IsA(UBSGameplayEffect::StaticClass()))
+		{
+			continue;
+		}
+		
+		if (const UBSGameplayEffect* DefaultObject = 
+			GetDefault<UBSGameplayEffect>(ActiveEffect->Spec.Def->GetClass()))
+		{
+			if (DefaultObject->bClearBetweenMaps)
+			{
+				continue;
+			}
+		}
+		
+		if (!ActiveEffect) continue;
+
+		FBSGameplayEffectData EffectData;
+		EffectData.RemainingTime = -1; //Init as infinite
+		EffectData.EffectClass = ActiveEffect->Spec.Def->GetClass();
+		EffectData.StackCount = ActiveEffect->Spec.GetStackCount();
+
+		// Get remaining duration (if it’s a timed effect)
+		if (ActiveEffect->GetDuration() > 0)
+		{
+			EffectData.RemainingTime = 
+				ActiveEffect->GetTimeRemaining(GetAbilitySystemComponent()->GetWorld()->GetTimeSeconds());
+		}
+
+		SaveData.Effects.Add(EffectData);
+	}
+}
+
+void ABSPlayerCharacter::SaveGameplayTags(FBSSaveData& SaveData, UBSSaveGame* SaveGame)
+{
+	FGameplayTagContainer TagsToStore = AbilitySystemComponent->GetOwnedGameplayTags();
+	
+	const UBSDeveloperSettings* DeveloperSettings = GetDefault<UBSDeveloperSettings>();
+	
+	TagsToStore = TagsToStore.Filter(DeveloperSettings->SavedGameplayTags);
+
+	for (auto GameplayTag : TagsToStore)
+	{                                                             
+		for (int i = 0; i < AbilitySystemComponent->GetGameplayTagCount(GameplayTag) - 1; ++i)
+		{
+			SaveData.Tags.Add(GameplayTag);
+		}
+	}
+
+	//Remove the default tags applied from the default save. Those will be applied next load regardless.
+	for (auto DefaultTag : SaveGame->DefaultTags)
+	{
+		for (int i = 0; i < DefaultTag.Value - 1; ++i)
+		{
+			SaveData.Tags.RemoveSingle(DefaultTag.Key);
+		}
+	}
+}
+
+void ABSPlayerCharacter::SaveEquipment(FBSSaveData& SaveData)
+{
+	SaveData.Equipment = Equipment;
+	SaveData.CurrentColor = PlayerColor;
+}
+
+void ABSPlayerCharacter::SaveAttributes(FBSSaveData& SaveData)
+{
+	TArray<FGameplayAttribute> CurrentAttributes;
+	GetAbilitySystemComponent()->GetAllAttributes(CurrentAttributes);
+
+	SaveData.Attributes.Empty();
+	
+	for (auto Attribute : CurrentAttributes)
+	{
+		FBSAttributeData AttributeData;
+		AttributeData.Attribute = Attribute;
+		//Only get the base. Current would cause conflicts with temporary effects.
+		AttributeData.Value = GetAbilitySystemComponent()->GetNumericAttributeBase(Attribute);
+		SaveData.Attributes.Add(AttributeData);
+	}
+}
+
+void ABSPlayerCharacter::SaveState_Implementation(const bool bSaveToDisk)
+{
+	const APlayerController* PC = GetController<APlayerController>();
+	if (!PC) return;
+	UBSPersistantDataSubsystem* PersistantSubsystem = UBSPersistantDataSubsystem::Get(this);
+	UBSSaveGame* SG = PersistantSubsystem->GetOrLoadSaveGame(PC);
+	
+	SaveGameplayTags(SG->SaveData, SG);
+	
+	SaveAttributes(SG->SaveData);
+	
+	SaveGameplayEffects(SG->SaveData, SG);
+	
+	if (bSaveToDisk)
+	{
+		PersistantSubsystem->SaveGameToDiskSync(PC);	
+	}
+}
+
+#pragma endregion 
+
+#pragma region LoadSave
+
+void ABSPlayerCharacter::InitializeDefaultData(UBSPersistantDataSubsystem* PersistantSubsystem)
+{
+	const UBSSaveGame* SaveGameCDO = GetDefault<UBSSaveGame>(PersistantSubsystem->SaveGameClass);
+
+	for (const auto DefaultAbility : SaveGameCDO->DefaultAbilities)
+	{
+		AbilitySystemComponent->GiveAbility(DefaultAbility);
+	}
+
+	for (const auto DefaultEffect : SaveGameCDO->DefaultEffects)
+	{
+		FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(
+			DefaultEffect, 1, AbilitySystemComponent->MakeEffectContext());
+
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data);
+	}
+		
+	for (auto NewTag : SaveGameCDO->DefaultTags)
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(
+			NewTag.Key, NewTag.Value, EGameplayTagReplicationState::TagAndCountToAll);
+	}
+		
+	//Default items are applied regardless of save data containing more equipment. 
+	//This is intentional as a fallback.
+		
+	for (const auto DefaultEquipment : SaveGameCDO->DefaultEquipment)
+	{
+		Server_ApplyEquipment(FBSEquipmentInstance(DefaultEquipment));
+	}
+}
+
 void ABSPlayerCharacter::Server_ReceiveClientSave_Implementation(const FBSSaveData& SaveData)
 {
 	// =================================================================================================================
 	// Server Handle Client Save Data
 	// =================================================================================================================
 	
-	PlayerColor = SaveData.CurrentColor;
+	RestoreAttributesFromSave(SaveData);
+	RestoreEffectsFromSave(SaveData);
+	RestoreTagsFromSave(SaveData);
+	RestoreEquipmentFromSave(SaveData);
 	
-	for (auto ExistingAttribute : SaveData.Attributes)
-	{
-		//Override the base of an attribute to what was stored in the save.
-		AbilitySystemComponent->SetNumericAttributeBase(ExistingAttribute.Attribute, ExistingAttribute.Value);
-	}
+	//Notify Client that init is complete, so it can remove loading screen and be ready.
+	Client_InitComplete();
+	
+	//Add to ready players. This is unused at the moment, but can serve as a lock to ensure everyone is ready for RPCs.
+	UBSTravelManager::GetTravelManager(this)->ReadyPlayers.AddUnique(this);
+}
 
+void ABSPlayerCharacter::RestoreEffectsFromSave(const FBSSaveData& SaveData)
+{
 	for (const auto ExistingEffect : SaveData.Effects)
 	{
 		//Restore Effect from class
@@ -174,24 +326,44 @@ void ABSPlayerCharacter::Server_ReceiveClientSave_Implementation(const FBSSaveDa
 
 		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
+}
 
+void ABSPlayerCharacter::RestoreTagsFromSave(const FBSSaveData& SaveData)
+{
 	for (auto NewTag : SaveData.Tags)
 	{
 		AbilitySystemComponent->AddLooseGameplayTag(NewTag, 1, EGameplayTagReplicationState::TagAndCountToAll);
 	}
+}
+
+void ABSPlayerCharacter::RestoreEquipmentFromSave(const FBSSaveData& SaveData)
+{
+	PlayerColor = SaveData.CurrentColor;
 	
-	//Finally override default equipment with the saved equipment.
+	//Override default equipment with the saved equipment.
 	for (const auto SavedEquipment : SaveData.Equipment)
 	{
 		Server_ApplyEquipment(SavedEquipment);
 	}
-	
-	//Notify Client that init is complete, so it can remove loading screen and be ready.
-	Client_InitComplete();
-	
-	//Add to ready players. This is unused at the moment, but can serve as a lock to ensure everyone is ready for RPCs.
-	UBSTravelManager::GetTravelManager(this)->ReadyPlayers.AddUnique(this);
 }
+
+void ABSPlayerCharacter::RestoreAttributesFromSave(const FBSSaveData& SaveData)
+{
+	for (auto ExistingAttribute : SaveData.Attributes)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, 
+			ExistingAttribute.Attribute.AttributeName + ": " + FString::FromInt(ExistingAttribute.Value));
+		//Override the base of an attribute to what was stored in the save.
+		AbilitySystemComponent->SetNumericAttributeBase(ExistingAttribute.Attribute, ExistingAttribute.Value);
+	}
+}
+
+void ABSPlayerCharacter::BP_SaveState()
+{
+	SaveState(true);
+}
+
+#pragma endregion
 
 void ABSPlayerCharacter::Client_InitComplete_Implementation()
 {
@@ -218,14 +390,37 @@ UAbilitySystemComponent* ABSPlayerCharacter::GetAbilitySystemComponent() const
 
 void ABSPlayerCharacter::LaunchActor(const FVector Direction, const float Magnitude)
 {
-	 Client_Launch(Direction, Magnitude);
+	//Server cancel any leg ability (typically a movement ability)
+	if (HasAuthority())
+	{
+		AbilitySystemComponent.Get()->CancelAbilitiesWithTag(BSTags::Ability_Player_Legs);
+	}
+	Client_Launch(Direction, Magnitude);
+}
+
+void ABSPlayerCharacter::SetMovementRotationMode(const uint8 NewMovementMode)
+{
+	
+	bUseControllerRotationYaw = true;
+	/*
+	const bool ControlRotationMode = 
+		NewMovementMode == static_cast<uint8>(EBSMovementRotationMode::Ebs_ControlRotation);
+	
+	GetCharacterMovement()->bUseControllerDesiredRotation = ControlRotationMode;
+	//GetCharacterMovement()->bOrientRotationToMovement = !ControlRotationMode;
+
+	GetCharacterMovement()->RotationRate.Yaw = 750;
+
+	bAligningToController = ControlRotationMode;
+	*/
 }
 
 void ABSPlayerCharacter::Client_Launch_Implementation(const FVector NormalizedDirection, const float Magnitude)
 {
 	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
 	LaunchCharacter(
-	(NormalizedDirection + FVector::UpVector).GetSafeNormal() * Magnitude * 2, true, true);
+	NormalizedDirection.GetSafeNormal() * Magnitude, true, true);
 }
 
 int32 ABSPlayerCharacter::FindEquipmentIndexByTag(const FGameplayTag& Slot) const
@@ -242,8 +437,8 @@ int32 ABSPlayerCharacter::FindEquipmentIndexByTag(const FGameplayTag& Slot) cons
 void ABSPlayerCharacter::UpdateSkeletalMeshes()
 {
 	TArray<UBSEquipmentMeshComponent*> MeshComps;
-	GetOwner()->GetComponents<UBSEquipmentMeshComponent>(MeshComps);
-	for (auto EquipmentInstance : Equipment)
+	GetComponents<UBSEquipmentMeshComponent>(MeshComps);
+	for (auto& EquipmentInstance : Equipment)
 	{
 		if (const UBSEquipment* EquipmentCDO = EquipmentInstance.GetSourceItemCDO(); 
 		EquipmentCDO && EquipmentCDO->HasSkeletalMesh()) //ensure this is a slot that has skeletal mesh, and valid

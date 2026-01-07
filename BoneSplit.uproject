@@ -7,7 +7,11 @@
 		{
 			"Name": "BoneSplit",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"AdvancedSessions",
+				"AdvancedSteamSessions"
+			]
 		}
 	],
 	"Plugins": [
@@ -19,24 +23,31 @@
 			]
 		},
 		{
+			"Name": "StylusInput",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
 			"Name": "Anchorpoint",
 			"Enabled": true,
-			"MarketplaceURL": "com.epicgames.launcher://ue/Fab/product/a1f11a3c-1b51-4417-9e2a-4ec1e60f7e67"
+			"MarketplaceURL": "com.epicgames.launcher://ue/Fab/product/a1f11a3c-1b51-4417-9e2a-4ec1e60f7e67",
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "ClientAuthoritativeCharacter",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/10202a268d7646338bb5ed15dc763639"
 		},
 		{
 			"Name": "GameplayAbilities",
 			"Enabled": true
 		},
 		{
-			"Name": "Cascade",
-			"Enabled": false
-		},
-		{
 			"Name": "CommonUI",
-			"Enabled": true
-		},
-		{
-			"Name": "RawInput",
 			"Enabled": true
 		},
 		{
@@ -44,9 +55,16 @@
 			"Enabled": true
 		},
 		{
-			"Name": "ClientAuthoritativeCharacter",
-			"Enabled": true,
-			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/10202a268d7646338bb5ed15dc763639"
+			"Name": "Cascade",
+			"Enabled": false
+		},
+		{
+			"Name": "AdvancedSessions",
+			"Enabled": true
+		},
+		{
+			"Name": "AdvancedSteamSessions",
+			"Enabled": true
 		}
 	]
 }

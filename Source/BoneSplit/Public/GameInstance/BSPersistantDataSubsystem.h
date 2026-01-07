@@ -45,10 +45,17 @@ public:
 	//Does not work for dedicated servers. Will return the local player controller's game save.
 	UBSSaveGame* GetOrLoadSaveGame(const APlayerController* PC);
 	
+	void SaveGameToDiskSync(const APlayerController* PC) const;
+	
 	UPROPERTY()
 	TSubclassOf<UBSSaveGame> SaveGameClass;
 	
-protected: 
+	int32 GetDifficultyLevel() const;
+	
+protected:
+	
+	UPROPERTY()
+	int32 DifficultyLevel = 0;
 	
 	UPROPERTY()
 	TObjectPtr<UBSSaveGame> SaveGameInstance;

@@ -3,15 +3,23 @@
 
 #include "Actors/Mob/BSMobController.h"
 
+#include "NavigationSystem.h"
+#include "Navigation/CrowdFollowingComponent.h"
+#include "Navigation/PathFollowingComponent.h"
 
-ABSMobController::ABSMobController()
+ABSMobController::ABSMobController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	PrimaryActorTick.bCanEverTick = true;
+	
 }
 
 void ABSMobController::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (UCrowdFollowingComponent* CFC = Cast<UCrowdFollowingComponent>(GetPathFollowingComponent()))
+	{
+		CFC->SetCrowdSeparationWeight(100, true);
+	}
 	
 }
 

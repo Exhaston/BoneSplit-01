@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "ClientAuthoritativePlayerController.h"
 #include "Components/TimelineComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -20,7 +21,7 @@ struct FBSBufferedAbility
 	FBSBufferedAbility() = default;
 	
 	UPROPERTY()
-	int32 ID = -1;
+	int32 AbilityID = -1;
 	
 	UPROPERTY()
 	float TimeRemaining = 0;
@@ -30,15 +31,15 @@ struct FBSBufferedAbility
 	
 	bool operator==(const FBSBufferedAbility& Other) const
 	{
-		return ID == Other.ID;
+		return AbilityID == Other.AbilityID;
 	}
 };
-
+									 
 /**
  * 
- */
-UCLASS()
-class BONESPLIT_API ABSPlayerController : public AClientAuthoritativePlayerController
+ */                        
+UCLASS(DisplayName="BS Player Controller")
+class BONESPLIT_API ABSPlayerController : public AClientAuthoritativePlayerController, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 	
@@ -47,6 +48,8 @@ public:
 	
 	virtual void SetupInputComponent() override;
 	
+	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
+	
 	virtual void Tick(float DeltaSeconds) override;
 	
 	virtual void OnPossess(APawn* InPawn) override;
@@ -54,6 +57,11 @@ public:
 	virtual void AcknowledgePossession(APawn* P) override;
 	
 protected:
+	
+	UPROPERTY()
+	bool bControlDirectionInput = true;
+	
+	virtual void SetupAsc(APawn* InPawn);
 	
 	UPROPERTY()
 	FVector2D CachedLookSpeed = {1, 1};
@@ -72,8 +80,12 @@ protected:
 	
 	virtual void BindAbilityToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action, int32 ID);
 	
-	UAbilitySystemComponent* GetAbilitySystemComponent() const;
+	virtual void BindJumpToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action);
 	
+	//Mainly implemented through IAbilitySystemInterface for UI easy access.
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+	//The amount of time an ability can attempt to retrigger after a failed activation.
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input|Buffering")
 	float BufferTime = 0.5;
 	

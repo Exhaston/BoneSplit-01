@@ -18,6 +18,10 @@ public:
 	
 	UBSAbilitySystemComponent();
 	
+	// =================================================================================================================
+	// Overrides for animation speed / blend time scaling
+	// ================================================================================================================= 
+	
 	static void AdjustBlendTimeForMontage(
 		const UAnimInstance* TargetAnimInstance, const UAnimMontage* Montage, float InRate);
 
@@ -31,4 +35,6 @@ public:
 	
 	virtual float PlayMontageSimulated(
 		UAnimMontage* Montage, float InPlayRate, FName StartSectionName = NAME_None) override;
+	
+	virtual bool CancelAbilitiesWithTag(FGameplayTag InTag);
 };
