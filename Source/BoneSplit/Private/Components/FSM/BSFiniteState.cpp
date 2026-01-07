@@ -49,6 +49,15 @@ AActor* UBSFiniteState::GetOwnerActor() const
 	return OwnerComponent->GetOwner();
 }
 
+AController* UBSFiniteState::TryGetOwnerController() const
+{
+	if (const APawn* OwnerPawn = Cast<APawn>(GetOwnerActor()))
+	{
+		return OwnerPawn->GetController();
+	}
+	return nullptr;
+}
+
 UAbilitySystemComponent* UBSFiniteState::TryGetAbilitySystemComponent() const
 {
 	return UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwnerActor());

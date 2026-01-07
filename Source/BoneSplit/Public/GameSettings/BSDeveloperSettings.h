@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Actors/Player/BSSaveGame.h"
+#include "BoneSplit/BoneSplit.h"
 #include "Engine/DeveloperSettings.h"
 #include "GameInstance/BSCalendarEventSubsystem.h"
 #include "Widgets/BSLoadingScreenWidget.h"
@@ -39,6 +40,10 @@ public:
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Data")
 	TSoftClassPtr<UBSSaveGame> SaveGameClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Data")
+	FGameplayTagContainer SavedGameplayTags = FGameplayTagContainer::CreateFromArray( 
+		TArray{ BSTags::Talent_Jump.GetTag().RequestDirectParent() });
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Player")
 	TArray<FColor> PlayerColors;

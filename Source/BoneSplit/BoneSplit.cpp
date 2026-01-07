@@ -22,6 +22,22 @@ namespace BSTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_CombatStarted, "GameplayEvent.CombatStarted");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_CombatEnded, "GameplayEvent.CombatEnded");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_EquipmentRefreshed, "GameplayEvent.EquipmentRefreshed");
+	
+	// =================================================================================================================
+	// Anim Events
+	// =================================================================================================================
+	
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Generic_01, "AnimEvent.Generic.01");
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Generic_02, "AnimEvent.Generic.02");
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Generic_03, "AnimEvent.Generic.03");
+	
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Damage_01, "AnimEvent.Damage.01");
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Damage_02, "AnimEvent.Damage.02");
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Damage_03, "AnimEvent.Damage.03");
+	
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Heal_01, "AnimEvent.Heal.01");
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Heal_02, "AnimEvent.Heal.02");
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Heal_03, "AnimEvent.Heal.03");
 		 
 	// =================================================================================================================
 	// Equipment Tags
@@ -130,27 +146,36 @@ namespace BSConsoleVariables
 	TEXT("BS.UserSettings.MouseSensitivity.X"),
 	1,
 	TEXT("1 = Default"),
-	ECVF_Default
-	);
+	ECVF_Default);
 
 	TAutoConsoleVariable<float> CVarBSLookSensitivityY(
 	TEXT("BS.UserSettings.MouseSensitivity.Y"),
 	1,
 	TEXT("1 = Default"),
-	ECVF_Default
-	);
+	ECVF_Default);
 
 	TAutoConsoleVariable<float> CVarBSCameraOffset(
 	TEXT("BS.UserSettings.CameraOffset"),
 	1,
 	TEXT("1 = Default"),
-	ECVF_Default
-	);
+	ECVF_Default);
 	
 	TAutoConsoleVariable<bool> CVarBSBloomEnabled(
 	TEXT("BS.UserSettings.BloomEnabled"),
 	true,
 	TEXT("true = Default"),
-	ECVF_Default
-	);
+	ECVF_Default);
+	
+	TAutoConsoleVariable<bool> CVarBSDebugHitDetection(
+	TEXT("BS.Debug.HitDetect.Enable"),
+	false,
+	TEXT("false = Default"),
+	ECVF_Default);
+	
+	TAutoConsoleVariable<float> CVarBSDebugHitDetectionDuration(
+	TEXT("BS.Debug.HitDetect.Duration"),
+	1,
+	TEXT("1 = Default"),
+	ECVF_Default);
+	
 }

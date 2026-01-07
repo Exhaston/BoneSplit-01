@@ -5,7 +5,7 @@
 
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
-#include "Interfaces/BSLaunchableInterface.h"
+#include "Interfaces/BSMovementInterface.h"
 
 UBSPowerCalculation::UBSPowerCalculation()
 {
@@ -95,13 +95,13 @@ void UBSPowerCalculation::Execute_Implementation(const FGameplayEffectCustomExec
     if (!FMath::IsNearlyZero(BaseKnockback) && Spec.GetEffectContext().HasOrigin()
         && TargetAsc && TargetAsc->GetAvatarActor())
     {
-        if (IBSLaunchableInterface* LaunchableInterface = Cast<IBSLaunchableInterface>(TargetAsc->GetAvatarActor()))
+        if (IBSMovementInterface* LaunchableInterface = Cast<IBSMovementInterface>(TargetAsc->GetAvatarActor()))
         {
             FVector Direction = 
                 TargetAsc->GetAvatarActor()->GetActorLocation() - Spec.GetEffectContext().GetOrigin();
             
             Direction.Z = 0;
-            LaunchableInterface->LaunchActor(Direction, BaseKnockback);
+            LaunchableInterface->LaunchActor((Direction.GetSafeNormal() + FVector::UpVector), BaseKnockback);
         }
     }
     

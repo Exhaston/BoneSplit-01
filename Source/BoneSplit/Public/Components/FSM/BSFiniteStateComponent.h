@@ -20,7 +20,8 @@ public:
 	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	
-	virtual void ChangeState(TSubclassOf<UBSFiniteState> NewState);
+	UFUNCTION(BlueprintCallable, Category="FSM")
+	void ChangeState(TSubclassOf<UBSFiniteState> NewState);
 	
 	UPROPERTY()
 	TArray<UBSFiniteState*> PooledStates;

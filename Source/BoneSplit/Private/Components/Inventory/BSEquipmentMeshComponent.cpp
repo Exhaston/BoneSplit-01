@@ -20,7 +20,8 @@ void UBSEquipmentMeshComponent::SetMeshColorIndex(const int32 Index)
 
 void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset)
 {
-	if (MeshAsset.IsValid() && MeshAsset.Get() == GetSkeletalMeshAsset()) return; //The same asset. No need to reload
+	if (!MeshAsset.IsValid()) return;
+	if (MeshAsset.Get() == GetSkeletalMeshAsset()) return; //The same asset. No need to reload
 	
 	FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
 

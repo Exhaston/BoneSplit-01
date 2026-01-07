@@ -3,23 +3,23 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIController.h"
+#include "DetourCrowdAIController.h"
 #include "BSMobController.generated.h"
 
 UCLASS()
-class BONESPLIT_API ABSMobController : public AAIController
+class BONESPLIT_API ABSMobController : public ADetourCrowdAIController
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
-	ABSMobController();
-
+	
+	explicit ABSMobController(const FObjectInitializer& ObjectInitializer);
+	
 protected:
-	// Called when the game starts or when spawned
+	
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
+	
 	virtual void Tick(float DeltaTime) override;
 };

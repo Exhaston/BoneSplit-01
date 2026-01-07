@@ -49,7 +49,17 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 	AimRotation = 
 		UKismetMathLibrary::RInterpTo(AimRotation, TargetRotation, DeltaSeconds, LookInterpSpeed);
 	
-	const float CurrentVelocity = CharacterOwner->GetCharacterMovement()->GetCurrentAcceleration().Size();
+	float CurrentVelocity;
+	
+	if (CharacterOwner->IsLocallyControlled())
+	{
+		  CurrentVelocity = CharacterOwner->GetCharacterMovement()->GetCurrentAcceleration().Size();
+	}
+	else
+	{
+		CurrentVelocity = CharacterOwner->GetCharacterMovement()->Velocity.Size();
+	}
+	
 	if (const float MaxSpeed = CharacterOwner->GetCharacterMovement()->GetMaxSpeed(); 
 		MaxSpeed > 0.f)
 	{

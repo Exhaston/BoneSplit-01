@@ -3,10 +3,12 @@
 
 #include "GameMode/BSHubGameMode.h"
 
+#include "AdvancedGameSession.h"
 #include "GameInstance/BSPersistantDataSubsystem.h"
 
 ABSHubGameMode::ABSHubGameMode(const FObjectInitializer& Initializer) : Super(Initializer)
 {
+	GameSessionClass = AAdvancedGameSession::StaticClass();
 }
 
 AActor* ABSHubGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)

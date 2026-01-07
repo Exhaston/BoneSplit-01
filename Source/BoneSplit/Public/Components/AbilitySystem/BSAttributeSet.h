@@ -52,6 +52,10 @@ public:
 	ATTRIBUTE_ACCESSORS(UBSAttributeSet, MagicDamage)
 	
 	UPROPERTY(BlueprintReadOnly)
+	FGameplayAttributeData TrueDamage;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, TrueDamage)
+	
+	UPROPERTY(BlueprintReadOnly)
 	FGameplayAttributeData Healing;
 	ATTRIBUTE_ACCESSORS(UBSAttributeSet, Healing)
 	
@@ -215,6 +219,36 @@ public:
 	virtual void OnRep_Speed(const FGameplayAttributeData& OldAttributeData)
 	{
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, Speed, OldAttributeData);
+	}
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Friction)
+	FGameplayAttributeData Friction = 1;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, Friction)
+	
+	UFUNCTION()
+	virtual void OnRep_Friction(const FGameplayAttributeData& OldAttributeData)
+	{
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, Friction, OldAttributeData);
+	}
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_JumpHeight)
+	FGameplayAttributeData JumpHeight = 1.5;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, JumpHeight)
+	
+	UFUNCTION()
+	virtual void OnRep_JumpHeight(const FGameplayAttributeData& OldAttributeData)
+	{
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, JumpHeight, OldAttributeData);
+	}	
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_AirControl)
+	FGameplayAttributeData AirControl = 0.1;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, AirControl)
+	
+	UFUNCTION()
+	virtual void OnRep_AirControl(const FGameplayAttributeData& OldAttributeData)
+	{
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, AirControl, OldAttributeData);
 	}
 
 	// =================================================================================================================

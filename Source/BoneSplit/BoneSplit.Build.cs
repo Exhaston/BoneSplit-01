@@ -27,7 +27,6 @@ public class BoneSplit : ModuleRules
 			"AnimGraphRuntime",
 			"ClientAuthoritativeCharacterSystem"
 		]);
-
 		PrivateDependencyModuleNames.AddRange(
 		[
 		]);

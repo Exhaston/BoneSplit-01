@@ -3,6 +3,10 @@
 
 #include "GameMode/BSMainMenuGameMode.h"
 
+#include "AdvancedGameSession.h"
+
+
 ABSMainMenuGameMode::ABSMainMenuGameMode(const FObjectInitializer& Initializer) : Super(Initializer)
 {
+	GameSessionClass = AAdvancedGameSession::StaticClass();
 }
