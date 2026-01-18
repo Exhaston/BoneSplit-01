@@ -6,6 +6,8 @@
 #include "DetourCrowdAIController.h"
 #include "BSMobController.generated.h"
 
+class UBSTargetSetting;
+
 UCLASS()
 class BONESPLIT_API ABSMobController : public ADetourCrowdAIController
 {
@@ -15,11 +17,4 @@ public:
 	
 	explicit ABSMobController(const FObjectInitializer& ObjectInitializer);
 	
-protected:
-	
-	virtual void BeginPlay() override;
-
-public:
-	
-	virtual void Tick(float DeltaTime) override;
 };

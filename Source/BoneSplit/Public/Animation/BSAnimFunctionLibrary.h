@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
+#include "BoneSplit/BoneSplit.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "BSAnimFunctionLibrary.generated.h"
 
@@ -18,7 +19,7 @@ class BONESPLIT_API UBSAnimFunctionLibrary : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 };
 
-UCLASS()
+UCLASS(DisplayName="Slice Overlap Actors")
 class UBSAnimNotify_CustomOverlap : public UAnimNotify
 {
 	GENERATED_BODY()
@@ -128,5 +129,25 @@ public:
 	
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
+	
+};
+
+UCLASS(DisplayName="Ability System Event")
+class UBSAN_SendEventToAsc : public UAnimNotify
+{
+	GENERATED_BODY()
+
+public:
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="AnimEvent"))
+	FGameplayTag EventTag = BSTags::AnimEvent_StoreCombo;
+	
+#if WITH_EDITOR
+	
+	virtual FString GetNotifyName_Implementation() const override;
+	
+#endif
+	
+	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 	
 };

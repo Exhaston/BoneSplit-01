@@ -74,6 +74,8 @@ namespace BSTags
 	// Anim Events
 	// =================================================================================================================
 	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_StoreCombo);
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Generic_01);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Generic_02);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(AnimEvent_Generic_03);
@@ -187,6 +189,16 @@ namespace BSTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Ability_Mob_Special4);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Ability_Mob_Special5);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Ability_Mob_Dodge);
+	
+	// =================================================================================================================
+	// Faction Tags
+	// =================================================================================================================
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction_Player);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction_Rats);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction_Slimes);
+	
 }
 
 namespace BSConsoleVariables
@@ -198,4 +210,6 @@ namespace BSConsoleVariables
 	
 	extern TAutoConsoleVariable<bool> CVarBSDebugHitDetection;
 	extern TAutoConsoleVariable<float> CVarBSDebugHitDetectionDuration;
+	
+	extern TAutoConsoleVariable<bool> CVarBSDebugAggroSpheres;
 }

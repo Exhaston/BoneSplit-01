@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/StreamableManager.h"
 #include "BSEquipmentMeshComponent.generated.h"
 
 /**
@@ -26,4 +27,6 @@ public:
 	int32 CurrentColor = 0;
 	
 	virtual void LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset);
+	
+	TSharedPtr<FStreamableHandle> StreamingHandle;
 };

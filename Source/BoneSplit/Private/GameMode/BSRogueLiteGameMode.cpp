@@ -4,16 +4,8 @@
 #include "BoneSplit/Public/GameMode/BSRogueLiteGameMode.h"
 
 #include "AdvancedGameSession.h"
-#include "GameInstance/BSPersistantDataSubsystem.h"
 
 ABSRogueLiteGameMode::ABSRogueLiteGameMode(const FObjectInitializer& Initializer) : Super(Initializer)
 {
 	GameSessionClass = AAdvancedGameSession::StaticClass();
-}
-
-AActor* ABSRogueLiteGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
-{
-	return Super::FindPlayerStart_Implementation(
-		Player, 
-		UBSPersistantDataSubsystem::Get(this)->GetTravelDestTag());
 }

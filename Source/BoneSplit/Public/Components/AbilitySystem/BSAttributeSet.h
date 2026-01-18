@@ -37,6 +37,8 @@ public:
 		const FGameplayAttribute& AffectedAttribute, 
 		float OldValue,
 		float NewMaxValue) const;
+	
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
 
 	// =================================================================================================================

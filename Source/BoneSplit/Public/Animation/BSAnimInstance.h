@@ -12,7 +12,7 @@ class IAbilitySystemInterface;
 /**
  * 
  */
-UCLASS()
+UCLASS(DisplayName="Anim Instance Base", Category="BoneSplit")
 class BONESPLIT_API UBSAnimInstance : public UAnimInstance
 {
 	GENERATED_BODY()

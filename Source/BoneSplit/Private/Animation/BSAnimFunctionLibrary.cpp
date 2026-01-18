@@ -11,17 +11,22 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
+#define ENSURE_OWNER \
+if (!MeshComp || !MeshComp->GetOwner()) return;
+
 void UBSAnimNotify_CustomOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                                          const FAnimNotifyEventReference& EventReference)
 {
 	Super::Notify(MeshComp, Animation, EventReference);
-	if (!MeshComp || !MeshComp->GetOwner()) return;
+	ENSURE_OWNER
 
 	FTransform BoneTransform = MeshComp->GetBoneTransform(ParentBone);
 	
 	BoneTransform.SetRotation(BoneTransform.TransformRotation(RotationOffset.Quaternion()));
 
 	BoneTransform.SetLocation(MeshComp->GetComponentTransform().TransformPosition(LocationOffset));
+	
+	BoneTransform.SetScale3D(MeshComp->GetComponentScale()); //No weird bone transforms, stick to reliable mesh axis.
 	
 	// =================================================================================================================
 	// Overlap Actors
@@ -81,7 +86,7 @@ void UBSAnimNotify_CustomOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnim
 
 FString UBSAnimNotify_CustomOverlap::GetNotifyName_Implementation() const
 {
-	return Super::GetNotifyName_Implementation();
+	return "Slice Overlap";
 }
 
 #endif
@@ -92,7 +97,7 @@ void UBSNotifyState_AreaIndicator::NotifyBegin(USkeletalMeshComponent* MeshComp,
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	
-	if (!MeshComp || !MeshComp->GetOwner()) return;
+	ENSURE_OWNER
 
 	if (DecalComponents.Contains(MeshComp))
 	{
@@ -106,6 +111,7 @@ void UBSNotifyState_AreaIndicator::NotifyBegin(USkeletalMeshComponent* MeshComp,
 		DecalComponents.Add(MeshComp, NewObject<UBSDynamicDecalComponent>(MeshComp->GetOwner()));
 	
 	NewComp->SetupAttachment(MeshComp, ParentBone);
+	NewComp->DecalSize = {100, 100, 100};
 	NewComp->SetRelativeTransform(DecalTransform);
 	NewComp->RegisterDynamicDecal(Material);
 }
@@ -115,7 +121,7 @@ void UBSNotifyState_AreaIndicator::NotifyEnd(USkeletalMeshComponent* MeshComp, U
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 	
-	if (!MeshComp || !MeshComp->GetOwner()) return;
+	ENSURE_OWNER
 	
 	if (DecalComponents.Contains(MeshComp))
 	{
@@ -129,7 +135,7 @@ void UBSNotifyState_AreaIndicator::NotifyTick(USkeletalMeshComponent* MeshComp, 
 {
 	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
 	
-	if (!MeshComp || !MeshComp->GetOwner()) return;
+	ENSURE_OWNER
 
 	if (DecalComponents.Contains(MeshComp))
 	{
@@ -140,6 +146,20 @@ void UBSNotifyState_AreaIndicator::NotifyTick(USkeletalMeshComponent* MeshComp, 
 		
 		const float Progress = FMath::Clamp<float>(((CurrentTime - StartTime) / Duration) + ProgressOffset, 0, 1);
 		DecalComponents[MeshComp]->GetDynamicMaterial()->SetScalarParameterValue("Percent", Progress);
+		
+#if WITH_EDITOR
+		if (const UWorld* World = GEngine->GetWorldFromContextObjectChecked(MeshComp->GetOwner()); 
+			!World->IsGameWorld())
+		{
+			DrawDebugBox(
+				World, 
+				DecalComponents[MeshComp]->GetComponentLocation(), 
+				DecalComponents[MeshComp]->GetRelativeScale3D() * DecalComponents[MeshComp]->DecalSize, 
+				NotifyColor, 
+				false, 
+				-1);
+		}
+#endif
 	}
 }
 
@@ -156,10 +176,12 @@ void UBSANS_AllowRotation::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSe
                                        const float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
-	if (!MeshComp || !MeshComp->GetOwner()) return;
+	ENSURE_OWNER
 	
-	if (const ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()))
+	if (ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()); Character && Character->HasAuthority())
 	{
+		Character->GetCharacterMovement()->bUseControllerDesiredRotation = true;
+		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 		OldRotationRate = Character->GetCharacterMovement()->RotationRate.Yaw;
 		Character->GetCharacterMovement()->RotationRate.Yaw = NewRotationRate;
 		Character->GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = true;
@@ -170,11 +192,41 @@ void UBSANS_AllowRotation::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequ
 	const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
-	if (!MeshComp || !MeshComp->GetOwner()) return;
+	ENSURE_OWNER
 	
-	if (const ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()))
+	if (const ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()); Character && Character->HasAuthority())
 	{
+		Character->GetCharacterMovement()->bUseControllerDesiredRotation = false;
+		Character->GetCharacterMovement()->bOrientRotationToMovement = true;
 		Character->GetCharacterMovement()->RotationRate.Yaw = OldRotationRate;
 		Character->GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 	}
 }
+
+#if WITH_EDITOR
+
+FString UBSAN_SendEventToAsc::GetNotifyName_Implementation() const
+{
+	return "Event: " + EventTag.GetTagName().ToString();
+}
+
+#endif
+
+void UBSAN_SendEventToAsc::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+	const FAnimNotifyEventReference& EventReference)
+{
+	Super::Notify(MeshComp, Animation, EventReference);
+	
+	ENSURE_OWNER
+	
+	if (!MeshComp->GetOwner()->HasLocalNetOwner() && !MeshComp->GetOwner()->HasAuthority()) return; //No viable ability owner.
+	
+	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(MeshComp->GetOwner()))
+	{
+		FGameplayEventData Payload;
+		Payload.EventTag = EventTag;
+		Payload.ContextHandle = AscInterface->GetAbilitySystemComponent()->MakeEffectContext();
+		AscInterface->GetAbilitySystemComponent()->HandleGameplayEvent(EventTag, &Payload);
+	}
+}
+

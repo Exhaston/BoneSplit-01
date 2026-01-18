@@ -23,6 +23,7 @@ public:
 		FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const override;
 	
 private:
+	
 	DECLARE_ATTRIBUTE_CAPTUREDEF(CritChance);
 	DECLARE_ATTRIBUTE_CAPTUREDEF(CritMod);
 	DECLARE_ATTRIBUTE_CAPTUREDEF(Shield);

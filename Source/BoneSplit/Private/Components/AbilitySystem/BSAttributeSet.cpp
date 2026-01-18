@@ -3,6 +3,8 @@
 
 #include "Components/AbilitySystem/BSAttributeSet.h"
 
+#include "GameplayEffectExtension.h"
+#include "Components/AbilitySystem/BSKillableInterface.h"
 #include "Net/UnrealNetwork.h"
 
 void UBSAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -95,4 +97,22 @@ void UBSAttributeSet::AdjustAttributeForMaxChange(
 		(CurrentValue * NewMaxValue / CurrentMaxValue) - CurrentValue : NewMaxValue;
 		AbilityComp->ApplyModToAttribute(AffectedAttribute, EGameplayModOp::Additive, NewDelta);
 	}
+}
+
+void UBSAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
+{
+	Super::PostGameplayEffectExecute(Data);
+	
+	AActor* AvatarActor = GetOwningAbilitySystemComponent()->GetAvatarActor();
+	AActor* EffectSourceAvatar = Data.EffectSpec.GetEffectContext().GetEffectCauser();
+	
+	if (AvatarActor && Data.EvaluatedData.Attribute == GetHealthAttribute() && GetHealth() <= 0)
+	{
+		if (IBSKillableInterface* Killable = Cast<IBSKillableInterface>(AvatarActor))
+		{
+			Killable->OnKilled(Data.EffectSpec.GetEffectContext().GetEffectCauser(), Data.EvaluatedData.Magnitude);
+		}
+	}
+	
+
 }

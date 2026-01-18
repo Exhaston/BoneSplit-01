@@ -20,10 +20,10 @@ UBSPlayerMovementComponent::UBSPlayerMovementComponent()
 	PerchAdditionalHeight = 45;
 	MaxStepHeight = 45;
 	SetWalkableFloorAngle(45);
-	bUseFlatBaseForFloorChecks = true;
+	bUseFlatBaseForFloorChecks = false;
 	DefaultLandMovementMode = MOVE_Walking;
 	
-	bUseSeparateBrakingFriction = true;
+	bUseSeparateBrakingFriction = false;
 	MaxAcceleration = 8192;
 	BrakingDecelerationWalking = 8192;
 	

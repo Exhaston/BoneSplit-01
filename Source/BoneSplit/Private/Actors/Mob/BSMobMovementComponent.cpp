@@ -4,6 +4,7 @@
 #include "Actors/Mob/BSMobMovementComponent.h"
 
 #include "AbilitySystemInterface.h"
+#include "NavigationSystem.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "GameFramework/Character.h"
@@ -24,13 +25,19 @@ UBSMobMovementComponent::UBSMobMovementComponent()
 	GravityScale = 2;
 	
 	NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
-	bNetworkSkipProxyPredictionOnNetUpdate = true;
+	bNetworkSkipProxyPredictionOnNetUpdate = false;
 	
 	bOrientRotationToMovement = true;
 	
-	bAllowPhysicsRotationDuringAnimRootMotion = false;
+	DefaultLandMovementMode = MOVE_NavWalking;
+	bSlideAlongNavMeshEdge = true;
+	NavWalkingFloorDistTolerance = 1000;
 	
-	RotationRate = {0,500, 0};
+	bAllowPhysicsRotationDuringAnimRootMotion = false;
+	bProjectNavMeshWalking = true;
+	NavMeshProjectionInterpSpeed = 0;
+	
+	RotationRate = {0,450, 0};
 }
 
 void UBSMobMovementComponent::BeginPlay()
@@ -52,20 +59,6 @@ void UBSMobMovementComponent::BeginPlay()
 	BindAttributes(Asc);
 			
 	BindTags(Asc);
-}
-
-void UBSMobMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
-	FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
-	if (CharacterOwner)
-	{
-		const bool RootControl = 
-			CharacterOwner->IsPlayingRootMotion() && bAllowPhysicsRotationDuringAnimRootMotion && CanMove();
-		bUseControllerDesiredRotation = RootControl;
-		bOrientRotationToMovement = !bUseControllerDesiredRotation;
-	}
 }
 
 float UBSMobMovementComponent::GetMaxSpeed() const

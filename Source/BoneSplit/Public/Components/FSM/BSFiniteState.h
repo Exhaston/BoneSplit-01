@@ -51,15 +51,6 @@ public:
 	UFUNCTION(BlueprintPure, Category="FiniteState")
 	AActor* GetOwnerActor() const;
 	
-	//May return null if the owner actor isn't a pawn or has not been possessed yet.
-	UFUNCTION(BlueprintPure, Category="FiniteState")
-	AController* TryGetOwnerController() const;
-	
-	//Attempts to get the ability system from the owner actor. 
-	//Can return null if owner doesn't have an ability system, or it isn't initialized or replicated yet.
-	UFUNCTION(BlueprintPure, Category="FiniteState")
-	UAbilitySystemComponent* TryGetAbilitySystemComponent() const;
-	
 	virtual bool GetShouldPool() const;
 	
 protected:
@@ -69,8 +60,14 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bPooled = true;
 	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(ClampMin=0, Units=Seconds))
+	float TickInterval = 1;
+	
 	UPROPERTY()
 	bool bCanTick = false;
+	
+	UPROPERTY()
+	float ElapsedTickTime = 0;
 	
 	UPROPERTY()
 	UBSFiniteStateComponent* OwnerComponent;
