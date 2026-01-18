@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativeCharacter.h"
 #include "GameplayTagContainer.h"
+#include "Components/AbilitySystem/BSKillableInterface.h"
 #include "Interfaces/BSMovementInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
@@ -22,16 +23,16 @@ class UBSAttributeSet;
 class UBSInventoryComponent;
 class UBSAbilitySystemComponent;
 
-
 /**
  * TODO: Document
  * Reasoning for not utilizing the player state as a 
  * hub for information is to simplify branching from network race conditions. 
  * Avoid deleting the player, and if so save data first.
  */
-UCLASS()
+UCLASS(DisplayName="Player Character", Blueprintable, BlueprintType, 
+	Category="BoneSplit", ClassGroup="BoneSplit", Abstract)
 class BONESPLIT_API ABSPlayerCharacter : public AClientAuthoritativeCharacter, 
-public IBSMovementInterface, public IAbilitySystemInterface
+public IBSMovementInterface, public IAbilitySystemInterface, public IBSKillableInterface
 {
 	GENERATED_BODY()
 
@@ -64,11 +65,22 @@ public:
 	TObjectPtr<UCameraComponent> CameraComponent;
 	
 	// =================================================================================================================
+	// Killable
+	// ================================================================================================================= 
+	
+	virtual bool CanBeKilled() const override;
+	
+	virtual void OnKilled(AActor* Killer, float Damage) override;
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnKilled(AActor* Killer, float Damage);
+	
+	// =================================================================================================================
 	// Asc
 	// ================================================================================================================= 
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
+
 protected:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))

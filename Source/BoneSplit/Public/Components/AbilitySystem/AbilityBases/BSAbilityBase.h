@@ -9,6 +9,15 @@
 
 enum EBSAbilityInputID : uint8;
 class ABSPredictableActor;
+
+#define COMMIT_ABILITY(Handle, ActorInfo, ActivationInfo)   \
+if (!CommitAbility(Handle, ActorInfo, ActivationInfo))      \
+{                                                           \
+	CancelAbility(Handle, ActorInfo, ActivationInfo, true); \
+	return;                                                 \
+}
+#define CANCEL_ABILITY() \
+CancelAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true); return;
 /**
  * 
  */
@@ -23,10 +32,23 @@ public:
 	
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input")
-	TEnumAsByte<EBSAbilityInputID> PlayerInputID = EBSAbilityInputID::None;
+	TEnumAsByte<EBSAbilityInputID> PlayerInputID = None;
 	
 	virtual void SpawnPredictedActor(const TSubclassOf<ABSPredictableActor> ActorToSpawn,
 	const FTransform& SpawnTransform,
 	const FGameplayAbilityTargetDataHandle& TargetData);
+	
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle, 
+		const FGameplayAbilityActorInfo* ActorInfo, 
+		const FGameplayAbilityActivationInfo ActivationInfo, 
+		bool bReplicateEndAbility, 
+		bool bWasCancelled) override;
+	
+protected:
+	
+	UPROPERTY()
+	TArray<UGameplayTask*> Tasks;
 };

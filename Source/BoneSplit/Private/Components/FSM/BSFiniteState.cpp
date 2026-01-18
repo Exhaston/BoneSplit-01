@@ -16,7 +16,12 @@ void UBSFiniteState::NativeEnterState(UBSFiniteStateComponent* InOwnerComponent)
 void UBSFiniteState::NativeTickState(UBSFiniteStateComponent* InOwnerComponent, const float DeltaTime)
 {
 	if (!bCanTick) return;
-	BP_OnTickState(InOwnerComponent, DeltaTime);
+	ElapsedTickTime += DeltaTime;
+	if (ElapsedTickTime >= TickInterval)
+	{
+		ElapsedTickTime = 0;
+		BP_OnTickState(InOwnerComponent, DeltaTime);
+	}
 }
 
 void UBSFiniteState::NativeEndState(UBSFiniteStateComponent* InOwnerComponent)
@@ -47,20 +52,6 @@ UBSFiniteStateComponent* UBSFiniteState::GetOwnerComponent() const
 AActor* UBSFiniteState::GetOwnerActor() const
 {
 	return OwnerComponent->GetOwner();
-}
-
-AController* UBSFiniteState::TryGetOwnerController() const
-{
-	if (const APawn* OwnerPawn = Cast<APawn>(GetOwnerActor()))
-	{
-		return OwnerPawn->GetController();
-	}
-	return nullptr;
-}
-
-UAbilitySystemComponent* UBSFiniteState::TryGetAbilitySystemComponent() const
-{
-	return UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwnerActor());
 }
 
 bool UBSFiniteState::GetShouldPool() const

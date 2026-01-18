@@ -27,6 +27,8 @@ namespace BSTags
 	// Anim Events
 	// =================================================================================================================
 	
+	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_StoreCombo, "AnimEvent.StoreCombo");
+	
 	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Generic_01, "AnimEvent.Generic.01");
 	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Generic_02, "AnimEvent.Generic.02");
 	UE_DEFINE_GAMEPLAY_TAG(AnimEvent_Generic_03, "AnimEvent.Generic.03");
@@ -134,6 +136,11 @@ namespace BSTags
 	UE_DEFINE_GAMEPLAY_TAG(Cooldown_Ability_Mob_Special4, "Cooldown.Ability.Mob.Special4");
 	UE_DEFINE_GAMEPLAY_TAG(Cooldown_Ability_Mob_Special5, "Cooldown.Ability.Mob.Special5");
 	UE_DEFINE_GAMEPLAY_TAG(Cooldown_Ability_Mob_Dodge, "Cooldown.Ability.Mob.Dodge");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Faction, "Faction");
+	UE_DEFINE_GAMEPLAY_TAG(Faction_Player, "Faction.Player");
+	UE_DEFINE_GAMEPLAY_TAG(Faction_Rats, "Faction.Rats");
+	UE_DEFINE_GAMEPLAY_TAG(Faction_Slimes, "Faction.Slimes");
 }
 
 namespace BSConsoleVariables
@@ -177,5 +184,13 @@ namespace BSConsoleVariables
 	1,
 	TEXT("1 = Default"),
 	ECVF_Default);
+	
+	TAutoConsoleVariable<bool> CVarBSDebugAggroSpheres(
+	TEXT("BS.Debug.AggroSphere.Enable"),
+	false,
+	TEXT("false = Default"),
+	ECVF_Default);
+	
+
 	
 }

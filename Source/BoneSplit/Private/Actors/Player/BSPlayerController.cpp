@@ -157,21 +157,15 @@ void ABSPlayerController::SetupInputComponent()
 	LegsAction, Legs);
 }
 
-void ABSPlayerController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction)
-{
-	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
-	
-	if (ThisTickFunction.TickGroup == TG_PostPhysics)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("YEp"));
-	}
-}
-
 void ABSPlayerController::Tick(const float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	
 	TurnTimeline.TickTimeline(DeltaSeconds);
+	
+	//Only need the local owner to buffer their abilities, 
+	//server doesn't handle input here
+	if (!IsLocalController()) return; 
 	
 	for (auto& BufferedAbility : BufferedAbilities)
 	{
@@ -233,7 +227,6 @@ bool ABSPlayerController::TryActivatePawnAbility(const int32 ID)
 	{
 		if (const FGameplayAbilitySpec* Spec = Asc->FindAbilitySpecFromInputID(ID))
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Activate Ability"));
 			bool Success = false;
 			if (const UGameplayAbility* AbilityInstance = Spec->GetPrimaryInstance())
 			{
@@ -279,6 +272,10 @@ void ABSPlayerController::BindAbilityToAction(UEnhancedInputComponent* EnhancedI
 	[this, ID](const FInputActionValue& Value)
 	{
 		TryActivatePawnAbility(ID);
+		if (GetAbilitySystemComponent())
+		{
+			GetAbilitySystemComponent()->PressInputID(ID);
+		}
 	});
 	EnhancedInputComponent->BindActionValueLambda(Action, ETriggerEvent::Completed,
 	[this, ID](const FInputActionValue& Value)

@@ -5,9 +5,328 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "AIController.h"
+#include "NavigationSystem.h"
+#include "Actors/Mob/BSTargetSetting.h"
+#include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
+#include "Components/Targeting/BSThreatComponent.h"
+#include "Components/Targeting/BSThreatInterface.h"
 #include "Engine/OverlapResult.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Tasks/AITask_MoveTo.h"
+#include "Components/AbilitySystem/EffectBases/BSGameplayEffect.h"
+
+bool UBSAbilityFunctionLibrary::FilterByAnyMatchingFactions(UAbilitySystemComponent* Asc, UAbilitySystemComponent* OtherAsc)
+{
+	FGameplayTagContainer FilterContainer;
+	FilterContainer.AddTagFast(BSTags::Faction);
+
+	const FGameplayTagContainer FilteredOwnerTags = Asc->GetOwnedGameplayTags().Filter(FilterContainer);
+	
+	if (const FGameplayTagContainer FilteredOtherCompTags = 
+		OtherAsc->GetOwnedGameplayTags().Filter(FilterContainer); 
+		FilteredOtherCompTags.HasAnyExact(FilteredOwnerTags))
+	{
+		return true;
+	}
+	return false;
+}
+
+bool UBSAbilityFunctionLibrary::FilterByNoMatchingFactions(UAbilitySystemComponent* Asc, UAbilitySystemComponent* OtherAsc)
+{
+	FGameplayTagContainer FilterContainer;
+	FilterContainer.AddTagFast(BSTags::Faction);
+
+	const FGameplayTagContainer FilteredOwnerTags = Asc->GetOwnedGameplayTags().Filter(FilterContainer);
+	
+	if (const FGameplayTagContainer FilteredOtherCompTags = 
+		OtherAsc->GetOwnedGameplayTags().Filter(FilterContainer); 
+		!FilteredOtherCompTags.HasAnyExact(FilteredOwnerTags))
+	{
+		return true;
+	}
+	return false;
+}
+
+void UBSAbilityFunctionLibrary::TryActivateAbilityWeighted(UAbilitySystemComponent* OwnerAsc,
+                                                           const TMap<TSubclassOf<UGameplayAbility>, float> AbilityMap)
+{
+	if (const TSubclassOf<UGameplayAbility> ChosenAbility = GetAbilityByWeight(OwnerAsc, AbilityMap))
+	{
+		OwnerAsc->TryActivateAbilityByClass(ChosenAbility);
+	}
+}
+
+void UBSAbilityFunctionLibrary::LazyApplyEffectToTarget(UGameplayAbility* Ability,
+                                                        	AActor* TargetActor, const TSubclassOf<UBSGameplayEffect> EffectClass, const FVector Origin, FBSTargetFilter Filter, const float EffectLevel)
+{
+	UAbilitySystemComponent* TargetAsc = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+	
+	if (!TargetAsc || !EffectClass) return;
+	
+	UAbilitySystemComponent* SourceAsc = Ability->GetAbilitySystemComponentFromActorInfo();
+	
+	if (!Filter.RunFilter(SourceAsc->GetAvatarActor(), TargetActor))
+	{
+		return;
+	}
+	
+	check(SourceAsc);
+	FGameplayEffectContextHandle ContextHandle = SourceAsc->MakeEffectContext();
+	ContextHandle.AddOrigin(Origin);
+	ContextHandle.SetAbility(Ability);
+
+	const FGameplayEffectSpecHandle Handle = 
+		SourceAsc->MakeOutgoingSpec(EffectClass, EffectLevel, ContextHandle);
+	
+	SourceAsc->ApplyGameplayEffectSpecToTarget(*Handle.Data, TargetAsc);
+}
+
+bool UBSAbilityFunctionLibrary::CanMobReachLocation(AActor* InMob, const FVector TargetLocation)
+{
+	if (!InMob) return false;
+
+	const AAIController* AIController = UAIBlueprintHelperLibrary::GetAIController(InMob);
+	if (!AIController) return false;
+
+	UNavigationSystemV1* NavSys =
+		UNavigationSystemV1::GetCurrent(InMob->GetWorld());
+
+	if (!NavSys)
+	{
+		return false;
+	}
+
+	const ANavigationData* NavData =
+		NavSys->GetNavDataForProps(AIController->GetNavAgentPropertiesRef());
+
+	if (!NavData)
+	{
+		return false;
+	}
+
+	const FPathFindingQuery Query = FPathFindingQuery(
+		AIController,
+		*NavData,
+		InMob->GetActorLocation(),
+		TargetLocation
+	);
+
+	const FPathFindingResult Result = NavSys->FindPathSync(Query);
+
+	return Result.IsSuccessful();
+}
+
+bool UBSAbilityFunctionLibrary::CheckMobGrounded(AActor* InMob)
+{
+	if (const ACharacter* MobAsCharacter = Cast<ACharacter>(InMob))
+	{
+		return MobAsCharacter->GetCharacterMovement()->IsMovingOnGround();
+	}
+	return false;
+}
+
+TArray<AActor*> UBSAbilityFunctionLibrary::FilterArrayByReachable(AActor* InOriginActor, TArray<AActor*> InActors)
+{
+	TArray<AActor*> OutActors;
+	for (auto Actor : InActors)
+	{
+		if (CanMobReachLocation(InOriginActor, Actor->GetActorLocation()))
+		{
+			 OutActors.Add(Actor);
+		}
+	}
+	return OutActors;
+}
+
+TArray<AActor*> UBSAbilityFunctionLibrary::FilterArrayByVisible(
+	UObject* WorldContext, 
+	const FVector InOrigin, 
+	TArray<AActor*> InActors)
+{
+	TArray<AActor*> OutActors;
+	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(WorldContext);
+	for (auto Actor : InActors)
+	{
+		if (FHitResult HitResult; 
+			!World->LineTraceSingleByChannel(
+			HitResult, 
+			InOrigin,
+			Actor->GetActorLocation(), 
+			ECC_Visibility))
+		{
+			OutActors.AddUnique(Actor);
+		}
+	}
+	return OutActors;
+}
+
+bool UBSAbilityFunctionLibrary::CheckTargetVisibility(UObject* WorldContext, const FVector InOrigin, const AActor* InTargetActor)
+{
+	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(WorldContext);
+	FHitResult HitResult; 
+	
+	return !World->LineTraceSingleByChannel(
+		HitResult, 
+		InOrigin,
+		InTargetActor->GetActorLocation(), 
+		ECC_Visibility);
+}
+
+TArray<AActor*> UBSAbilityFunctionLibrary::GetActorsInRadius(
+	AActor* InOriginActor, const float InRange, bool bIncludeSelf)
+{
+	TArray<AActor*> OutActors;
+	if (!InOriginActor)
+	{
+		return OutActors;
+	}
+
+	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(InOriginActor);
+
+	const FVector OriginLocation = InOriginActor->GetActorLocation();
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(InRange);
+	
+	TArray<FOverlapResult> Overlaps;
+	
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	
+	FCollisionQueryParams QueryParams;
+	
+	if (!bIncludeSelf)
+	{
+		QueryParams.AddIgnoredActor(InOriginActor);
+	}
+	
+	World->OverlapMultiByObjectType(
+		Overlaps, OriginLocation, FQuat::Identity, ObjectQueryParams, Sphere, QueryParams);
+
+	for (auto OverlapResult : Overlaps)
+	{
+		if (AActor* OverlappedActor = OverlapResult.GetActor(); 
+			OverlappedActor && !OverlappedActor->IsPendingKillPending())
+		{
+			OutActors.AddUnique(OverlappedActor);
+		}
+	}
+
+	return OutActors;
+}
+
+AActor* UBSAbilityFunctionLibrary::PickRandomTargetFromArray(TArray<AActor*> InActors)
+{
+	if (InActors.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	const int32 RandomIndex = FMath::RandRange(0, InActors.Num() - 1);
+	return InActors[RandomIndex];
+}
+
+AActor* UBSAbilityFunctionLibrary::PickClosestTargetFromArray(AActor* InOriginActor, TArray<AActor*> InActors)
+{
+	if (!InOriginActor || InActors.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	AActor* ClosestActor = nullptr;
+	float ClosestDistanceSq = FLT_MAX;
+
+	const FVector OriginLocation = InOriginActor->GetActorLocation();
+
+	for (AActor* Actor : InActors)
+	{
+		if (!Actor || Actor == InOriginActor)
+		{
+			continue;
+		}
+
+		const float DistanceSq =
+			FVector::DistSquared(OriginLocation, Actor->GetActorLocation());
+
+		if (DistanceSq < ClosestDistanceSq)
+		{
+			ClosestDistanceSq = DistanceSq;
+			ClosestActor = Actor;
+		}
+	}
+
+	return ClosestActor;
+}
+
+AActor* UBSAbilityFunctionLibrary::PickFarthestTargetFromArray(AActor* InOriginActor, TArray<AActor*> InActors)
+{
+	if (!InOriginActor || InActors.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	AActor* FarthestActor = nullptr;
+	float FarthestDistanceSq = 0.f;
+
+	const FVector OriginLocation = InOriginActor->GetActorLocation();
+
+	for (AActor* Actor : InActors)
+	{
+		if (!Actor || Actor == InOriginActor)
+		{
+			continue;
+		}
+
+		const float DistanceSq =
+			FVector::DistSquared(OriginLocation, Actor->GetActorLocation());
+
+		if (DistanceSq > FarthestDistanceSq)
+		{
+			FarthestDistanceSq = DistanceSq;
+			FarthestActor = Actor;
+		}
+	}
+
+	return FarthestActor;
+}
+
+TArray<AActor*> UBSAbilityFunctionLibrary::GetThreatActors(AActor* InTarget)
+{
+	if (UBSThreatComponent* ThreatComponent = GetThreatComponent(InTarget))
+	{
+		return ThreatComponent->GetThreatActors();
+	}
+	return {};
+}
+
+AActor* UBSAbilityFunctionLibrary::GetHighestThreatActor(AActor* InTarget)
+{
+	if (UBSThreatComponent* ThreatComponent = GetThreatComponent(InTarget))
+	{
+		return ThreatComponent->GetHighestThreatActor();
+	}
+	return nullptr;
+}
+
+AActor* UBSAbilityFunctionLibrary::GetLowestThreatActor(AActor* InTarget)
+{
+	if (UBSThreatComponent* ThreatComponent = GetThreatComponent(InTarget))
+	{
+		return ThreatComponent->GetLowestThreatActor();
+	}
+	return nullptr;
+}
+
+UBSThreatComponent* UBSAbilityFunctionLibrary::GetThreatComponent(AActor* InTarget)
+{
+	if (IBSThreatInterface* ThreatInterface = Cast<IBSThreatInterface>(InTarget))
+	{
+		 return ThreatInterface->GetThreatComponent();             
+	}
+	return InTarget->GetComponentByClass<UBSThreatComponent>(); //Fallback, can return null
+}
 
 TArray<AActor*> UBSAbilityFunctionLibrary::SliceShapeOverlap(
 UObject* WorldContext, FTransform Transform, TEnumAsByte<EAxis::Type> ForwardAxis,
@@ -24,8 +343,10 @@ UObject* WorldContext, FTransform Transform, TEnumAsByte<EAxis::Type> ForwardAxi
 	FVector ForwardDir = GetSwizzledDirectionFromRotation(ForwardAxis, TargetRotation);
 	FVector UpDir = GetSwizzledDirectionFromRotation(UpAxis, TargetRotation);
 	
-    float HalfHeight = Height * 0.5f;
+    float HalfHeight = Height * 0.5f * Transform.GetScale3D().Z;
     FVector CenteredOrigin = Transform.GetLocation();
+	
+	Distance *= Transform.GetScale3D().Y;
 	
     FVector BoxExtent(Distance, Distance, HalfHeight);
     FCollisionShape Box = FCollisionShape::MakeBox(BoxExtent);
@@ -85,21 +406,23 @@ UObject* WorldContext, FTransform Transform, TEnumAsByte<EAxis::Type> ForwardAxi
 
     	FlatToTarget.Normalize();
     	FlatForward.Normalize();
-    	
-    	float Dot = FVector::DotProduct(FlatToTarget, FlatForward);
-    	if (Dot < CosHalfAngle)
+
+        if (float Dot = FVector::DotProduct(FlatToTarget, FlatForward); 
+        	Dot < CosHalfAngle)
     	{
     		continue;
     	}
     	
-    	DrawDebugPoint(
+    	if (BSConsoleVariables::CVarBSDebugHitDetection.GetValueOnGameThread())
+    	{
+    		DrawDebugPoint(
     		World, 
     		Overlap.GetActor()->GetActorLocation(), 
-    		15, 
+    		25, 
     		FColor::Red, 
     		false, 
-    		1);
-
+    		BSConsoleVariables::CVarBSDebugHitDetectionDuration.GetValueOnGameThread());
+    	}
         Result.AddUnique(Actor);
     }
 
@@ -111,8 +434,8 @@ void UBSAbilityFunctionLibrary::DrawDebugSlice(
 	FTransform Transform,
 	TEnumAsByte<EAxis::Type> ForwardAxis,
 	TEnumAsByte<EAxis::Type> UpAxis,
-	const float Radius,
-	const float Height,
+	float Radius,
+	float Height,
 	const float AngleDegrees,
 	const int32 ArcSegments,
 	const FColor Color,
@@ -124,6 +447,9 @@ void UBSAbilityFunctionLibrary::DrawDebugSlice(
 	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(WorldContext);
 	
 	DrawDebugCoordinateSystem(World, Transform.GetLocation(), Transform.GetRotation().Rotator(), Radius * 0.5, false, Duration, 0, Thickness);
+	
+	Radius *= Transform.GetScale3D().Y;
+	Height *= Transform.GetScale3D().Z;
 	
 	const FVector ForwardDir = GetSwizzledDirectionFromRotation(ForwardAxis, Transform.GetRotation());
 	
@@ -138,6 +464,8 @@ void UBSAbilityFunctionLibrary::DrawDebugSlice(
 	
     const float HalfAngle = AngleDegrees * 0.5f;
 	
+	//Draw debug bounding box 
+	/*
 	DrawDebugBox(
 	World,
 	Transform.GetLocation(),
@@ -149,6 +477,7 @@ void UBSAbilityFunctionLibrary::DrawDebugSlice(
 	0,
 	Thickness
 	);
+	*/
 	
     const FVector LeftDir =
         ForwardDir.RotateAngleAxis(-HalfAngle, UpDir);
@@ -300,4 +629,73 @@ UBSAbilitySystemComponent* UBSAbilityFunctionLibrary::GetBSAbilitySystemComponen
 		}	
 	}
 	return nullptr;
+}
+
+TSubclassOf<UGameplayAbility> UBSAbilityFunctionLibrary::BP_GetAbilityByWeight(UAbilitySystemComponent* Asc,
+	const TMap<TSubclassOf<UGameplayAbility>, float> Map)
+{
+	return GetAbilityByWeight(Asc, Map);
+}
+
+TSubclassOf<UGameplayAbility> UBSAbilityFunctionLibrary::GetAbilityByWeight(UAbilitySystemComponent* Asc,
+                                                                            const TMap<TSubclassOf<UGameplayAbility>, float>& Map)
+{
+	float TotalWeight = 0.f;
+	
+	TArray<TPair<TSubclassOf<UGameplayAbility>, float>> Valid;
+	
+	for (const auto& Pair : Map)
+	{
+		Asc->GiveAbility(Pair.Key);
+		if (Pair.Value > 0 && CanActivateAbility(Asc, Pair.Key))
+		{
+			Valid.Add(Pair);
+			TotalWeight += Pair.Value;
+		}
+	}
+
+	if (TotalWeight <= 0)
+	{
+		return nullptr; // no valid weights
+	}
+
+	float RandomValue = FMath::FRandRange(0.f, TotalWeight);
+
+	for (const auto& Pair : Valid)
+	{
+		RandomValue -= Pair.Value;
+		if (RandomValue <= 0)
+		{
+			return Pair.Key;
+		}
+	}
+
+	return nullptr;
+}
+
+bool UBSAbilityFunctionLibrary::CanActivateAbility(const UAbilitySystemComponent* Asc,
+	const TSubclassOf<UGameplayAbility> AbilityClass)
+{
+	if (!Asc || !AbilityClass)
+	{
+		return false;
+	}
+
+	const FGameplayAbilitySpec* Spec =
+		Asc->FindAbilitySpecFromClass(AbilityClass);
+
+	if (!Spec)
+	{
+		return false; // Not granted
+	}
+	
+	if (UGameplayAbility* AbilityCDO = Spec->GetPrimaryInstance())
+	{
+		return AbilityCDO->CommitCheck(
+			AbilityCDO->GetCurrentAbilitySpecHandle(), 
+			AbilityCDO->GetCurrentActorInfo(), 
+			AbilityCDO->GetCurrentActivationInfo());
+	}
+	
+	return false;
 }

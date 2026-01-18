@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AttributeSet.h"
+#include "ClientAuthoritativeCharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
@@ -24,7 +25,8 @@ public:
 	
 	virtual void BeginPlay() override;
 	
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	UPROPERTY()
+	FVector LastValidLocation;
 	
 	virtual float GetMaxSpeed() const override;
 	

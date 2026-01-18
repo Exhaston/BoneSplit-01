@@ -13,7 +13,7 @@ class UAbilitySystemComponent;
 class UInputAction;
 class UInputMappingContext;
 
-USTRUCT(BlueprintType)
+USTRUCT(BlueprintType, DisplayName="Buffered Ability", Category="BoneSplit")
 struct FBSBufferedAbility
 {
 	GENERATED_BODY()
@@ -38,7 +38,7 @@ struct FBSBufferedAbility
 /**
  * 
  */                        
-UCLASS(DisplayName="BS Player Controller")
+UCLASS(DisplayName="Player Controller", Category="BoneSplit", ClassGroup="BoneSplit")
 class BONESPLIT_API ABSPlayerController : public AClientAuthoritativePlayerController, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
@@ -47,8 +47,6 @@ public:
 	explicit ABSPlayerController(const FObjectInitializer& ObjectInitializer);
 	
 	virtual void SetupInputComponent() override;
-	
-	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	
 	virtual void Tick(float DeltaSeconds) override;
 	

@@ -12,7 +12,8 @@
 
 void UBSAnimInstance::NativeInitializeAnimation()
 {
-	NormalizedAnimationOffset = FMath::RandRange(0.0, 1.0);
+	//Set before init to force anims into the correct start pos
+	NormalizedAnimationOffset = FMath::RandRange(0.0, 1.0); 
 	Super::NativeInitializeAnimation();
 }
 
@@ -51,19 +52,21 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 	
 	float CurrentVelocity;
 	
-	if (CharacterOwner->IsLocallyControlled())
+	if (CharacterOwner->IsLocallyControlled() && CharacterOwner->IsPlayerControlled())
 	{
-		  CurrentVelocity = CharacterOwner->GetCharacterMovement()->GetCurrentAcceleration().Size();
+		float CurrentAccel = CharacterOwner->GetCharacterMovement()->GetCurrentAcceleration().Size();
+		CurrentAccel = FMath::Clamp(CurrentAccel, 0.f, CharacterOwner->GetCharacterMovement()->GetMaxSpeed());
+		CurrentVelocity = CurrentAccel;
 	}
 	else
 	{
 		CurrentVelocity = CharacterOwner->GetCharacterMovement()->Velocity.Size();
 	}
-	
-	if (const float MaxSpeed = CharacterOwner->GetCharacterMovement()->GetMaxSpeed(); 
-		MaxSpeed > 0.f)
+
+	if (const float BaseWalkSpeed = CharacterOwner->GetCharacterMovement()->MaxWalkSpeed; 
+		!FMath::IsNearlyZero(BaseWalkSpeed))
 	{
-		VelocityPercentage = (CurrentVelocity / MaxSpeed) * 100.0f;
+		VelocityPercentage = (CurrentVelocity / BaseWalkSpeed) * 100.f;
 	}
 	
 	const float TargetDirection = 

@@ -3,23 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BSLockableActor.h"
 #include "GameFramework/Actor.h"
-#include "BSInteractableBase.generated.h"
+#include "Actors/InteractableBases/BSInteractableInterface.h"
+#include "BSInteractableBase.generated.h"                                                          
 
-UCLASS()
-class BONESPLIT_API ABSInteractableBase : public AActor
+UCLASS(DisplayName="Interactable Base", Category="BoneSplit")
+class BONESPLIT_API ABSInteractableBase : public ABSLockableActor, public IBSInteractableInterface
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
-	ABSInteractableBase();
-
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	explicit ABSInteractableBase(const FObjectInitializer& ObjectInitializer);
 };

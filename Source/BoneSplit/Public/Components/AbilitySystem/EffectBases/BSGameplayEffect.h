@@ -9,7 +9,7 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(Abstract, BlueprintType, Blueprintable)
 class BONESPLIT_API UBSGameplayEffect : public UGameplayEffect
 {
 	GENERATED_BODY()
@@ -18,7 +18,7 @@ public:
 	
 	UBSGameplayEffect();
 	
-	//This effect will not last inbetween map loads.
+	//This effect will not last in-between map loads.
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bClearBetweenMaps = false;
 	

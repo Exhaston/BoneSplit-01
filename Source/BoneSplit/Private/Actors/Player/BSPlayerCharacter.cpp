@@ -36,6 +36,8 @@ Super(ObjectInitializer
 	bAlwaysRelevant = true;
 	SetReplicates(true);
 	
+	GetReplicatedMovement_Mutable().RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
+	
 	GetMesh()->SetReceivesDecals(false);
 	GetMesh()->SetCollisionProfileName("CharacterMesh");
 	if (UBSEquipmentMeshComponent* EquipmentMesh = Cast<UBSEquipmentMeshComponent>(GetMesh()))
@@ -388,6 +390,23 @@ UAbilitySystemComponent* ABSPlayerCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent.Get();
 }
 
+bool ABSPlayerCharacter::CanBeKilled() const
+{
+	return true;
+}
+
+void ABSPlayerCharacter::OnKilled(AActor* Killer, float Damage)
+{
+	if (HasAuthority() && CanBeKilled())
+	{
+		Multicast_OnKilled(Killer, Damage);
+	}
+}
+
+void ABSPlayerCharacter::Multicast_OnKilled_Implementation(AActor* Killer, float Damage)
+{
+}
+
 void ABSPlayerCharacter::LaunchActor(const FVector Direction, const float Magnitude)
 {
 	//Server cancel any leg ability (typically a movement ability)
@@ -420,7 +439,7 @@ void ABSPlayerCharacter::Client_Launch_Implementation(const FVector NormalizedDi
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
 	LaunchCharacter(
-	NormalizedDirection.GetSafeNormal() * Magnitude, true, true);
+	NormalizedDirection * Magnitude, true, true);
 }
 
 int32 ABSPlayerCharacter::FindEquipmentIndexByTag(const FGameplayTag& Slot) const

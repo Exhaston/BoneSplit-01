@@ -5,6 +5,8 @@
 
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
+#include "Components/Targeting/BSThreatComponent.h"
+#include "Components/Targeting/BSThreatInterface.h"
 #include "Interfaces/BSMovementInterface.h"
 
 UBSPowerCalculation::UBSPowerCalculation()
@@ -26,8 +28,9 @@ UBSPowerCalculation::UBSPowerCalculation()
     RelevantAttributesToCapture.Add(ShieldDef);
 }
 
-void UBSPowerCalculation::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams,
-                                                 FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
+void UBSPowerCalculation::Execute_Implementation(
+    const FGameplayEffectCustomExecutionParameters& ExecutionParams,
+    FGameplayEffectCustomExecutionOutput& OutExecutionOutput) const
 {
     const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
                     
@@ -39,6 +42,7 @@ void UBSPowerCalculation::Execute_Implementation(const FGameplayEffectCustomExec
     // ================================================================================================================= 
     
     float BasePhysicalDamage = 0;
+    float BaseThreat = 0;
     float BaseMagicDamage = 0;
     float BaseHealing = 0;
     float BaseCritChance = 0;
@@ -59,6 +63,17 @@ void UBSPowerCalculation::Execute_Implementation(const FGameplayEffectCustomExec
                 UBSAttributeSet::GetPhysicalDamageAttribute(),
                 EGameplayModOp::Override,
                 0));
+        }
+        else if (Mod.Attribute == UBSAttributeSet::GetThreatAttribute())
+        {
+            Mod.ModifierMagnitude.AttemptCalculateMagnitude(Spec, BaseThreat);
+                                   
+            //Reset the threat attribute, it's purely a temp value for conversion on the server
+            OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(
+                UBSAttributeSet::GetThreatAttribute(),
+                EGameplayModOp::Override,
+                0));
+                                       
         }
         else if (Mod.Attribute == UBSAttributeSet::GetMagicDamageAttribute())
         {
@@ -101,7 +116,7 @@ void UBSPowerCalculation::Execute_Implementation(const FGameplayEffectCustomExec
                 TargetAsc->GetAvatarActor()->GetActorLocation() - Spec.GetEffectContext().GetOrigin();
             
             Direction.Z = 0;
-            LaunchableInterface->LaunchActor((Direction.GetSafeNormal() + FVector::UpVector), BaseKnockback);
+            LaunchableInterface->LaunchActor((Direction.GetSafeNormal2D() + FVector::UpVector), BaseKnockback);
         }
     }
     
@@ -174,6 +189,11 @@ void UBSPowerCalculation::Execute_Implementation(const FGameplayEffectCustomExec
     const float TotalMagicDamage = BaseMagicDamage * PowerModifier * (bCrit ? TotalCritMod : 1);
 
     float DamageRemaining = TotalPhysicalDamage *  (1 - PhysicalMitigation) + TotalMagicDamage * (1 - MagicMitigation);
+    
+    if (IBSThreatInterface* ThreatInterface = Cast<IBSThreatInterface>(TargetAsc->GetAvatarActor()))
+    {
+        ThreatInterface->GetThreatComponent()->AddThreat(SourceAsc->GetAvatarActor(), DamageRemaining + BaseThreat);
+    }
     
     if (SourceAsc) //We broadcast event regardless of shields, damage done is damage done.
     {

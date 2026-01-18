@@ -10,12 +10,14 @@ struct FGameplayAbilityTargetDataHandle;
 class UGameplayAbility;
 
 
+//TODO implement client authoritative (With a valid prediction key) to spawn the actor. 
+//This allows for bone transforms and accurate spawning for the owning client. 
 /*
  * Predictable Actor that should be spawned from Ability. This will spawn for the caller and authority. 
  * Authority will then further replicate it to other clients. 
- * A replicated version of this won't spawn back for the calling client.
+ * A replicated version of this won't spawn back for the owning client.
  */
-UCLASS()
+UCLASS(DisplayName="Predictable Spawnable Actor", Category="BoneSplit")
 class BONESPLIT_API ABSPredictableActor : public AActor
 {
 	GENERATED_BODY()

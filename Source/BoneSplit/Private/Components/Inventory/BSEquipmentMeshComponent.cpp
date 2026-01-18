@@ -22,10 +22,15 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 {
 	if (!MeshAsset.IsValid()) return;
 	if (MeshAsset.Get() == GetSkeletalMeshAsset()) return; //The same asset. No need to reload
+	           
+	if (StreamingHandle.IsValid() && StreamingHandle->IsLoadingInProgress()) 
+	{
+		StreamingHandle->CancelHandle(); //Already loading another mesh, cancel to load new
+	}
 	
 	FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
 
-	Streamable.RequestAsyncLoad(
+	StreamingHandle = Streamable.RequestAsyncLoad(
 		MeshAsset.ToSoftObjectPath(),
 		FStreamableDelegate::CreateWeakLambda(this, [this, MeshAsset]()
 		{
