@@ -9,7 +9,7 @@
 
 class AAIController;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FMoveTaskCompletedSignature, TEnumAsByte<EPathFollowingResult::Type>, Result, AAIController*, AIController);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBSMoveTaskCompletedSignature, TEnumAsByte<EPathFollowingResult::Type>, Result, AAIController*, AIController);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FMoveTaskFinishedSignature, TEnumAsByte<EPathFollowingResult::Type>, AAIController*);
 
 /**
@@ -66,7 +66,7 @@ protected:
 	FGenericGameplayTaskDelegate OnRequestFailed;
 
 	UPROPERTY(BlueprintAssignable)
-	FMoveTaskCompletedSignature OnMoveFinished;
+	FBSMoveTaskCompletedSignature OnMoveFinished;
 
 	/** parameters of move request */
 	UPROPERTY()
