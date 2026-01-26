@@ -20,12 +20,24 @@ void UBSEquipmentMeshComponent::SetMeshColorIndex(const int32 Index)
 
 void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset)
 {
-	if (!MeshAsset.IsValid()) return;
-	if (MeshAsset.Get() == GetSkeletalMeshAsset()) return; //The same asset. No need to reload
-	           
-	if (StreamingHandle.IsValid() && StreamingHandle->IsLoadingInProgress()) 
+	if (MeshAsset.IsNull()) return;
+	
+	if (MeshAsset.IsValid()) //Already loaded, set directly
 	{
-		StreamingHandle->CancelHandle(); //Already loading another mesh, cancel to load new
+		if (MeshAsset.Get() == GetSkeletalMeshAsset())
+		{
+			SetMeshColorIndex(0);
+			return; //The same asset. No need to reload
+		}
+		
+		SetSkeletalMeshAsset(MeshAsset.Get());
+		SetMeshColorIndex(0);
+		return;
+	}
+	
+	if (StreamingHandle.IsValid() && StreamingHandle.Get()->IsLoadingInProgress()) 
+	{
+		StreamingHandle.Get()->CancelHandle(); //Already loading another mesh, cancel to load new
 	}
 	
 	FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
@@ -40,9 +52,7 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 				return;
 			}
 			SetSkeletalMeshAsset(MeshAsset.Get());
-			const UBSDeveloperSettings* DeveloperSettings = GetDefault<UBSDeveloperSettings>();
-			SetVectorParameterValueOnMaterials(
-			ColorParamName, FVector(DeveloperSettings->PlayerColors[CurrentColor]));
+			SetMeshColorIndex(0);
 		})
 	);
 }
