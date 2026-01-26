@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "IconThumbnailInterface.h"
 #include "Abilities/GameplayAbility.h"
 #include "BoneSplit/BoneSplit.h"
 #include "BSAbilityBase.generated.h"
@@ -22,7 +23,7 @@ CancelAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentAc
  * 
  */
 UCLASS(Abstract, BlueprintType, Blueprintable, DisplayName="Ability Base")
-class BONESPLIT_API UBSAbilityBase : public UGameplayAbility
+class BONESPLIT_API UBSAbilityBase : public UGameplayAbility, public IIconThumbnailInterface
 {
 	GENERATED_BODY()
 	
@@ -30,8 +31,19 @@ public:
 	
 	UBSAbilityBase();
 	
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+	
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	
+	virtual TSoftObjectPtr<UTexture2D> GetIcon_Implementation() const override;
+	
+	void Native_OnGameplayEventReceived(FGameplayTag EventTag, const FGameplayEventData* Payload);
+	
+	UFUNCTION(BlueprintNativeEvent, DisplayName="OnGameplayEvent")
+	void BP_OnGameplayEventReceived(FGameplayTag EventTag, const FGameplayEventData Payload);
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSoftObjectPtr<UTexture2D> AbilityIcon;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input")
 	TEnumAsByte<EBSAbilityInputID> PlayerInputID = None;
@@ -49,6 +61,8 @@ public:
 	
 protected:
 	
-	UPROPERTY()
-	TArray<UGameplayTask*> Tasks;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="AnimEvent"))
+	FGameplayTagContainer EventTagsToListenTo;
+	
+	FDelegateHandle EventHandle;
 };

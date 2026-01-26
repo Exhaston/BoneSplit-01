@@ -9,7 +9,29 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "BSAnimFunctionLibrary.generated.h"
 
+class UAbilitySystemComponent;
+struct FGameplayEventData;
 class UBSDynamicDecalComponent;
+
+USTRUCT(BlueprintType, Blueprintable, DisplayName="PayloadData")
+struct FBSAnimEventPayloadData
+{
+	GENERATED_BODY()
+	
+	FBSAnimEventPayloadData() = default;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="AnimEvent"))
+	FGameplayTag EventPayloadTag = BSTags::AnimEvent_Damage_01;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(ClampMin=0, ClampMax=1))
+	float EventMagnitude = 1;
+	
+	//This will be the origin of knockbacks etc. This will be from the axis of the source actor
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(ClampMin=0, ClampMax=1))
+	FVector KnockbackDirection = { 0, -1, -1 };
+	
+	void SendPayload(UAbilitySystemComponent* SourceAsc, AActor* TargetActor) const;
+};
 /**
  * 
  */
@@ -17,20 +39,19 @@ UCLASS()
 class BONESPLIT_API UBSAnimFunctionLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
-};
+};                            
 
-UCLASS(DisplayName="Slice Overlap Actors")
-class UBSAnimNotify_CustomOverlap : public UAnimNotify
+UCLASS(DisplayName="Wedge Overlap Actors")
+class UBSAnimNotify_WedgeOverlap : public UAnimNotify
 {
 	GENERATED_BODY()
 
 public:
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Ability Event", meta=(Categories="AnimEvent"))
-	FGameplayTag EventTag;
+	UBSAnimNotify_WedgeOverlap();
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(ClampMin=0, ClampMax=1), Category="Ability Event")
-	float EventWeight = 1;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Ability Event", meta=(ShowOnlyInnerProperties=true))
+	FBSAnimEventPayloadData EventPayloadData;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(AnimNotifyBoneName=true), Category="Shape")
 	FName ParentBone;
@@ -54,12 +75,6 @@ public:
 		USkeletalMeshComponent* MeshComp, 
 		UAnimSequenceBase* Animation, 
 		const FAnimNotifyEventReference& EventReference) override;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, AdvancedDisplay, Category="Shape")
-	TEnumAsByte<EAxis::Type> Forward = EAxis::Type::Y;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, AdvancedDisplay, Category="Shape")
-	TEnumAsByte<EAxis::Type> Up = EAxis::Type::Z;
 
 #if WITH_EDITOR
 	
@@ -68,12 +83,53 @@ public:
 #endif
 };
 
-UCLASS()
+UCLASS(DisplayName="Sphere Overlap Actors")
+class UBSAnimNotify_SphereOverlap : public UAnimNotify
+{
+	GENERATED_BODY()
+							   
+public:
+	
+	UBSAnimNotify_SphereOverlap();
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Ability Event", meta=(ShowOnlyInnerProperties))
+	FBSAnimEventPayloadData PayloadData;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(AnimNotifyBoneName=true), Category="Shape")
+	FName ParentBone;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Units=cm), Category="Shape")
+	FVector LocationOffset;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Units=cm, ClampMin=1), Category="Shape")
+	float Radius = 100;
+	
+	virtual void Notify(
+		USkeletalMeshComponent* MeshComp, 
+		UAnimSequenceBase* Animation, 
+		const FAnimNotifyEventReference& EventReference) override;
+
+#if WITH_EDITOR
+	
+	virtual FString GetNotifyName_Implementation() const override;
+	
+#endif
+};
+
+UCLASS(DisplayName="Project Effect Zone")
 class UBSNotifyState_AreaIndicator : public UAnimNotifyState
 {
 	GENERATED_BODY()
 
 public:
+	
+	UBSNotifyState_AreaIndicator();
+	
+#if WITH_EDITOR
+
+	virtual FString GetNotifyName_Implementation() const override;
+	
+#endif
 	
 	virtual void NotifyBegin(
 		USkeletalMeshComponent* MeshComp, 
@@ -108,12 +164,14 @@ public:
 	TMap<USkeletalMeshComponent*, UBSDynamicDecalComponent*> DecalComponents;
 };
 
-UCLASS(DisplayName="AllowRotation")
+UCLASS(DisplayName="Allow Rotation")
 class UBSANS_AllowRotation : public UAnimNotifyState
 {
 	GENERATED_BODY()
 
 public:
+	
+	UBSANS_AllowRotation();
 	
 #if WITH_EDITOR
 	
@@ -125,10 +183,14 @@ public:
 	float NewRotationRate = 1000;
 	
 	UPROPERTY()
+	bool bOldRotationMode = true;
+	
+	UPROPERTY()
 	float OldRotationRate;
 	
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
+	virtual void NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference) override;
 	
 };
 

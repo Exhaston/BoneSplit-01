@@ -6,7 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "Actors/Mob/BSGenericMobInterface.h"
 #include "BoneSplit/BoneSplit.h"
-#include "Components/AbilitySystem/BSAbilityFunctionLibrary.h"
+#include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Components/Targeting/BSThreatInterface.h"
 
@@ -66,7 +66,7 @@ void UBSMobSubsystem::TickCombat(const float DeltaTime)
 		IBSThreatInterface* ThreatInterface = Cast<IBSThreatInterface>(PassiveMobActor);
 		check(ThreatInterface);
 		
-		TArray<AActor*> OverlappedActors = UBSAbilityFunctionLibrary::GetActorsInRadius(
+		TArray<AActor*> OverlappedActors = UBSAbilityLibrary::GetActorsInRadiusDep(
 		PassiveMobActor, AggroRange, false);
 	
 #if WITH_EDITOR
@@ -89,12 +89,12 @@ void UBSMobSubsystem::TickCombat(const float DeltaTime)
 			if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(FoundActor))
 			{
 				if (UAbilitySystemComponent* OtherAsc = AscInterface->GetAbilitySystemComponent(); OtherAsc && 
-					!UBSAbilityFunctionLibrary::FilterByNoMatchingFactions(MobAscInterface->GetAbilitySystemComponent(), OtherAsc)) 
+					!UBSAbilityLibrary::HasNoMatchingFaction(MobAscInterface->GetAbilitySystemComponent(), OtherAsc)) 
 					continue;
 			
 				if (!ThreatInterface->GetThreatComponent()->GetThreatMap().Contains(FoundActor))
 				{
-					if (UBSAbilityFunctionLibrary::CheckTargetVisibility(
+					if (UBSAbilityLibrary::CheckTargetVisibility(
 						this, PassiveMobActor->GetActorLocation(), FoundActor))
 					{
 						ThreatInterface->GetThreatComponent()->AddThreat(FoundActor, 1);

@@ -6,8 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativeCharacter.h"
 #include "GameplayTagContainer.h"
-#include "Components/AbilitySystem/BSKillableInterface.h"
-#include "Interfaces/BSMovementInterface.h"
+#include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
 class UCameraComponent;
@@ -32,7 +31,7 @@ class UBSAbilitySystemComponent;
 UCLASS(DisplayName="Player Character", Blueprintable, BlueprintType, 
 	Category="BoneSplit", ClassGroup="BoneSplit", Abstract)
 class BONESPLIT_API ABSPlayerCharacter : public AClientAuthoritativeCharacter, 
-public IBSMovementInterface, public IAbilitySystemInterface, public IBSKillableInterface
+public IBSAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -65,15 +64,61 @@ public:
 	TObjectPtr<UCameraComponent> CameraComponent;
 	
 	// =================================================================================================================
-	// Killable
-	// ================================================================================================================= 
+	// Launch
+	// =================================================================================================================
 	
-	virtual bool CanBeKilled() const override;
+	virtual void Launch(FVector LaunchMagnitude, bool bAdditive) override;
 	
-	virtual void OnKilled(AActor* Killer, float Damage) override;
+	UFUNCTION(Client, Reliable)
+	void Client_LaunchCharacter(FVector LaunchVelocity, bool bXYOverride, bool bZOverride);
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnKilled(AActor* Killer, float Damage);
+	void Multicast_OnLaunched(FVector LaunchMagnitude);
+	
+	virtual void BP_OnLaunched_Implementation(FVector LaunchVelocity) override;
+	
+	// =================================================================================================================
+	// Death
+	// =================================================================================================================
+	
+	UPROPERTY(BlueprintAssignable)
+	FBSOnDeathDelegate OnDeathDelegate;
+	
+	UPROPERTY(ReplicatedUsing=OnRep_Death)
+	bool bIsDead;
+	
+	UFUNCTION()
+	void OnRep_Death();
+	
+	virtual FBSOnDeathDelegate& GetOnDeathDelegate() override;
+	
+	virtual void Die(UAbilitySystemComponent* SourceAsc, float Damage) override;
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnDeath(UAbilitySystemComponent* SourceAsc, float Damage);
+	
+	virtual void BP_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage) override;
+	
+	// =================================================================================================================
+	// Combat
+	// ================================================================================================================= 
+	
+	UPROPERTY(BlueprintAssignable)
+	FBSOnCombatChangedDelegate OnCombatChangedDelegate;
+	
+	UPROPERTY(ReplicatedUsing=OnRep_CombatChanged)
+	bool bIsInCombat = false;
+	
+	UFUNCTION()
+	void OnRep_CombatChanged();
+	
+	virtual bool IsInCombat() override;
+	
+	virtual void BP_OnCombatChanged_Implementation(bool InCombat) override;
+	
+	virtual bool BP_IsInCombat_Implementation() override;
+	
+	virtual FBSOnCombatChangedDelegate& GetOnCombatChangedDelegate() override;
 	
 	// =================================================================================================================
 	// Asc
@@ -83,6 +128,8 @@ public:
 
 protected:
 	
+
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	TObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
@@ -91,16 +138,7 @@ protected:
 	
 public:
 	
-	// =================================================================================================================
-	// Movement Interface
-	// ================================================================================================================= 
-	
-	virtual void LaunchActor(FVector Direction, float Magnitude) override;
-	
-	virtual void SetMovementRotationMode(uint8 NewMovementMode) override;
-	
-	UPROPERTY()
-	bool bAligningToController = false;
+
 	
 	// =================================================================================================================
 	// Equipment
@@ -129,7 +167,15 @@ protected:
 	UBSEquipmentMeshComponent* HeadComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	UBSEquipmentMeshComponent* ArmsComponent;
+	UBSEquipmentMeshComponent* ArmsComponent;                  
+	
+	//Main-hand weapon mesh component. Have a socket in the parent mesh called 'MainHand' and this will snap to it.
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
+	UBSEquipmentMeshComponent* MainHandComponent;
+	
+	//Off-handed weapon mesh component. Have a socket in the parent mesh called 'OffHand' and this will snap to it.
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
+	UBSEquipmentMeshComponent* OffHandComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* LegsComponent;
@@ -183,8 +229,4 @@ protected:
 	virtual void SaveGameplayTags(FBSSaveData& SaveData, UBSSaveGame* SaveGame);
 	virtual void SaveEquipment(FBSSaveData& SaveData);
 	virtual void SaveAttributes(FBSSaveData& SaveData);
-	
-	//Call Launch Actor instead. this is called internally because of Client Authoritative Movement
-	UFUNCTION(Client, Reliable)                                                 
-	virtual void Client_Launch(FVector NormalizedDirection, float Magnitude);
 };

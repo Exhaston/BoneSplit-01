@@ -38,23 +38,51 @@ Super(ObjectInitializer
 	
 	GetReplicatedMovement_Mutable().RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
 	
-	GetMesh()->SetReceivesDecals(false);
-	GetMesh()->SetCollisionProfileName("CharacterMesh");
-	if (UBSEquipmentMeshComponent* EquipmentMesh = Cast<UBSEquipmentMeshComponent>(GetMesh()))
-	{
-		EquipmentMesh->MeshTag = BSTags::Equipment_Part_Chest;
-	}
+
+	           
+	// =================================================================================================================
+	// ASC
+	// ================================================================================================================= 
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UBSAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+	
+	// =================================================================================================================
+	// Meshes
+	// ================================================================================================================= 
+	
+	GetMesh()->SetReceivesDecals(false);
+	GetMesh()->SetCollisionProfileName("CharacterMesh");
+	
+	if (UBSEquipmentMeshComponent* EquipmentMesh = Cast<UBSEquipmentMeshComponent>(GetMesh()))
+	{
+		EquipmentMesh->MeshTag = BSTags::Equipment_Part_Chest;
+	}
 	
 	CREATE_EQUIPMENT_MESH(HeadComponent, "HeadMeshComponent", GetMesh());
 	HeadComponent->MeshTag = BSTags::Equipment_Part_Head;
 	CREATE_EQUIPMENT_MESH(ArmsComponent, "ArmsMeshComponent", GetMesh());
 	ArmsComponent->MeshTag = BSTags::Equipment_Part_Arms;
 	CREATE_EQUIPMENT_MESH(LegsComponent, "LegsMeshComponent", GetMesh());
-	LegsComponent->MeshTag = BSTags::Equipment_Part_Legs;                             
+	LegsComponent->MeshTag = BSTags::Equipment_Part_Legs;
+	
+	MainHandComponent = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT("MainHandComponent"));
+	MainHandComponent->SetupAttachment(GetMesh(), "MainHand");
+	MainHandComponent->SetReceivesDecals(false);
+	MainHandComponent->SetCollisionProfileName("CharacterMesh");
+	MainHandComponent->MeshTag = BSTags::Equipment_Part_Weapon_Main;
+	
+	OffHandComponent = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT("OffHandComponent"));
+	OffHandComponent->SetupAttachment(GetMesh(), "OffHand");
+	OffHandComponent->SetReceivesDecals(false);
+	OffHandComponent->SetCollisionProfileName("CharacterMesh");
+	//Not needed for now, such a specific case we just reference the comp directly.
+	OffHandComponent->MeshTag = BSTags::Internal_Part_Weapon_Off; 
+	
+	// =================================================================================================================
+	// Camera
+	// ================================================================================================================= 
 	
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
 	SpringArmComponent->SetupAttachment(GetMesh());
@@ -385,61 +413,97 @@ void ABSPlayerCharacter::Client_InitComplete_Implementation()
 	}
 }
 
+bool ABSPlayerCharacter::BP_IsInCombat_Implementation()
+{
+	return bIsInCombat;
+}
+
+FBSOnCombatChangedDelegate& ABSPlayerCharacter::GetOnCombatChangedDelegate()
+{
+	return OnCombatChangedDelegate;
+}
+
 UAbilitySystemComponent* ABSPlayerCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent.Get();
 }
 
-bool ABSPlayerCharacter::CanBeKilled() const
+void ABSPlayerCharacter::Client_LaunchCharacter_Implementation(const FVector LaunchVelocity, const bool bXYOverride,
+	const bool bZOverride)
 {
-	return true;
-}
-
-void ABSPlayerCharacter::OnKilled(AActor* Killer, float Damage)
-{
-	if (HasAuthority() && CanBeKilled())
+	if (GetCharacterMovement())
 	{
-		Multicast_OnKilled(Killer, Damage);
+		GetCharacterMovement()->StopMovementImmediately();
+		GetCharacterMovement()->SetMovementMode(MOVE_Falling);
+		
+		LaunchCharacter(LaunchVelocity, bXYOverride, bZOverride);
 	}
 }
 
-void ABSPlayerCharacter::Multicast_OnKilled_Implementation(AActor* Killer, float Damage)
+void ABSPlayerCharacter::Launch(const FVector LaunchMagnitude, const bool bAdditive)
+{
+	AbilitySystemComponent.Get()->CancelAbilitiesWithTag(BSTags::Ability_Player_Legs);
+	
+	if (HasAuthority() || IsLocallyControlled())
+	{
+		if (HasAuthority())
+		{
+			Multicast_OnLaunched(LaunchMagnitude);
+		}
+
+		Client_LaunchCharacter(LaunchMagnitude, !bAdditive, !bAdditive);
+	}
+}
+
+void ABSPlayerCharacter::Multicast_OnLaunched_Implementation(FVector LaunchMagnitude)
+{
+	Execute_BP_OnLaunched(this, LaunchMagnitude);
+}
+
+void ABSPlayerCharacter::BP_OnLaunched_Implementation(FVector LaunchVelocity)
 {
 }
 
-void ABSPlayerCharacter::LaunchActor(const FVector Direction, const float Magnitude)
+void ABSPlayerCharacter::OnRep_Death()
 {
-	//Server cancel any leg ability (typically a movement ability)
+}
+
+FBSOnDeathDelegate& ABSPlayerCharacter::GetOnDeathDelegate()
+{
+	return OnDeathDelegate;
+}
+
+void ABSPlayerCharacter::Die(UAbilitySystemComponent* SourceAsc, float Damage)
+{
 	if (HasAuthority())
 	{
-		AbilitySystemComponent.Get()->CancelAbilitiesWithTag(BSTags::Ability_Player_Legs);
+		bIsDead = true;
+
+		Multicast_OnDeath(SourceAsc, Damage);
 	}
-	Client_Launch(Direction, Magnitude);
 }
 
-void ABSPlayerCharacter::SetMovementRotationMode(const uint8 NewMovementMode)
+void ABSPlayerCharacter::Multicast_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage)
 {
-	
-	bUseControllerRotationYaw = true;
-	/*
-	const bool ControlRotationMode = 
-		NewMovementMode == static_cast<uint8>(EBSMovementRotationMode::Ebs_ControlRotation);
-	
-	GetCharacterMovement()->bUseControllerDesiredRotation = ControlRotationMode;
-	//GetCharacterMovement()->bOrientRotationToMovement = !ControlRotationMode;
-
-	GetCharacterMovement()->RotationRate.Yaw = 750;
-
-	bAligningToController = ControlRotationMode;
-	*/
+	Execute_BP_OnDeath(this, SourceAsc, Damage);
+	GetOnDeathDelegate().Broadcast(SourceAsc, GetAbilitySystemComponent(), Damage);
 }
 
-void ABSPlayerCharacter::Client_Launch_Implementation(const FVector NormalizedDirection, const float Magnitude)
+void ABSPlayerCharacter::BP_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage)
 {
-	GetCharacterMovement()->StopMovementImmediately();
-	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
-	LaunchCharacter(
-	NormalizedDirection * Magnitude, true, true);
+}
+
+void ABSPlayerCharacter::OnRep_CombatChanged()
+{
+}
+
+bool ABSPlayerCharacter::IsInCombat()
+{
+	return bIsInCombat;
+}
+
+void ABSPlayerCharacter::BP_OnCombatChanged_Implementation(bool InCombat)
+{
 }
 
 int32 ABSPlayerCharacter::FindEquipmentIndexByTag(const FGameplayTag& Slot) const
@@ -462,12 +526,20 @@ void ABSPlayerCharacter::UpdateSkeletalMeshes()
 		if (const UBSEquipment* EquipmentCDO = EquipmentInstance.GetSourceItemCDO(); 
 		EquipmentCDO && EquipmentCDO->HasSkeletalMesh()) //ensure this is a slot that has skeletal mesh, and valid
 		{
-			for (const auto MeshComp : MeshComps)
+			const bool bIsWeapon = EquipmentCDO->SlotTag.MatchesTagExact(BSTags::Equipment_Part_Weapon_Main);
+			
+			if (UBSEquipmentMeshComponent* MatchingMesh = 
+				*MeshComps.FindByPredicate([&EquipmentCDO](const UBSEquipmentMeshComponent* EquipmentMeshComponent)
 			{
-				if (MeshComp->MeshTag == EquipmentCDO->SlotTag)
-				{
-					MeshComp->LazyLoadSkeletalMesh(EquipmentCDO->SkeletalMesh);
-				}
+				return EquipmentCDO->SlotTag.MatchesTagExact(EquipmentMeshComponent->MeshTag);
+			}))
+			{
+				MatchingMesh->LazyLoadSkeletalMesh(EquipmentCDO->SkeletalMesh);
+			}
+			
+			if (bIsWeapon && !EquipmentCDO->OffHandSkeletalMesh.IsNull())
+			{
+				OffHandComponent->LazyLoadSkeletalMesh(EquipmentCDO->OffHandSkeletalMesh);
 			}
 		}
 	}

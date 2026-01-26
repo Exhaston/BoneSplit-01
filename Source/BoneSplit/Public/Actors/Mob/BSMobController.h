@@ -9,7 +9,7 @@
 class UBSTargetSetting;
 
 UCLASS()
-class BONESPLIT_API ABSMobController : public ADetourCrowdAIController
+class BONESPLIT_API ABSMobController : public AAIController
 {
 	GENERATED_BODY()
 

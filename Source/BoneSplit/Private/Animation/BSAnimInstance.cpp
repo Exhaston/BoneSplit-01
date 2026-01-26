@@ -60,7 +60,9 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 	}
 	else
 	{
-		CurrentVelocity = CharacterOwner->GetCharacterMovement()->Velocity.Size();
+		FVector VelocityXY = CharacterOwner->GetCharacterMovement()->Velocity;
+		VelocityXY.Z = 0;
+		CurrentVelocity = VelocityXY.Size();
 	}
 
 	if (const float BaseWalkSpeed = CharacterOwner->GetCharacterMovement()->MaxWalkSpeed; 

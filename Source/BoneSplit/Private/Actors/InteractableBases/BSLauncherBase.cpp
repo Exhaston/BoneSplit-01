@@ -5,7 +5,7 @@
 
 #include "Components/CapsuleComponent.h"
 #include "Components/SplineComponent.h"
-#include "Interfaces/BSMovementInterface.h"
+#include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -209,12 +209,12 @@ void ABSLauncherBase::NotifyActorBeginOverlap(AActor* OtherActor)
 	
 	if (!OtherActor->HasLocalNetOwner()) return;
 	
-	if (IBSMovementInterface* MovementInterface = Cast<IBSMovementInterface>(OtherActor))
+	if (ACharacter* CharacterToLaunch = Cast<ACharacter>(OtherActor))
 	{
 		if (FVector LaunchVelocity; 
 			ComputeLaunchVelocity(OtherActor, LaunchVelocity))
 		{
-			MovementInterface->LaunchActor(LaunchVelocity.GetSafeNormal(), LaunchVelocity.Length());
+			CharacterToLaunch->LaunchCharacter(LaunchVelocity, true, true);
 		}
 	}
 }

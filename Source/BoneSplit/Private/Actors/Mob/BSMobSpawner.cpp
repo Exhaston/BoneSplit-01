@@ -123,7 +123,7 @@ void UBSMobManager::SpawnEnemy(const FBSSpawnInfo& Info)
 
 	if (Enemy)
 	{
-		Enemy->OnEnemyKilledDelegate.AddDynamic(
+		Enemy->OnDeathDelegate.AddDynamic(
 			this,
 			&UBSMobManager::HandleEnemyKilled
 		);
@@ -131,7 +131,7 @@ void UBSMobManager::SpawnEnemy(const FBSSpawnInfo& Info)
 	}
 }
 
-void UBSMobManager::HandleEnemyKilled(AActor* Killer, float Damage)
+void UBSMobManager::HandleEnemyKilled(UAbilitySystemComponent* SourceAsc, UAbilitySystemComponent* Target, float Damage)
 {
 	RemainingEnemies--;
 

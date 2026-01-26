@@ -105,6 +105,7 @@ UBSAT_PlayMontageAndWaitForEvent* UBSAT_PlayMontageAndWaitForEvent::PlayMontageA
 
 void UBSAT_PlayMontageAndWaitForEvent::Activate()
 {
+	Super::Activate();
 	if (Ability == nullptr)
 	{
 		return;

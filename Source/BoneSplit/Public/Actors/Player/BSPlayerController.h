@@ -70,7 +70,7 @@ protected:
 	UFUNCTION()
 	void QuickTurnTimelineTick(float Alpha);
 	
-	virtual bool TryActivatePawnAbility(int32 ID);
+	virtual bool TryActivatePawnAbility(int32 ID, bool bBuffer = false);
 	
 	virtual void ReleaseAbilityForPawn(int32 ID);
 	

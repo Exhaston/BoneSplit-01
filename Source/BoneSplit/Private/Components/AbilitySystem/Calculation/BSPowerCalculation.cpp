@@ -4,10 +4,11 @@
 #include "Components/AbilitySystem/Calculation/BSPowerCalculation.h"
 
 #include "BoneSplit/BoneSplit.h"
+#include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Components/Targeting/BSThreatInterface.h"
-#include "Interfaces/BSMovementInterface.h"
+#include "GameFramework/Character.h"
 
 UBSPowerCalculation::UBSPowerCalculation()
 {
@@ -110,13 +111,14 @@ void UBSPowerCalculation::Execute_Implementation(
     if (!FMath::IsNearlyZero(BaseKnockback) && Spec.GetEffectContext().HasOrigin()
         && TargetAsc && TargetAsc->GetAvatarActor())
     {
-        if (IBSMovementInterface* LaunchableInterface = Cast<IBSMovementInterface>(TargetAsc->GetAvatarActor()))
+        if (IBSAbilitySystemInterface* AscInterface = Cast<IBSAbilitySystemInterface>(TargetAsc->GetAvatarActor()))
         {
-            FVector Direction = 
+            const FVector Direction = 
                 TargetAsc->GetAvatarActor()->GetActorLocation() - Spec.GetEffectContext().GetOrigin();
             
-            Direction.Z = 0;
-            LaunchableInterface->LaunchActor((Direction.GetSafeNormal2D() + FVector::UpVector), BaseKnockback);
+            AscInterface->Launch(
+            Direction.GetSafeNormal() * BaseKnockback, 
+            false);
         }
     }
     

@@ -3,12 +3,27 @@
 
 #include "Components/AbilitySystem/AbilityBases/BSAbilityBase.h"
 
+#include "AbilitySystemComponent.h"
+#include "GameplayTask.h"
 #include "Actors/Predictables/BSPredictableActor.h"
 
 UBSAbilityBase::UBSAbilityBase()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+}
+
+void UBSAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
+	const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	if (ActorInfo && ActorInfo->AbilitySystemComponent.IsValid())
+	{
+		EventHandle = ActorInfo->AbilitySystemComponent.Get()->AddGameplayEventTagContainerDelegate(EventTagsToListenTo, 
+		FGameplayEventTagMulticastDelegate::FDelegate::CreateUObject(
+		this, &UBSAbilityBase::Native_OnGameplayEventReceived));
+	}
 }
 
 void UBSAbilityBase::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
@@ -21,8 +36,23 @@ void UBSAbilityBase::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, con
 	}
 }
 
-void UBSAbilityBase::SpawnPredictedActor(const TSubclassOf<ABSPredictableActor> ActorToSpawn,
-                                         const FTransform& SpawnTransform, const FGameplayAbilityTargetDataHandle& TargetData)
+TSoftObjectPtr<UTexture2D> UBSAbilityBase::GetIcon_Implementation() const
+{
+	return AbilityIcon;
+}
+
+void UBSAbilityBase::Native_OnGameplayEventReceived(const FGameplayTag EventTag, const FGameplayEventData* Payload)
+{
+	BP_OnGameplayEventReceived(EventTag, *Payload);
+}
+
+void UBSAbilityBase::BP_OnGameplayEventReceived_Implementation(FGameplayTag EventTag, const FGameplayEventData Payload)
+{
+}
+
+void UBSAbilityBase::SpawnPredictedActor(
+	const TSubclassOf<ABSPredictableActor> ActorToSpawn,
+	const FTransform& SpawnTransform, const FGameplayAbilityTargetDataHandle& TargetData)
 {
 	//Spawn instantly for the caller
 	ABSPredictableActor* PredictedActor =
@@ -40,15 +70,15 @@ void UBSAbilityBase::SpawnPredictedActor(const TSubclassOf<ABSPredictableActor> 
 }
 
 void UBSAbilityBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
-	const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+	const FGameplayAbilityActivationInfo ActivationInfo, const bool bReplicateEndAbility, const bool bWasCancelled)
 {
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-	for (const auto Task : Tasks)
+	
+	if (EventHandle.IsValid() && ActorInfo && ActorInfo->AbilitySystemComponent.IsValid())
 	{
-		if (Task)
-		{
-			Task->EndTask();
-		}
+		ActorInfo->AbilitySystemComponent.Get()->RemoveGameplayEventTagContainerDelegate(
+			EventTagsToListenTo, EventHandle);
+		
+		EventHandle.Reset();
 	}
-	Tasks.Empty();
 }

@@ -110,9 +110,13 @@ void UBSMobTask_MoveToLocation::FinishMoveTask(EPathFollowingResult::Type InResu
 	{
 		OnRequestFailed.Broadcast();
 	}
-	else
+	if (InResult == EPathFollowingResult::Success)
 	{
 		OnMoveFinished.Broadcast(InResult, OwnerController);
+	}
+	if (InResult != EPathFollowingResult::Success && InResult != EPathFollowingResult::Invalid)
+	{
+		OnMoveFailed.Broadcast(InResult, OwnerController);
 	}
 
 	if (OnMoveTaskFinished.IsBound())

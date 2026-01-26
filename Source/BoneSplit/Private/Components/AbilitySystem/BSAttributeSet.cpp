@@ -4,7 +4,7 @@
 #include "Components/AbilitySystem/BSAttributeSet.h"
 
 #include "GameplayEffectExtension.h"
-#include "Components/AbilitySystem/BSKillableInterface.h"
+#include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "Net/UnrealNetwork.h"
 
 void UBSAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -108,9 +108,9 @@ void UBSAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallback
 	
 	if (AvatarActor && Data.EvaluatedData.Attribute == GetHealthAttribute() && GetHealth() <= 0)
 	{
-		if (IBSKillableInterface* Killable = Cast<IBSKillableInterface>(AvatarActor))
+		if (IBSAbilitySystemInterface* Killable = Cast<IBSAbilitySystemInterface>(AvatarActor))
 		{
-			Killable->OnKilled(Data.EffectSpec.GetEffectContext().GetEffectCauser(), Data.EvaluatedData.Magnitude);
+			Killable->Die(Data.EffectSpec.GetEffectContext().GetInstigatorAbilitySystemComponent(), Data.EvaluatedData.Magnitude);
 		}
 	}
 	
