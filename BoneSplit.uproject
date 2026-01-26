@@ -65,6 +65,14 @@
 		{
 			"Name": "AdvancedSteamSessions",
 			"Enabled": true
+		},
+		{
+			"Name": "CustomThumbnails",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			],
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/ff8d9256121a4e6191ed9c266f3011f9"
 		}
 	]
 }

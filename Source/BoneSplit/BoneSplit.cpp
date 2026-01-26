@@ -52,6 +52,8 @@ namespace BSTags
 	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Chest, "Equipment.Part.Chest");
 	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Arms, "Equipment.Part.Arms");
 	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Legs, "Equipment.Part.Legs");
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Weapon_Main, "Equipment.Part.Weapon.Main");
+	UE_DEFINE_GAMEPLAY_TAG(Internal_Part_Weapon_Off, "Internal.Part.Weapon.Off");
 
 	UE_DEFINE_GAMEPLAY_TAG(Equipment_Misc, "Equipment.Misc");
 	UE_DEFINE_GAMEPLAY_TAG(Equipment_Misc_Curio, "Equipment.Misc.Curio");

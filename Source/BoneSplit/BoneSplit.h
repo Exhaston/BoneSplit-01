@@ -7,6 +7,9 @@
 
 DEFINE_LOG_CATEGORY_STATIC(BoneSplit, Log, All);
 
+#define BS_HIT_DEBUG \
+BSConsoleVariables::CVarBSDebugHitDetection.GetValueOnGameThread()
+
 UENUM(BlueprintType)
 enum EBSAbilityInputID : uint8
 {
@@ -99,6 +102,8 @@ namespace BSTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Equipment_Part_Chest);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Equipment_Part_Arms);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Equipment_Part_Legs);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Equipment_Part_Weapon_Main);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Internal_Part_Weapon_Off);
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Equipment_Misc);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Equipment_Misc_Curio);

@@ -25,10 +25,8 @@ public class BoneSplit : ModuleRules
 			"NavigationSystem",
 			"DeveloperSettings",
 			"AnimGraphRuntime",
-			"ClientAuthoritativeCharacterSystem"
-		]);
-		PrivateDependencyModuleNames.AddRange(
-		[
+			"ClientAuthoritativeCharacterSystem",
+			"CustomThumbnails"
 		]);
 	}
 }
