@@ -99,6 +99,7 @@ class BONESPLIT_API UBSSaveGame : public USaveGame
 	                                     
 public:
 	
+	//Save data stored within a struct for server RPC convenience
 	UPROPERTY(SaveGame)
 	FBSSaveData SaveData;
 	                                                                                                           

@@ -111,7 +111,4 @@ public:
 	
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UAbilitySystemComponent> OwnerAsc;
-	
-	UPROPERTY()
-	TScriptInterface<IBSMovementInterface> MovementInterface;
 };

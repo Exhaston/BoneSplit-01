@@ -5,7 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
-#include "Components/AbilitySystem/BSAbilityFunctionLibrary.h"
+#include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Components/Targeting/BSThreatInterface.h"
@@ -83,12 +83,12 @@ bool FBSTargetFilter::RunFilter(AActor* AvatarActor, AActor* TestActor)
 
 bool FBSTargetFilter::TestReachable(AActor* AvatarActor, const AActor* TargetActor)
 {
-	return UBSAbilityFunctionLibrary::CanMobReachLocation(AvatarActor, TargetActor->GetActorLocation());
+	return UBSAbilityLibrary::CanMobReachLocation(AvatarActor, TargetActor->GetActorLocation());
 }
 
 bool FBSTargetFilter::TestVisibility(AActor* AvatarActor, const AActor* TargetActor)
 {
-	return UBSAbilityFunctionLibrary::CheckTargetVisibility(
+	return UBSAbilityLibrary::CheckTargetVisibility(
 	AvatarActor, AvatarActor->GetActorLocation(), TargetActor);
 }
 
@@ -99,13 +99,13 @@ bool FBSTargetFilter::TestFaction(AActor* AvatarActor, AActor* TargetActor)
 	
 	if (!AvatarAscInterface || !TargetAscInterface) return false;
 	
-	return UBSAbilityFunctionLibrary::FilterByAnyMatchingFactions(
+	return UBSAbilityLibrary::HasMatchingFaction(
 		AvatarAscInterface->GetAbilitySystemComponent(), TargetAscInterface->GetAbilitySystemComponent());
 }
 AActor* UBSTargetSetting_RandomInRange::GetTarget(AActor* AvatarActor)
 {
 	const TArray<AActor*> TargetActors = 
-		UBSAbilityFunctionLibrary::GetActorsInRadius(AvatarActor, Range,true);
+		UBSAbilityLibrary::GetActorsInRadiusDep(AvatarActor, Range,true);
 
 	TArray<AActor*> FilteredTargets;
 	for (auto TargetActor : TargetActors)
@@ -124,7 +124,7 @@ AActor* UBSTargetSetting_RandomInRange::GetTarget(AActor* AvatarActor)
 AActor* UBSTargetSetting_Closest::GetTarget(AActor* AvatarActor)
 {
 	const TArray<AActor*> TargetActors = 
-		UBSAbilityFunctionLibrary::GetActorsInRadius(AvatarActor, Range,true);
+		UBSAbilityLibrary::GetActorsInRadiusDep(AvatarActor, Range,true);
 	
 	float CurrentRange = FLT_MAX;
 	AActor* Target = nullptr;
@@ -149,7 +149,7 @@ AActor* UBSTargetSetting_Closest::GetTarget(AActor* AvatarActor)
 AActor* UBSTargetSetting_Farthest::GetTarget(AActor* AvatarActor)
 {
 	const TArray<AActor*> TargetActors = 
-		UBSAbilityFunctionLibrary::GetActorsInRadius(AvatarActor, Range,true);
+		UBSAbilityLibrary::GetActorsInRadiusDep(AvatarActor, Range,true);
 	
 	float CurrentRange = FLT_MIN;
 	AActor* Target = nullptr;
@@ -191,7 +191,7 @@ AActor* UBSTargetSetting_RandomThreat::GetTarget(AActor* AvatarActor)
 	
 	if (FilteredActors.IsEmpty()) return nullptr;
 	
-	return UBSAbilityFunctionLibrary::PickRandomTargetFromArray(FilteredActors);
+	return UBSAbilityLibrary::PickRandomTargetFromArray(FilteredActors);
 }
 
 AActor* UBSTargetSetting_LowestThreat::GetTarget(AActor* AvatarActor)
@@ -384,7 +384,7 @@ AActor* UBSTargetSetting_HighestHealthThreat::GetTarget(AActor* AvatarActor)
 AActor* UBSTargetSetting_LowestHealthRadius::GetTarget(AActor* AvatarActor)
 {
 	const TArray<AActor*> TargetActors = 
-		UBSAbilityFunctionLibrary::GetActorsInRadius(AvatarActor, Range,true);
+		UBSAbilityLibrary::GetActorsInRadiusDep(AvatarActor, Range,true);
 	
 	float CurrentHealthPercent = FLT_MAX;
 	AActor* Target = nullptr;
@@ -418,7 +418,7 @@ AActor* UBSTargetSetting_LowestHealthRadius::GetTarget(AActor* AvatarActor)
 
 AActor* UBSTargetSetting_HighestHealthRadius::GetTarget(AActor* AvatarActor)
 {
-	const TArray<AActor*> TargetActors = UBSAbilityFunctionLibrary::GetActorsInRadius(AvatarActor, Range, true);
+	const TArray<AActor*> TargetActors = UBSAbilityLibrary::GetActorsInRadiusDep(AvatarActor, Range, true);
 	
 	float CurrentHealthPercent = FLT_MIN;
 	AActor* Target = nullptr;

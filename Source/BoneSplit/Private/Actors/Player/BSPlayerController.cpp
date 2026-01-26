@@ -169,7 +169,7 @@ void ABSPlayerController::Tick(const float DeltaSeconds)
 	
 	for (auto& BufferedAbility : BufferedAbilities)
 	{
-		if (BufferedAbility.TimeRemaining <= 0 || TryActivatePawnAbility(BufferedAbility.AbilityID))
+		if (BufferedAbility.TimeRemaining <= 0 || TryActivatePawnAbility(BufferedAbility.AbilityID, false))
 		{
 			BufferedAbility.bExpired = true;
 		}
@@ -178,7 +178,7 @@ void ABSPlayerController::Tick(const float DeltaSeconds)
 			BufferedAbility.TimeRemaining -= DeltaSeconds;
 		}
 	}
-
+	
 	BufferedAbilities.RemoveAll([](const FBSBufferedAbility& Ability)
 	{
 		return Ability.bExpired;
@@ -219,7 +219,7 @@ void ABSPlayerController::QuickTurnTimelineTick(const float Alpha)
 	SetControlRotation(NewRotation);
 }
 
-bool ABSPlayerController::TryActivatePawnAbility(const int32 ID)
+bool ABSPlayerController::TryActivatePawnAbility(const int32 ID, const bool bBuffer)
 {
 	if (!GetPawn()) return false;
 
@@ -233,7 +233,7 @@ bool ABSPlayerController::TryActivatePawnAbility(const int32 ID)
 				Success = Asc->TryActivateAbility(AbilityInstance->GetCurrentAbilitySpecHandle());
 			}
 			
-			if (!Success)
+			if (!Success && bBuffer)
 			{
 				BufferAbility(ID);
 			}
@@ -271,7 +271,7 @@ void ABSPlayerController::BindAbilityToAction(UEnhancedInputComponent* EnhancedI
 	EnhancedInputComponent->BindActionValueLambda(Action, ETriggerEvent::Started,
 	[this, ID](const FInputActionValue& Value)
 	{
-		TryActivatePawnAbility(ID);
+		TryActivatePawnAbility(ID, true);
 		if (GetAbilitySystemComponent())
 		{
 			GetAbilitySystemComponent()->PressInputID(ID);

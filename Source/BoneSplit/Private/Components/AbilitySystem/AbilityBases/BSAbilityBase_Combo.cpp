@@ -33,7 +33,6 @@ void UBSAbilityBase_Combo::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	
 	MontageTask->OnCompleted.AddDynamic(this, &UBSAbilityBase_Combo::OnMontageEnded);
 	MontageTask->EventReceived.AddDynamic(this, &UBSAbilityBase_Combo::OnEventReceived);
-	Tasks.Add(MontageTask);
 	MontageTask->ReadyForActivation();
 }
 

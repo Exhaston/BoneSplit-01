@@ -6,10 +6,10 @@
 #include "AbilitySystemInterface.h"
 #include "BSGenericMobInterface.h"
 #include "GameplayTagContainer.h"
+#include "Components/AbilitySystem/BSAbilityLibrary.h"
+#include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "Components/Targeting/BSThreatInterface.h"
 #include "GameFramework/Character.h"
-#include "Components/AbilitySystem/BSKillableInterface.h"
-#include "Interfaces/BSMovementInterface.h"
 #include "BSMobCharacter.generated.h"
 
 class UBSFiniteState;
@@ -22,13 +22,17 @@ class UGameplayEffect;
 class UBSAbilitySystemComponent;
 class UBSMobMovementComponent;
 
-UCLASS()
-class BONESPLIT_API ABSMobCharacter : public ACharacter, public IAbilitySystemInterface, public IBSGenericMobInterface, 
-public IBSMovementInterface, public IBSThreatInterface, public IBSKillableInterface
+UCLASS(Blueprintable, Abstract, BlueprintType, DisplayName="Mob Character")
+class BONESPLIT_API ABSMobCharacter : public ACharacter, public IBSAbilitySystemInterface, public IBSGenericMobInterface, 
+public IBSThreatInterface
 {
 	GENERATED_BODY()
 
 public:
+	
+	// =================================================================================================================
+	// Defaults
+	// =================================================================================================================
 	
 	explicit ABSMobCharacter(const FObjectInitializer& ObjectInitializer);
 	
@@ -38,44 +42,87 @@ public:
 	
 	virtual void PossessedBy(AController* NewController) override;
 	
-	virtual void LaunchActor(FVector Direction, float Magnitude) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
-	virtual void SetMovementRotationMode(uint8 NewMovementMode) override;
+	// =================================================================================================================
+	// Launching
+	// =================================================================================================================
+	
+	virtual void Launch(FVector LaunchMagnitude, bool bAdditive) override;
+	
+	virtual void LaunchCharacter(FVector LaunchVelocity, bool bXYOverride, bool bZOverride) override; 
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnLaunched(FVector LaunchVelocity);
+	
+	virtual void BP_OnLaunched_Implementation(FVector LaunchVelocity) override;
+	
+	// =================================================================================================================
+	// Death
+	// =================================================================================================================   
+	
+	UPROPERTY(BlueprintAssignable)
+	FBSOnDeathDelegate OnDeathDelegate;
+	
+	virtual FBSOnDeathDelegate& GetOnDeathDelegate() override;
+	
+	virtual void Die(UAbilitySystemComponent* SourceAsc, float Damage) override;
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnDeath(UAbilitySystemComponent* SourceAsc, float Damage);
+	
+	UPROPERTY(ReplicatedUsing=OnRep_Death)
+	bool bIsDead = false;
+	
+	UFUNCTION()
+	void OnRep_Death();
+	
+	virtual void BP_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage) override;
+	
+	// =================================================================================================================
+	// Asc
+	// =================================================================================================================   
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
-	virtual void CheckAggroRadius();
-	
+
 	virtual UBSThreatComponent* GetThreatComponent() override;
+	
+	virtual bool IsInCombat() override;
+	
+	virtual bool BP_IsInCombat_Implementation() override;
+	
+	virtual void BP_OnCombatChanged_Implementation(bool InCombat) override;
+	
+	UPROPERTY(ReplicatedUsing=OnRep_OnCombatChanged)
+	bool bIsInCombat = false;
+	
+	UFUNCTION()
+	void OnRep_OnCombatChanged();
+	
+	virtual FBSOnCombatChangedDelegate& GetOnCombatChangedDelegate() override;
+	
+	UPROPERTY(BlueprintAssignable)
+	FBSOnCombatChangedDelegate OnCombatChangedDelegate;
 	
 	UFUNCTION()
 	void OnCombatChanged(bool bCombat);
 	
-	virtual void OnKilled(AActor* Killer, float Damage) override;
-	
-	virtual bool CanBeKilled() const override;
-	
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnKilled(AActor* Killer, float Damage);
-	
 	virtual void Destroyed() override;
 	
-	FBSOnKilled OnEnemyKilledDelegate;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	float DesiredStoppingDistance = 500;
+
 	
 	virtual void NativeOnCombatBegin() override;
 	virtual void NativeOnCombatEnd() override;
 	virtual void NativeOnCombatTick(bool bReceivedToken, float DeltaTime) override;
 	
-	virtual bool BP_IsInCombat_Implementation() override;
+
 	virtual float BP_GetAggroRange_Implementation() override;
 
 protected:
 	
-	UPROPERTY()
-	bool bIsInCombat = false;
+	// =================================================================================================================
+	// Components
+	// =================================================================================================================   
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(ClampMin=0, Units=cm))
 	float AggroSphereRadius = 1000;
@@ -84,29 +131,20 @@ protected:
 	FGameplayTagContainer GrantedTags;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	TSubclassOf<UBSFiniteState> IdleState;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	TSubclassOf<UBSFiniteState> CombatState;
-	
-	UPROPERTY()
-	FTimerHandle AggroTimerHandle;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	UBSFiniteStateComponent* StateMachineComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	UBSThreatComponent* ThreatComponent;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="BS|Initialization")
 	TArray<TSubclassOf<UGameplayEffect>> Effects;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="BS|Initialization")
 	TArray<TSubclassOf<UGameplayAbility>> GameplayAbility;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UPROPERTY()
 	TObjectPtr<UBSAttributeSet> AttributeSet;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="BS|Initialization")
 	UBSAbilitySystemComponent* AbilitySystemComponent;
 };

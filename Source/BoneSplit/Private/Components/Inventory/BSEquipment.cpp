@@ -40,6 +40,10 @@ bool UBSEquipment::CanEditChange(const FProperty* InProperty) const
 	{
 		return SlotTag.MatchesTag(BSTags::Equipment_Part) && ParentVal;
 	}
+	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UBSEquipment, OffHandSkeletalMesh))
+	{
+		return SlotTag.MatchesTagExact(BSTags::Equipment_Part_Weapon_Main) && ParentVal;
+	}
 	return ParentVal;
 }
 
@@ -57,6 +61,11 @@ void UBSEquipment::PreSave(const FObjectPreSaveContext SaveContext)
 }
 
 #endif
+
+TSoftObjectPtr<UTexture2D> UBSEquipment::GetIcon_Implementation() const
+{
+	return Icon;
+}
 
 bool UBSEquipment::HasSkeletalMesh() const
 {

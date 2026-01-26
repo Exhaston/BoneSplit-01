@@ -6,19 +6,64 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "BoneSplit/BoneSplit.h"
-#include "Components/AbilitySystem/BSAbilityFunctionLibrary.h"
+#include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/AbilitySystem/BSDynamicDecalComponent.h"
+#include "Components/AbilitySystem/BSShapeLibrary.h"
+#include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 #define ENSURE_OWNER \
 if (!MeshComp || !MeshComp->GetOwner()) return;
 
-void UBSAnimNotify_CustomOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
-                                         const FAnimNotifyEventReference& EventReference)
+void FBSAnimEventPayloadData::SendPayload(
+UAbilitySystemComponent* SourceAsc, AActor* TargetActor) const
+{
+	FGameplayEventData Payload;
+	Payload.EventTag = EventPayloadTag;
+	Payload.EventMagnitude = EventMagnitude;
+	Payload.ContextHandle = SourceAsc->MakeEffectContext();
+	Payload.Target = TargetActor;
+
+	const FVector MeshSpaceOffset = {KnockbackDirection.Y, KnockbackDirection.X, KnockbackDirection.Z};
+	const FVector WorldSpaceOffset = SourceAsc->GetAvatarActor()->GetActorTransform().TransformVector(MeshSpaceOffset);
+
+	const FVector Origin = TargetActor->GetActorLocation() + WorldSpaceOffset;
+	
+	Payload.ContextHandle.AddOrigin(Origin);
+	
+#if WITH_EDITOR
+	
+	if (BS_HIT_DEBUG)
+	{
+		DrawDebugPoint(
+			SourceAsc->GetAvatarActor()->GetWorld(),
+			TargetActor->GetActorLocation(),
+			25, 
+			FColor::Red,
+			false,
+			BSConsoleVariables::CVarBSDebugHitDetectionDuration.GetValueOnGameThread());
+	}
+	
+#endif
+	
+	SourceAsc->HandleGameplayEvent(EventPayloadTag, &Payload);
+}
+
+UBSAnimNotify_WedgeOverlap::UBSAnimNotify_WedgeOverlap()
+{
+#if WITH_EDITORONLY_DATA
+	NotifyColor = FColor::Red;
+#endif
+}
+
+void UBSAnimNotify_WedgeOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+                                        const FAnimNotifyEventReference& EventReference)
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 	ENSURE_OWNER
+
+	UWorld* World = GEngine->GetWorldFromContextObjectChecked(MeshComp->GetOwner());
 
 	FTransform BoneTransform = MeshComp->GetBoneTransform(ParentBone);
 	
@@ -32,28 +77,22 @@ void UBSAnimNotify_CustomOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnim
 	// Overlap Actors
 	// ================================================================================================================= 
 
-	for (auto FoundActor : 	
-		UBSAbilityFunctionLibrary::SliceShapeOverlap(
-		MeshComp->GetOwner(),
-		BoneTransform,
-		Forward,
-		Up,
-		Angle, 
-		Height, 
-		Distance,
-		{ECC_Pawn}))
+	TArray<AActor*> OverlappedActors = 
+		UBSShapeLibrary::OverlapShapeWedge(
+			World, 
+			BoneTransform, 
+			Distance, 
+			Height, 
+			Angle, 
+			{ ECC_Pawn },
+			true);
+
+
+	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(MeshComp->GetOwner()))
 	{
-		if (EventTag.IsValid())
+		for (const auto OverlappedActor : OverlappedActors)
 		{
-			if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(MeshComp->GetOwner()))
-			{
-				FGameplayEventData Payload;
-				Payload.EventTag = EventTag;
-				Payload.EventMagnitude = EventWeight;
-				Payload.ContextHandle = AscInterface->GetAbilitySystemComponent()->MakeEffectContext();
-				Payload.Target = FoundActor;
-				AscInterface->GetAbilitySystemComponent()->HandleGameplayEvent(EventTag, &Payload);
-			}
+			EventPayloadData.SendPayload(AscInterface->GetAbilitySystemComponent(), OverlappedActor);
 		}
 	}
 	
@@ -63,37 +102,111 @@ void UBSAnimNotify_CustomOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnim
 
 #if WITH_EDITOR 
 	
-	if (BSConsoleVariables::CVarBSDebugHitDetection.GetValueOnGameThread() 
-		|| !MeshComp->GetOwner()->GetWorld()->IsGameWorld())
+	if (BS_HIT_DEBUG || !World->IsGameWorld())
 	{	
-		UBSAbilityFunctionLibrary:: DrawDebugSlice(
-			MeshComp->GetOwner(), 
-			BoneTransform,
-			Forward,
-			Up,
-			Distance,
+		UBSShapeLibrary::DebugDrawWedge(
+			World, 
+			BoneTransform, 
+			Distance, 
 			Height, 
 			Angle, 
-			12,
+			BSConsoleVariables::CVarBSDebugHitDetectionDuration.GetValueOnGameThread(), 
 			GetEditorColor().ToFColor(true), 
-			BSConsoleVariables::CVarBSDebugHitDetectionDuration.GetValueOnGameThread());
+			true);
 	}
 	
 #endif
 }
 
 #if WITH_EDITOR
-
-FString UBSAnimNotify_CustomOverlap::GetNotifyName_Implementation() const
+FString UBSAnimNotify_WedgeOverlap::GetNotifyName_Implementation() const
 {
-	return "Slice Overlap";
+	return "Wedge Overlap";
+}
+#endif
+
+UBSAnimNotify_SphereOverlap::UBSAnimNotify_SphereOverlap()
+{
+#if WITH_EDITORONLY_DATA
+	NotifyColor = FColor::Red;
+#endif
 }
 
+void UBSAnimNotify_SphereOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+	const FAnimNotifyEventReference& EventReference)
+{
+	Super::Notify(MeshComp, Animation, EventReference);
+	ENSURE_OWNER
+
+	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(MeshComp->GetOwner());
+
+	const FVector Positon = MeshComp->GetBoneTransform(ParentBone).TransformPosition(LocationOffset);
+	const FCollisionShape SphereShape = FCollisionShape::MakeSphere(Radius);
+	
+	FCollisionObjectQueryParams QueryParams;
+	QueryParams.AddObjectTypesToQuery(ECC_Pawn);
+
+	TArray<AActor*> UniqueHitActors;
+	
+	TArray<FOverlapResult> Overlaps;
+	World->OverlapMultiByObjectType(
+		Overlaps, Positon, FQuat::Identity, QueryParams, SphereShape);
+	
+	for (const FOverlapResult& Overlap : Overlaps)
+	{
+		if (AActor* TargetActor = Overlap.GetActor())
+		{
+			UniqueHitActors.AddUnique(TargetActor);
+		}
+	}
+
+	for (const auto UniqueHitActor : UniqueHitActors)
+	{
+		if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(MeshComp->GetOwner()))
+		{
+			PayloadData.SendPayload(AscInterface->GetAbilitySystemComponent(), UniqueHitActor);
+		}
+	}
+	
+#if WITH_EDITOR 
+	
+if (BS_HIT_DEBUG || !World->IsGameWorld())
+{
+	DrawDebugSphere(
+		World, 
+		Positon,
+		Radius,
+		16,
+		GetEditorColor().ToFColor(true),
+		false, 
+		BSConsoleVariables::CVarBSDebugHitDetectionDuration.GetValueOnGameThread());
+}
+	
 #endif
+}
+
+#if WITH_EDITOR
+FString UBSAnimNotify_SphereOverlap::GetNotifyName_Implementation() const
+{
+	return "Sphere Overlap";
+}
+
+FString UBSNotifyState_AreaIndicator::GetNotifyName_Implementation() const
+{
+	return "Project Effect Zone";
+}
+#endif
+
+UBSNotifyState_AreaIndicator::UBSNotifyState_AreaIndicator()
+{
+#if WITH_EDITORONLY_DATA
+	NotifyColor = FColor::Yellow;
+#endif
+}
 
 
 void UBSNotifyState_AreaIndicator::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
-	const float TotalDuration, const FAnimNotifyEventReference& EventReference)
+                                               const float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	
@@ -165,12 +278,21 @@ void UBSNotifyState_AreaIndicator::NotifyTick(USkeletalMeshComponent* MeshComp, 
 
 #if WITH_EDITOR
 
+
+
 FString UBSANS_AllowRotation::GetNotifyName_Implementation() const
 {
 	return "Rotate To Target";
 }
 
 #endif
+
+UBSANS_AllowRotation::UBSANS_AllowRotation()
+{
+#if WITH_EDITOR
+	NotifyColor = FColor::Green;
+#endif
+}
 
 void UBSANS_AllowRotation::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                                        const float TotalDuration, const FAnimNotifyEventReference& EventReference)
@@ -180,6 +302,7 @@ void UBSANS_AllowRotation::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSe
 	
 	if (ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()); Character && Character->HasAuthority())
 	{
+		bOldRotationMode = Character->GetCharacterMovement()->bOrientRotationToMovement;
 		Character->GetCharacterMovement()->bUseControllerDesiredRotation = true;
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 		OldRotationRate = Character->GetCharacterMovement()->RotationRate.Yaw;
@@ -196,11 +319,39 @@ void UBSANS_AllowRotation::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequ
 	
 	if (const ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()); Character && Character->HasAuthority())
 	{
-		Character->GetCharacterMovement()->bUseControllerDesiredRotation = false;
-		Character->GetCharacterMovement()->bOrientRotationToMovement = true;
+		Character->GetCharacterMovement()->bUseControllerDesiredRotation = !bOldRotationMode;
+		Character->GetCharacterMovement()->bOrientRotationToMovement = bOldRotationMode;
 		Character->GetCharacterMovement()->RotationRate.Yaw = OldRotationRate;
 		Character->GetCharacterMovement()->bAllowPhysicsRotationDuringAnimRootMotion = false;
 	}
+}
+
+void UBSANS_AllowRotation::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+	float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
+{
+	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
+
+	ENSURE_OWNER
+	
+	UWorld* World = GEngine->GetWorldFromContextObjectChecked(MeshComp->GetOwner());
+	
+#if WITH_EDITOR
+	
+	if (!World->IsGameWorld())
+	{
+		DrawDebugDirectionalArrow(
+			World, 
+			MeshComp->GetComponentLocation(), 
+			MeshComp->GetComponentLocation() + MeshComp->GetRightVector() * 50, 
+			128, GetEditorColor().ToFColor(true), 
+			false, 
+			-1, 
+			0, 
+			2);
+	}
+	
+#endif
+	
 }
 
 #if WITH_EDITOR

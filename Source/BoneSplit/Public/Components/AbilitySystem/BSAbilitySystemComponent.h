@@ -18,6 +18,8 @@ public:
 	
 	UBSAbilitySystemComponent();
 	
+	virtual void NotifyAbilityActivated(const FGameplayAbilitySpecHandle Handle, UGameplayAbility* Ability) override;
+	
 	// =================================================================================================================
 	// Overrides for animation speed / blend time scaling
 	// ================================================================================================================= 

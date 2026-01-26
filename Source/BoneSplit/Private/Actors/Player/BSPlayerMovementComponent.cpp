@@ -8,7 +8,6 @@
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "GameFramework/Character.h"
-#include "Interfaces/BSMovementInterface.h"
 
 UBSPlayerMovementComponent::UBSPlayerMovementComponent()
 {
@@ -49,11 +48,6 @@ void UBSPlayerMovementComponent::BeginPlay()
 	if (!OwnerAsc.IsValid()) return;
 		
 	UAbilitySystemComponent* Asc = OwnerAsc.Get();
-	
-	MovementInterface.SetInterface(Cast<IBSMovementInterface>(CharacterOwner));
-	MovementInterface.SetObject(CharacterOwner);
-	
-	check(MovementInterface.GetInterface());
 	
 	BindAttributes(Asc);
 			

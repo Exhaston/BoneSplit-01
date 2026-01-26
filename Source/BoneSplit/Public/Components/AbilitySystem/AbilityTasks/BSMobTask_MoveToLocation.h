@@ -61,12 +61,17 @@ public:
 	void SetContinuousGoalTracking(bool bEnable);
 	
 	FMoveTaskFinishedSignature OnMoveTaskFinished;
+	
 protected:
+	
 	UPROPERTY(BlueprintAssignable)
 	FGenericGameplayTaskDelegate OnRequestFailed;
 
 	UPROPERTY(BlueprintAssignable)
 	FBSMoveTaskCompletedSignature OnMoveFinished;
+	
+	UPROPERTY(BlueprintAssignable)
+	FBSMoveTaskCompletedSignature OnMoveFailed;
 
 	/** parameters of move request */
 	UPROPERTY()

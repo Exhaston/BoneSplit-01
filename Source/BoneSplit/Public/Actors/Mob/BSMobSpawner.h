@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "BSMobSpawner.generated.h"
 
+class UAbilitySystemComponent;
 class ABSMobCharacter;
 class UBSMobSpawnBatch;
 
@@ -125,7 +126,7 @@ private:
 	void SpawnEnemy(const FBSSpawnInfo& Info);
 	
 	UFUNCTION()
-	void HandleEnemyKilled(AActor* Killer, float Damage);
+	void HandleEnemyKilled(UAbilitySystemComponent* SourceAsc, UAbilitySystemComponent* Target, float Damage);
 	
 	UFUNCTION()
 	void StartNextWave();

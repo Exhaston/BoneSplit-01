@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "IconThumbnailInterface.h"
 #include "UObject/Object.h"
 #include "BSEquipment.generated.h"
 
@@ -14,7 +15,7 @@ class UGameplayEffect;
  *   information should only be from the CDO except dynamic changing information. This is stored on the instance.
  */
 UCLASS(Blueprintable, BlueprintType, Abstract, DisplayName="Item")
-class BONESPLIT_API UBSEquipment : public UObject
+class BONESPLIT_API UBSEquipment : public UObject, public IIconThumbnailInterface 
 {
 	GENERATED_BODY()
 	
@@ -30,8 +31,13 @@ public:
 
 #endif
 	
+	virtual TSoftObjectPtr<UTexture2D> GetIcon_Implementation() const override;
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	FText EquipmentName;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TSoftObjectPtr<UTexture2D> Icon;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(Categories="Equipment"))
 	FGameplayTag SlotTag;
@@ -49,6 +55,9 @@ public:
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSoftObjectPtr<USkeletalMesh> SkeletalMesh;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSoftObjectPtr<USkeletalMesh> OffHandSkeletalMesh;
 };
 
 USTRUCT(Blueprintable, BlueprintType, DisplayName="Equipment Instance")

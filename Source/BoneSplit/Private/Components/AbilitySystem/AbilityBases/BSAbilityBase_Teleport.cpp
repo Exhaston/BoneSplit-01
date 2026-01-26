@@ -5,7 +5,7 @@
 
 #include "AbilitySystemInterface.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-#include "Components/AbilitySystem/BSAbilityFunctionLibrary.h"
+#include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/AbilitySystem/AbilityTasks/BSPlayMontageWaitForEvent.h"
 
 void UBSAbilityBase_Teleport::ActivateAbility(const FGameplayAbilitySpecHandle Handle,

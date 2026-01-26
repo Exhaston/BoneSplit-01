@@ -2,17 +2,16 @@
 
 #include "Actors/Mob/BSMobCharacter.h"
 
-#include "AIController.h"
 #include "Actors/Mob/BSMobMovementComponent.h"
 #include "Actors/Mob/BSMobSubsystem.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/AbilitySystem/BSAbilityFunctionLibrary.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/FSM/BSFiniteState.h"
 #include "Components/FSM/BSFiniteStateComponent.h"
 #include "Components/Targeting/BSThreatComponent.h"
 #include "GameInstance/BSPersistantDataSubsystem.h"
+#include "Net/UnrealNetwork.h"
 
 ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) : 
 Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(CharacterMovementComponentName))
@@ -33,6 +32,8 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	StateMachineComponent = CreateDefaultSubobject<UBSFiniteStateComponent>(TEXT("StateMachineComponent"));
 	
 	GetReplicatedMovement_Mutable().RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
+	
+	GetMesh()->SetReceivesDecals(false);
 	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::Type::QueryOnly);
 }
@@ -85,14 +86,16 @@ void ABSMobCharacter::Tick(const float DeltaSeconds)
 void ABSMobCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-		
-	if (IdleState)
-	{
-		StateMachineComponent->ChangeState(IdleState);
-	}
 }
 
-void ABSMobCharacter::LaunchActor(const FVector Direction, const float Magnitude)
+void ABSMobCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABSMobCharacter, bIsInCombat);
+	DOREPLIFETIME(ABSMobCharacter, bIsDead);
+}
+
+void ABSMobCharacter::LaunchCharacter(const FVector LaunchVelocity, const bool bXYOverride, const bool bZOverride)
 {
 	if (!HasAuthority()) return;
 	
@@ -101,19 +104,25 @@ void ABSMobCharacter::LaunchActor(const FVector Direction, const float Magnitude
 	
 	GetAbilitySystemComponent()->CancelAbilities();
 	
-	LaunchCharacter(
-	Direction * Magnitude, 
-	true, 
-	true);
+	Super::LaunchCharacter(LaunchVelocity, bXYOverride, bZOverride);
 }
 
-void ABSMobCharacter::SetMovementRotationMode(const uint8 NewMovementMode)
+void ABSMobCharacter::BP_OnLaunched_Implementation(FVector LaunchVelocity)
 {
-	GetCharacterMovement()->bOrientRotationToMovement = 
-		NewMovementMode == static_cast<uint8>(EBSMovementRotationMode::Ebs_Locked);
+}
+
+void ABSMobCharacter::Multicast_OnLaunched_Implementation(const FVector LaunchVelocity)
+{
+	Execute_BP_OnLaunched(this, LaunchVelocity);
+}
+
+void ABSMobCharacter::OnRep_Death()
+{
 	
-	GetCharacterMovement()->bUseControllerDesiredRotation = 
-		NewMovementMode == static_cast<uint8>(EBSMovementRotationMode::Ebs_ControlRotation);
+}
+
+void ABSMobCharacter::BP_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage)
+{
 }
 
 UAbilitySystemComponent* ABSMobCharacter::GetAbilitySystemComponent() const
@@ -121,56 +130,30 @@ UAbilitySystemComponent* ABSMobCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
-void ABSMobCharacter::CheckAggroRadius()
-{               
-	if (!HasAuthority()) return;
-	
-	/*
-	const bool bWasInCombat = GetThreatComponent()->IsInCombat();
-	bool bNewCombat = bWasInCombat;
-	TArray<AActor*> OverlappedActors = UBSAbilityFunctionLibrary::GetActorsInRadius(
-		this, AggroSphereRadius, false);
-	
-#if WITH_EDITOR
-	
-	if (BSConsoleVariables::CVarBSDebugAggroSpheres.GetValueOnGameThread())
+FBSOnDeathDelegate& ABSMobCharacter::GetOnDeathDelegate()
+{
+	return OnDeathDelegate;
+}
+
+void ABSMobCharacter::Die(UAbilitySystemComponent* SourceAsc, float Damage)
+{
+	if (HasAuthority())
 	{
-		DrawDebugSphere(GetWorld(), 
-			GetActorLocation(), 
-			AggroSphereRadius, 
-			16,
-			FColor::Yellow, 
-			false, 
-			AggroCheckFrequency);
+		bIsDead = true;
+		Multicast_OnDeath(SourceAsc, Damage);
+	}
+}
+
+void ABSMobCharacter::Multicast_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage)
+{
+	if (OnDeathDelegate.IsBound())
+	{
+		OnDeathDelegate.Broadcast(SourceAsc, GetAbilitySystemComponent(), Damage);	
 	}
 	
-#endif
+	Execute_BP_OnDeath(this, SourceAsc, Damage);
 	
-	for (const auto FoundActor : OverlappedActors)
-	{
-		if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(FoundActor))
-		{
-			if (UAbilitySystemComponent* OtherAsc = AscInterface->GetAbilitySystemComponent(); OtherAsc && 
-				!UBSAbilityFunctionLibrary::FilterByNoMatchingFactions(GetAbilitySystemComponent(), OtherAsc)) 
-				continue;
-			
-			if (!GetThreatComponent()->GetThreatMap().Contains(FoundActor))
-			{
-				if (UBSAbilityFunctionLibrary::CheckTargetVisibility(
-					this, GetActorLocation(), FoundActor))
-				{
-					GetThreatComponent()->AddThreat(FoundActor, 1);
-					bNewCombat = true;
-				}
-			}
-		}
-	}
-	
-	if (bWasInCombat != bNewCombat && CombatState)
-	{
-		StateMachineComponent->ChangeState(CombatState);
-	}
-	*/
+	Destroy();
 }
 
 UBSThreatComponent* ABSMobCharacter::GetThreatComponent()
@@ -178,30 +161,23 @@ UBSThreatComponent* ABSMobCharacter::GetThreatComponent()
 	return ThreatComponent;
 }
 
+bool ABSMobCharacter::IsInCombat()
+{
+	return bIsInCombat;
+}
+
 void ABSMobCharacter::OnCombatChanged(const bool bCombat)
 {
-	if (!HasAuthority()) return;
-	if (bCombat)
-	{
-		StateMachineComponent->ChangeState(CombatState ? CombatState : nullptr);
-	}
-	else
-	{
-		StateMachineComponent->ChangeState(IdleState ? IdleState : nullptr);
-	}
 }
 
-void ABSMobCharacter::OnKilled(AActor* Killer, float Damage)
+void ABSMobCharacter::Launch(const FVector LaunchMagnitude, const bool bAdditive)
 {
-	if (HasAuthority() && CanBeKilled())
+	if (HasAuthority())
 	{
-		Multicast_OnKilled(Killer, Damage);
+		LaunchCharacter(LaunchMagnitude, !bAdditive, !bAdditive);
+		
+		Multicast_OnLaunched(LaunchMagnitude);
 	}
-}
-
-bool ABSMobCharacter::CanBeKilled() const
-{
-	return true;
 }
 
 void ABSMobCharacter::Destroyed()
@@ -234,13 +210,22 @@ bool ABSMobCharacter::BP_IsInCombat_Implementation()
 	return bIsInCombat;
 }
 
+void ABSMobCharacter::BP_OnCombatChanged_Implementation(bool InCombat)
+{
+}
+
 float ABSMobCharacter::BP_GetAggroRange_Implementation()
 {
 	return AggroSphereRadius;
 }
 
-void ABSMobCharacter::Multicast_OnKilled_Implementation(AActor* Killer, const float Damage)
+void ABSMobCharacter::OnRep_OnCombatChanged()
 {
-	OnEnemyKilledDelegate.Broadcast(Killer, Damage);
-	Destroy();
+	OnCombatChangedDelegate.Broadcast(bIsInCombat);
+	Execute_BP_OnCombatChanged(this, bIsInCombat);
+}
+
+FBSOnCombatChangedDelegate& ABSMobCharacter::GetOnCombatChangedDelegate()
+{
+	return OnCombatChangedDelegate;
 }

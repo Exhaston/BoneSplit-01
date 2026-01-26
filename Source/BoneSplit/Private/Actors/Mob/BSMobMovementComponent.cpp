@@ -4,39 +4,38 @@
 #include "Actors/Mob/BSMobMovementComponent.h"
 
 #include "AbilitySystemInterface.h"
-#include "NavigationSystem.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
-#include "GameFramework/Character.h"
 #include "Navigation/PathFollowingComponent.h"
 
 UBSMobMovementComponent::UBSMobMovementComponent()
 {
+	// =================================================================================================================
+	// Nav Properties
+	// =================================================================================================================   
+	
 	NavAgentProps.AgentHeight = 144;
 	NavAgentProps.AgentRadius = 34;
 	NavAgentProps.bCanWalk = true;
 	PerchRadiusThreshold = 34;
 	PerchAdditionalHeight = 45;
 	MaxStepHeight = 45;
+	
 	SetWalkableFloorAngle(45);
-	bUseFlatBaseForFloorChecks = true;
-	DefaultLandMovementMode = MOVE_Walking;
-	
-	GravityScale = 2;
-	
-	NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
-	bNetworkSkipProxyPredictionOnNetUpdate = false;
-	
-	bOrientRotationToMovement = true;
-	
-	DefaultLandMovementMode = MOVE_NavWalking;
 	bSlideAlongNavMeshEdge = true;
-	NavWalkingFloorDistTolerance = 1000;
+	NavWalkingFloorDistTolerance = 0;
+	bSweepWhileNavWalking = false;
 	
+	// =================================================================================================================
+	// Character Properties
+	// =================================================================================================================   
+	
+	bUseFlatBaseForFloorChecks = false;
+	GravityScale = 2;
+	NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
+	bOrientRotationToMovement = true;
+	DefaultLandMovementMode = MOVE_NavWalking;
 	bAllowPhysicsRotationDuringAnimRootMotion = false;
-	bProjectNavMeshWalking = true;
-	NavMeshProjectionInterpSpeed = 0;
-	
 	RotationRate = {0,450, 0};
 }
 

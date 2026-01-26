@@ -11,6 +11,16 @@ UBSAbilitySystemComponent::UBSAbilitySystemComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
+void UBSAbilitySystemComponent::NotifyAbilityActivated(const FGameplayAbilitySpecHandle Handle,
+	UGameplayAbility* Ability)
+{
+	Super::NotifyAbilityActivated(Handle, Ability);
+	if (GetCurrentMontage())
+	{
+		StopMontageIfCurrent(*GetCurrentMontage(), -1);
+	}
+}
+
 void UBSAbilitySystemComponent::AdjustBlendTimeForMontage(
 	const UAnimInstance* TargetAnimInstance, const UAnimMontage* Montage, const float InRate)
 {

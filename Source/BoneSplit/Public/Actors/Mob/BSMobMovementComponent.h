@@ -4,9 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AttributeSet.h"
-#include "ClientAuthoritativeCharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
-#include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "BSMobMovementComponent.generated.h"
@@ -24,9 +22,6 @@ public:
 	UBSMobMovementComponent();
 	
 	virtual void BeginPlay() override;
-	
-	UPROPERTY()
-	FVector LastValidLocation;
 	
 	virtual float GetMaxSpeed() const override;
 	

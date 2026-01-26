@@ -45,8 +45,16 @@ bool UBSAbilityBase_MobAbility::CommitCheck(const FGameplayAbilitySpecHandle Han
 		CurrentTarget = TargetSetting->GetTarget(ActorInfo->AvatarActor.Get());
 		ValidTarget = CurrentTarget.IsValid();
 	}
+	
+	bool CommitSuccess = ValidTarget && Super::CommitCheck(Handle, ActorInfo, ActivationInfo, OptionalRelevantTags);
+	
+	if (CommitSuccess)
+	{
+		AAIController* AIcontroller = UAIBlueprintHelperLibrary::GetAIController(GetAvatarActorFromActorInfo()->GetInstigatorController());
+		AIcontroller->SetFocus(CurrentTarget.Get(), EAIFocusPriority::Gameplay);
+	}
 
-	return ValidTarget && Super::CommitCheck(Handle, ActorInfo, ActivationInfo, OptionalRelevantTags);
+	return CommitSuccess;
 }
 
 void UBSAbilityBase_MobAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -57,7 +65,7 @@ void UBSAbilityBase_MobAbility::ActivateAbility(const FGameplayAbilitySpecHandle
 	{
 		if (ABSMobCharacter* MobCharacter = Cast<ABSMobCharacter>(GetAvatarActorFromActorInfo()))
 		{
-			MobCharacter->DesiredStoppingDistance = StoppingDistance;
+			//MobCharacter->DesiredStoppingDistance = StoppingDistance;
 		}
 		
 		if (AAIController* AiController = UAIBlueprintHelperLibrary::GetAIController(GetAvatarActorFromActorInfo()))
@@ -105,7 +113,6 @@ void UBSAbilityBase_MobAbility::StartMontageTask(
 	MontageTask->OnInterrupted.AddDynamic(this, &UBSAbilityBase_MobAbility::OnMontageFinished);
 	MontageTask->EventReceived.AddDynamic(this, &UBSAbilityBase_MobAbility::OnMontageEventReceived);
 	
-	Tasks.Add(MontageTask);
 	MontageTask->ReadyForActivation();
 }
 
