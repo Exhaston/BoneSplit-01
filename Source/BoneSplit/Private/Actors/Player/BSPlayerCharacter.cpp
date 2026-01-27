@@ -528,8 +528,8 @@ void ABSPlayerCharacter::UpdateSkeletalMeshes()
 		{
 			const bool bIsWeapon = EquipmentCDO->SlotTag.MatchesTagExact(BSTags::Equipment_Part_Weapon_Main);
 			
-			if (UBSEquipmentMeshComponent* MatchingMesh = 
-				*MeshComps.FindByPredicate([&EquipmentCDO](const UBSEquipmentMeshComponent* EquipmentMeshComponent)
+			if (UBSEquipmentMeshComponent* MatchingMesh = *MeshComps.FindByPredicate(
+				[&EquipmentCDO](const UBSEquipmentMeshComponent* EquipmentMeshComponent)
 			{
 				return EquipmentCDO->SlotTag.MatchesTagExact(EquipmentMeshComponent->MeshTag);
 			}))
