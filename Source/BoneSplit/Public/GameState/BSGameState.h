@@ -7,9 +7,7 @@
 #include "BSGameState.generated.h"
 
 class UBSTravelManager;
-/**
- * 
- */
+
 UCLASS()
 class BONESPLIT_API ABSGameState : public AGameState
 {

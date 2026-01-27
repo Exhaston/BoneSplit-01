@@ -2,7 +2,6 @@
 
 
 #include "BoneSplit/Public/GameState/BSGameState.h"
-
 #include "GameState/BSTravelManager.h"
 
 ABSGameState::ABSGameState(const FObjectInitializer& Initializer) : Super(Initializer)
