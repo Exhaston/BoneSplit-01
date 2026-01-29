@@ -76,7 +76,7 @@ struct FBSSaveData
 	TArray<FGameplayTag> Tags;
 	
 	//Current selected color. This is just an identifier for a color array of available colors.
-	UPROPERTY(SaveGame)
+	UPROPERTY(SaveGame, BlueprintReadOnly, EditDefaultsOnly)
 	int32 CurrentColor = 0;
 	                     
 	//Currently worn item instances.
@@ -100,7 +100,7 @@ class BONESPLIT_API UBSSaveGame : public USaveGame
 public:
 	
 	//Save data stored within a struct for server RPC convenience
-	UPROPERTY(SaveGame)
+	UPROPERTY(SaveGame, BlueprintReadOnly, EditDefaultsOnly)
 	FBSSaveData SaveData;
 	                                                                                                           
 	//Default effects any player has regardless of gear. 

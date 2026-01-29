@@ -300,7 +300,7 @@ void UBSANS_AllowRotation::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSe
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	ENSURE_OWNER
 	
-	if (ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()); Character && Character->HasAuthority())
+	if (ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()))
 	{
 		bOldRotationMode = Character->GetCharacterMovement()->bOrientRotationToMovement;
 		Character->GetCharacterMovement()->bUseControllerDesiredRotation = true;
@@ -317,7 +317,7 @@ void UBSANS_AllowRotation::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequ
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 	ENSURE_OWNER
 	
-	if (const ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()); Character && Character->HasAuthority())
+	if (const ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner()))
 	{
 		Character->GetCharacterMovement()->bUseControllerDesiredRotation = !bOldRotationMode;
 		Character->GetCharacterMovement()->bOrientRotationToMovement = bOldRotationMode;

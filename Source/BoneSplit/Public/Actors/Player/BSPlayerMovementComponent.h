@@ -22,7 +22,7 @@ public:
 	
 	UBSPlayerMovementComponent();
 	
-	virtual void BeginPlay() override;
+	virtual void InitializeAsc(UAbilitySystemComponent* AbilitySystemComponent);
 	
 	virtual void BindTags(UAbilitySystemComponent* InAsc);
 	

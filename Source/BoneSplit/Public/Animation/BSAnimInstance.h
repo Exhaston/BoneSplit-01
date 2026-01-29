@@ -18,10 +18,11 @@ class BONESPLIT_API UBSAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	
 public:
+
 	
 	virtual void NativeInitializeAnimation() override;
 	
-	virtual void NativeBeginPlay() override;
+	virtual void NativeOnInitialized();
 	
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	

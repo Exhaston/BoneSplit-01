@@ -2,8 +2,6 @@
 
 
 #include "Actors/Mob/BSMobMovementComponent.h"
-
-#include "AbilitySystemInterface.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Navigation/PathFollowingComponent.h"
@@ -39,18 +37,13 @@ UBSMobMovementComponent::UBSMobMovementComponent()
 	RotationRate = {0,450, 0};
 }
 
-void UBSMobMovementComponent::BeginPlay()
+void UBSMobMovementComponent::InitializeAsc(UAbilitySystemComponent* InAbilitySystemComponent)
 {
-	Super::BeginPlay();
-	
 	// =================================================================================================================
 	// Bind and cache values from the ASC
 	// =================================================================================================================
 	
-	const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(GetOwner());
-	if (!AscInterface) return;
-	
-	OwnerAsc = AscInterface->GetAbilitySystemComponent();
+	OwnerAsc = InAbilitySystemComponent;
 	if (!OwnerAsc.IsValid()) return;
 		
 	UAbilitySystemComponent* Asc = OwnerAsc.Get();

@@ -4,6 +4,7 @@
 
 #include "Actors/Mob/BSMobMovementComponent.h"
 #include "Actors/Mob/BSMobSubsystem.h"
+#include "Animation/BSAnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
@@ -43,7 +44,8 @@ void ABSMobCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
-	
+	GetCharacterMovement<UBSMobMovementComponent>()->InitializeAsc(AbilitySystemComponent);
+	Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance())->NativeOnInitialized();
 	if (HasAuthority())
 	{
 		UBSPersistantDataSubsystem* DataSubsystem = UBSPersistantDataSubsystem::Get(this);

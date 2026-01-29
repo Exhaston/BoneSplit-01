@@ -10,6 +10,7 @@
 #include "BoneSplit/BoneSplit.h"
 #include "Components/TimelineComponent.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/PlayerState.h"
 
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -185,23 +186,21 @@ void ABSPlayerController::Tick(const float DeltaSeconds)
 	});
 }
 
-void ABSPlayerController::OnPossess(APawn* InPawn)
+void ABSPlayerController::InitPlayerState()
 {
-	Super::OnPossess(InPawn);
-	
-	SetupAsc(InPawn);
+	Super::InitPlayerState();
+	SetupAsc(GetPlayerState<APlayerState>());
 }
 
-void ABSPlayerController::AcknowledgePossession(APawn* P)
+void ABSPlayerController::OnRep_PlayerState()
 {
-	Super::AcknowledgePossession(P);
-	
-	SetupAsc(P);
+	Super::OnRep_PlayerState();
+	SetupAsc(GetPlayerState<APlayerState>());
 }
 
-void ABSPlayerController::SetupAsc(APawn* InPawn)
+void ABSPlayerController::SetupAsc(APlayerState* InPS)
 {
-	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(InPawn))
+	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(InPS))
 	{
 		UAbilitySystemComponent* Asc = AscInterface->GetAbilitySystemComponent();
 		check(Asc);
@@ -209,7 +208,7 @@ void ABSPlayerController::SetupAsc(APawn* InPawn)
 		
 		//Technically this isn't required in the controller, as this is done in the player character.
 		//Only a failsafe for edge cases with replication race conditions.
-		CachedAbilitySystemComponent->InitAbilityActorInfo(InPawn, InPawn);
+		CachedAbilitySystemComponent->InitAbilityActorInfo(InPS, InPS->GetPawn());
 	}
 }
 

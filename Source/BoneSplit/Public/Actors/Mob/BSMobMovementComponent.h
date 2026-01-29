@@ -21,7 +21,7 @@ public:
 	
 	UBSMobMovementComponent();
 	
-	virtual void BeginPlay() override;
+	virtual void InitializeAsc(UAbilitySystemComponent* InAbilitySystemComponent);
 	
 	virtual float GetMaxSpeed() const override;
 	

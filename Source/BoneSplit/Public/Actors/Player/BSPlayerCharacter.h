@@ -51,8 +51,6 @@ public:
 	
 	virtual void Tick(float DeltaSeconds) override;
 	
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	
 	// =================================================================================================================
 	// Camera
 	// ================================================================================================================= 
@@ -128,40 +126,11 @@ public:
 
 protected:
 	
-
+	UPROPERTY(meta=(AllowPrivateAccess=true))
+	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	TObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	TObjectPtr<UBSAttributeSet> AttributeSet;
-	
-public:
-	
-
-	
-	// =================================================================================================================
-	// Equipment
-	// =================================================================================================================
-	
-	UFUNCTION(Server, Reliable)
-	void Server_ApplyEquipment(FBSEquipmentInstance EquipmentInstance);
-	
-	UFUNCTION(Server, Reliable)
-	void Server_ApplyColor(const int32& NewColor);
-	
-	UPROPERTY(ReplicatedUsing=OnRep_PlayerColor)
-	int32 PlayerColor = 0;
-	
-protected:
-	
-	
-	int32 FindEquipmentIndexByTag(const FGameplayTag& Slot) const;
-	
-	void UpdateSkeletalMeshes();
-	
-	UPROPERTY(ReplicatedUsing=OnRep_Equipment)
-	TArray<FBSEquipmentInstance> Equipment;
+	void UpdateSkeletalMeshes(TArray<FBSEquipmentInstance> CurrentEquipment) const;
+	void UpdateSkeletalColors(FColor CurrentColor);
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* HeadComponent;
@@ -181,52 +150,15 @@ protected:
 	UBSEquipmentMeshComponent* LegsComponent;
 	
 	UFUNCTION()
-	void OnRep_Equipment();
+	void OnPlayerColourChanged(FColor NewColor);
 	
 	UFUNCTION()
-	void OnRep_PlayerColor() const;
-	
-private:
-	
-	virtual void Internal_RemoveEquipment(int32 Index);
-	
-	virtual void Internal_ApplyEquipment(const FBSEquipmentInstance& ItemInstance);
-	
-	// =================================================================================================================
-	// Initialization
-	// =================================================================================================================
-	
-protected:
+	void OnPlayerEquipmentChanged(TArray<FBSEquipmentInstance>& EquipmentInstances);
 	
 	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
 	virtual void InitializeCharacter();
 	
-	//Initializes default save data. This should always be applied before loading any save data as a fallback.
-	//Run only on authority.
-	virtual void InitializeDefaultData(UBSPersistantDataSubsystem* PersistantSubsystem);
+	UFUNCTION()
+	void OnPlayerStateInitComplete();
 	
-	UFUNCTION(Server, Reliable)
-	virtual void Server_ReceiveClientSave(const FBSSaveData& SaveData);
-	
-	virtual void RestoreEffectsFromSave(const FBSSaveData& SaveData);
-	virtual void RestoreTagsFromSave(const FBSSaveData& SaveData);
-	virtual void RestoreEquipmentFromSave(const FBSSaveData& SaveData);
-	virtual void RestoreAttributesFromSave(const FBSSaveData& SaveData);
-	
-	UFUNCTION(Client, Reliable)
-	virtual void Client_InitComplete();
-	
-	UFUNCTION(BlueprintCallable)
-	void BP_SaveState();
-	
-	//Saves effects, tags, attributes, equipment and color. 
-	//bSaveToDisk: optional to save the stored save to persistent storage. 
-	//If not it is stored under the game instance lifetime.
-	UFUNCTION(Client, Reliable)
-	virtual void SaveState(bool bSaveToDisk = true);
-	
-	virtual void SaveGameplayEffects(FBSSaveData& SaveData, UBSSaveGame* SaveGame);
-	virtual void SaveGameplayTags(FBSSaveData& SaveData, UBSSaveGame* SaveGame);
-	virtual void SaveEquipment(FBSSaveData& SaveData);
-	virtual void SaveAttributes(FBSSaveData& SaveData);
 };

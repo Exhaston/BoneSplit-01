@@ -21,10 +21,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	FGameplayTag MeshTag;
 	
-	virtual void SetMeshColorIndex(int32 Index);
+	virtual void SetColor(FColor Color);
 	
 	UPROPERTY()
-	int32 CurrentColor = 0;
+	FColor CurrentColor = FColor::White;
 	
 	virtual void LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset);
 	

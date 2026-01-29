@@ -50,16 +50,17 @@ public:
 	
 	virtual void Tick(float DeltaSeconds) override;
 	
-	virtual void OnPossess(APawn* InPawn) override;
+	virtual void InitPlayerState() override;
 	
-	virtual void AcknowledgePossession(APawn* P) override;
+	virtual void OnRep_PlayerState() override;
+
 	
 protected:
 	
 	UPROPERTY()
 	bool bControlDirectionInput = true;
 	
-	virtual void SetupAsc(APawn* InPawn);
+	virtual void SetupAsc(APlayerState* InPS);
 	
 	UPROPERTY()
 	FVector2D CachedLookSpeed = {1, 1};

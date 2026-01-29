@@ -3,7 +3,6 @@
 
 #include "Actors/Player/BSPlayerMovementComponent.h"
 
-#include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
@@ -33,18 +32,9 @@ UBSPlayerMovementComponent::UBSPlayerMovementComponent()
 	RotationRate = {0,500, 0};
 }
 
-void UBSPlayerMovementComponent::BeginPlay()
+void UBSPlayerMovementComponent::InitializeAsc(UAbilitySystemComponent* AbilitySystemComponent)
 {
-	Super::BeginPlay();
-	
-	// =================================================================================================================
-	// Bind and cache values from the ASC
-	// =================================================================================================================
-	
-	const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(GetOwner());
-	if (!AscInterface) return;
-	
-	OwnerAsc = AscInterface->GetAbilitySystemComponent();
+	OwnerAsc = AbilitySystemComponent;
 	if (!OwnerAsc.IsValid()) return;
 		
 	UAbilitySystemComponent* Asc = OwnerAsc.Get();

@@ -109,8 +109,6 @@ public:
 	
 	virtual void Destroyed() override;
 	
-
-	
 	virtual void NativeOnCombatBegin() override;
 	virtual void NativeOnCombatEnd() override;
 	virtual void NativeOnCombatTick(bool bReceivedToken, float DeltaTime) override;

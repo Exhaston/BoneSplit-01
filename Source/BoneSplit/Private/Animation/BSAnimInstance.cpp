@@ -17,10 +17,8 @@ void UBSAnimInstance::NativeInitializeAnimation()
 	Super::NativeInitializeAnimation();
 }
 
-void UBSAnimInstance::NativeBeginPlay()
+void UBSAnimInstance::NativeOnInitialized()
 {
-	Super::NativeBeginPlay();
-	
 	CharacterOwner = Cast<ACharacter>(TryGetPawnOwner());
 	if (CharacterOwner && Cast<IAbilitySystemInterface>(CharacterOwner))
 	{

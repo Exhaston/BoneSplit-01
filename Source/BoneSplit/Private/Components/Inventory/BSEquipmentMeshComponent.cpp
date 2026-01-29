@@ -10,12 +10,10 @@
 
 static FName ColorParamName = FName("Color");
 
-void UBSEquipmentMeshComponent::SetMeshColorIndex(const int32 Index)
+void UBSEquipmentMeshComponent::SetColor(const FColor InColor)
 {
-	CurrentColor = Index;
-	const UBSDeveloperSettings* DeveloperSettings = GetDefault<UBSDeveloperSettings>();
-	SetVectorParameterValueOnMaterials(
-	ColorParamName, FVector(DeveloperSettings->PlayerColors[CurrentColor]));
+	CurrentColor = InColor;
+	SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 }
 
 void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset)
@@ -26,12 +24,11 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 	{
 		if (MeshAsset.Get() == GetSkeletalMeshAsset())
 		{
-			SetMeshColorIndex(0);
 			return; //The same asset. No need to reload
 		}
 		
 		SetSkeletalMeshAsset(MeshAsset.Get());
-		SetMeshColorIndex(0);
+		SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		return;
 	}
 	
@@ -52,7 +49,7 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 				return;
 			}
 			SetSkeletalMeshAsset(MeshAsset.Get());
-			SetMeshColorIndex(0);
+			SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		})
 	);
 }
