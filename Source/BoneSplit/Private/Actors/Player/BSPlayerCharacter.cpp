@@ -77,7 +77,7 @@ Super(ObjectInitializer
 	
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComponent->SetupAttachment(SpringArmComponent, USpringArmComponent::SocketName);
-	bUseControllerRotationYaw = true;
+	bUseControllerRotationYaw = false;
 }
 
 void ABSPlayerCharacter::PossessedBy(AController* NewController)
@@ -120,14 +120,16 @@ void ABSPlayerCharacter::InitializeCharacter()
 			PS->Server_ReceiveSaveData(PS->GetSaveGame());
 		}
 		
+		//Update current skeletal colors, and also subscribe for future changes.
 		UpdateSkeletalColors(PS->GetPlayerColor());
 		PS->GetOnPlayerColorChanged().AddDynamic(this, &ABSPlayerCharacter::OnPlayerColourChanged);
 		
+		//Update current skeletal meshes, and also subscribe for future changes.
 		UpdateSkeletalMeshes(PS->GetCurrentEquipment());
 		PS->GetEquipmentUpdatedDelegate().AddDynamic(this, &ABSPlayerCharacter::OnPlayerEquipmentChanged);
 		
 		if (PS->GetIsInitialized())
-		{
+		{                                             
 			OnPlayerStateInitComplete();
 		}
 		else
@@ -165,8 +167,13 @@ UAbilitySystemComponent* ABSPlayerCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent.IsValid() ? AbilitySystemComponent.Get() : nullptr;
 }
 
+ABSPlayerState* ABSPlayerCharacter::GetBSPlayerState() const
+{
+	return GetPlayerState<ABSPlayerState>();
+}
+
 void ABSPlayerCharacter::Client_LaunchCharacter_Implementation(const FVector LaunchVelocity, const bool bXYOverride,
-	const bool bZOverride)
+                                                               const bool bZOverride)
 {
 	if (GetCharacterMovement())
 	{

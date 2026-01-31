@@ -30,6 +30,9 @@ UBSPlayerMovementComponent::UBSPlayerMovementComponent()
 	GravityScale = 2;
 	
 	RotationRate = {0,500, 0};
+	
+	bUseControllerDesiredRotation = true;
+	bOrientRotationToMovement = false;
 }
 
 void UBSPlayerMovementComponent::InitializeAsc(UAbilitySystemComponent* AbilitySystemComponent)

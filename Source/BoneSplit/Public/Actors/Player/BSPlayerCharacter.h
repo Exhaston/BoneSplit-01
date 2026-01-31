@@ -9,6 +9,7 @@
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
+class ABSPlayerState;
 class UCameraComponent;
 class USpringArmComponent;
 class UBSSaveGame;
@@ -123,6 +124,9 @@ public:
 	// ================================================================================================================= 
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+	UFUNCTION(BlueprintPure)
+	ABSPlayerState* GetBSPlayerState() const;
 
 protected:
 	

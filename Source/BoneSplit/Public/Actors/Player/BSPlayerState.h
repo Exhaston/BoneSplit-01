@@ -9,6 +9,7 @@
 #include "GameFramework/PlayerState.h"
 #include "BSPlayerState.generated.h"
 
+class UBSTalentComponent;
 class UBSAttributeSet;
 struct FBSSaveData;
 class UBSAbilitySystemComponent;
@@ -25,6 +26,8 @@ class BONESPLIT_API ABSPlayerState : public APlayerState, public IAbilitySystemI
 public:
 	
 	explicit ABSPlayerState(const FObjectInitializer& ObjectInitializer);
+	
+	virtual void BeginPlay() override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -56,6 +59,9 @@ public:
 	virtual void NotifyEquipmentUpdated();
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+	UFUNCTION(BlueprintPure)
+	UBSTalentComponent* GetTalentComponent() const;
 	
 	//Checks if the server received save data and has set up Asc.
 	bool GetIsInitialized() const;
@@ -103,6 +109,9 @@ protected:
 	FBSOnPlayerColorChanged OnPlayerColorChangedDelegate;
 	
 	UPROPERTY()
+	TObjectPtr<UBSTalentComponent> TalentComponent;
+	
+	UPROPERTY()
 	TObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY()
@@ -111,19 +120,25 @@ protected:
 private:
 	//Restores effects from the save data struct. It will keep effects that had a duration or infinite
 	virtual void RestoreEffectsFromSave(const FBSSaveData& SaveData);
+	
 	//Restores any tags from the save, then removes the tags that is contained in default save object to avoid duplicates.
 	virtual void RestoreTagsFromSave(const FBSSaveData& SaveData);
+	
 	//Restores all the equipment from the save file and equips new instances of them. 
 	//These will be fresh instances so apply state back to them if needed.
 	virtual void RestoreEquipmentFromSave(const FBSSaveData& SaveData);
+	
 	//Restores attribute bases from the save struct. An attribute base is the value before any state is applied, 
 	//like temporary effects.
 	virtual void RestoreAttributesFromSave(const FBSSaveData& SaveData);
+	
+	virtual void RestoreTalentsFromSave(const FBSSaveData& SaveData);
 
 	void SaveGameplayEffects(FBSSaveData& SaveData, UBSSaveGame* SaveGame);
 	void SaveGameplayTags(FBSSaveData& SaveData, UBSSaveGame* SaveGame);
 	void SaveEquipment(FBSSaveData& SaveData);
 	void SaveAttributes(FBSSaveData& SaveData);
+	void SaveTalents(FBSSaveData& SaveData) const;
 	
 	void Internal_ApplyEquipment(const FBSEquipmentInstance& ItemInstance);
 	void Internal_RemoveEquipment(int32 Index);

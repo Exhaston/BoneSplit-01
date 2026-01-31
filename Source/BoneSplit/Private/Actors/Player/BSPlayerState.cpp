@@ -7,6 +7,8 @@
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/AbilitySystem/EffectBases/BSGameplayEffect.h"
+#include "Components/TalentSystem/BSTalentComponent.h"
+#include "Components/TalentSystem/BSTalentEffect.h"
 #include "GameInstance/BSPersistantDataSubsystem.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "Net/UnrealNetwork.h"
@@ -20,9 +22,17 @@ ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Su
 	AttributeSetSubObject = CreateDefaultSubobject<UBSAttributeSet>(TEXT("AttributeSet"));
 	AbilitySystemComponent->AddAttributeSetSubobject(AttributeSetSubObject.Get());
 	
+	TalentComponent = CreateDefaultSubobject<UBSTalentComponent>("TalentComponent");
+	
 	bAlwaysRelevant = true;
 	bReplicates = true;
 	SetNetUpdateFrequency(30);
+}
+
+void ABSPlayerState::BeginPlay()
+{
+	Super::BeginPlay();
+	TalentComponent.Get()->InitializeTalentComponent(AbilitySystemComponent);
 }
 
 void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -61,6 +71,7 @@ void ABSPlayerState::Server_ReceiveSaveData_Implementation(const FBSSaveData& Sa
 	RestoreEffectsFromSave(SaveData);
 	RestoreTagsFromSave(SaveData);
 	RestoreEquipmentFromSave(SaveData);
+	RestoreTalentsFromSave(SaveData);
 	
 	bInitialized = true;
 	OnRep_Initialized();
@@ -178,6 +189,11 @@ UAbilitySystemComponent* ABSPlayerState::GetAbilitySystemComponent() const
 	return AbilitySystemComponent.Get();
 }
 
+UBSTalentComponent* ABSPlayerState::GetTalentComponent() const
+{
+	return TalentComponent.Get();
+}
+
 bool ABSPlayerState::GetIsInitialized() const
 {
 	return bInitialized;
@@ -245,11 +261,14 @@ void ABSPlayerState::RestoreAttributesFromSave(const FBSSaveData& SaveData)
 {
 	for (auto ExistingAttribute : SaveData.Attributes)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, 
-			ExistingAttribute.Attribute.AttributeName + ": " + FString::FromInt(ExistingAttribute.Value));
 		//Override the base of an attribute to what was stored in the save.
 		AbilitySystemComponent->SetNumericAttributeBase(ExistingAttribute.Attribute, ExistingAttribute.Value);
 	}
+}
+
+void ABSPlayerState::RestoreTalentsFromSave(const FBSSaveData& SaveData)
+{
+	TalentComponent.Get()->Server_GrantSavedTalents(SaveData.GrantedTalents);
 }
 
 #pragma region SaveGame
@@ -350,6 +369,19 @@ void ABSPlayerState::SaveAttributes(FBSSaveData& SaveData)
 		AttributeData.Value = GetAbilitySystemComponent()->GetNumericAttributeBase(Attribute);
 		SaveData.Attributes.Add(AttributeData);
 	}
+}
+
+void ABSPlayerState::SaveTalents(FBSSaveData& SaveData) const
+{
+	TArray<FBSTalentSaveData> SavedTalentData;
+	for (const auto TalentData : TalentComponent.Get()->GetTalentData())
+	{
+		FBSTalentSaveData NewTalentData;
+		NewTalentData.TalentClass = TalentData.Key;
+		NewTalentData.CurrentLevel = TalentData.Value;
+		SavedTalentData.Add(NewTalentData);
+	}
+	SaveData.GrantedTalents = SavedTalentData;
 }
 
 void ABSPlayerState::SaveState_Implementation(const bool bSaveToDisk)

@@ -8,6 +8,8 @@
 #include "GameFramework/SaveGame.h"
 #include "BSSaveGame.generated.h"
 
+struct FBSTalentSaveData;
+class UBSTalentEffect;
 class UGameplayAbility;
 class UGameplayEffect;
 class UBSEquipment;
@@ -86,6 +88,9 @@ struct FBSSaveData
 	//Items persistently unlocked to inventory. These are intended to be selected and equipped in the hub.
 	UPROPERTY(SaveGame)
 	TArray<TSubclassOf<UBSEquipment>> Inventory;
+	
+	UPROPERTY(SaveGame)
+	TArray<FBSTalentSaveData> GrantedTalents;
 };
 
 /**
