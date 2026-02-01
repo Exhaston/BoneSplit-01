@@ -11,7 +11,7 @@
 #include "Components/FSM/BSFiniteState.h"
 #include "Components/FSM/BSFiniteStateComponent.h"
 #include "Components/Targeting/BSThreatComponent.h"
-#include "GameInstance/BSPersistantDataSubsystem.h"
+#include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) : 
@@ -48,9 +48,7 @@ void ABSMobCharacter::BeginPlay()
 	Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance())->NativeOnInitialized();
 	if (HasAuthority())
 	{
-		UBSPersistantDataSubsystem* DataSubsystem = UBSPersistantDataSubsystem::Get(this);
-		check(DataSubsystem);
-		int32 DifficultyLevel = DataSubsystem->GetDifficultyLevel();
+		int32 DifficultyLevel = 1;
 		
 		for (const auto DefaultAbility : GameplayAbility)
 		{

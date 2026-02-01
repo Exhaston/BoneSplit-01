@@ -12,11 +12,13 @@
 bool UBSTalentEffect::CanEditChange(const FProperty* InProperty) const
 {
 	const bool ParentVal = Super::CanEditChange(InProperty);
-
+	
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UBSTalentEffect, StackingType))
 	{
 		return false;
 	}
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	if (InProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UBSTalentEffect, DurationPolicy))
 	{
 		return false;
@@ -52,7 +54,9 @@ EDataValidationResult UBSTalentEffect::IsDataValid(FDataValidationContext& Conte
 UBSTalentEffect::UBSTalentEffect()
 {
 	DurationPolicy = EGameplayEffectDurationType::Infinite;
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	StackingType = EGameplayEffectStackingType::AggregateByTarget;
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	StackLimitCount = 3;
 }
 

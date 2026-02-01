@@ -3,24 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BoneSplit/BoneSplit.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "BSPersistantDataSubsystem.generated.h"
+#include "BSLoadingScreenSubsystem.generated.h"
 
-class UBSSaveGame;
 class UBSLoadingScreenWidget;
 class UBSMapData;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FBSOnWorldTravel, const UBSMapData* MapData);
 
 UCLASS()
-class BONESPLIT_API UBSPersistantDataSubsystem : public UGameInstanceSubsystem
+class BONESPLIT_API UBSLoadingScreenSubsystem : public ULocalPlayerSubsystem
 {
 	GENERATED_BODY()
 	
 public:
 	
-	static UBSPersistantDataSubsystem* Get(const UObject* WorldContext);
+	UBSLoadingScreenSubsystem();
 	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
@@ -38,35 +36,11 @@ public:
 	
 	FSimpleMulticastDelegate OnMapLoadEnd;
 	
-	FString GetTravelDestTag() const;
-	
-	EBSPartyMode GetPartyMode() const;
-	
-	//Does not work for dedicated servers. Will return the local player controller's game save.
-	UBSSaveGame* GetOrLoadSaveGame(const APlayerController* PC);
-	
-	void SaveGameToDiskSync(const APlayerController* PC) const;
-	
-	UPROPERTY()
-	TSubclassOf<UBSSaveGame> SaveGameClass;
-	
-	int32 GetDifficultyLevel() const;
-	
 protected:
-	
-	UPROPERTY()
-	int32 DifficultyLevel = 0;
-	
-	UPROPERTY()
-	TObjectPtr<UBSSaveGame> SaveGameInstance;
 	
 	//Only valid on authority.
 	UPROPERTY()
 	FString CurrentTravelTag;
-	
-	//Only valid on authority.
-	UPROPERTY()
-	EBSPartyMode PartyMode = EBSPartyMode::Party_Open;
 	
 	TSharedPtr<SWidget> LoadingScreenWidgetIns;
 };

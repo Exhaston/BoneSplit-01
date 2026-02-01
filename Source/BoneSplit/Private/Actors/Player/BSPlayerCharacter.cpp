@@ -3,6 +3,7 @@
 
 #include "Actors/Player/BSPlayerCharacter.h"
 
+#include "Actors/Player/BSLocalSaveSubsystem.h"
 #include "Actors/Player/BSPlayerMovementComponent.h"
 #include "Actors/Player/BSPlayerState.h"
 #include "Animation/BSAnimInstance.h"
@@ -12,12 +13,12 @@
 #include "Components/Inventory/BSEquipmentMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "GameInstance/BSPersistantDataSubsystem.h"
+#include "Net/UnrealNetwork.h"
 
-#define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh) \
+#define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName) \
 ComponentName = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT(DisplayName)); \
 ComponentName->bUseBoundsFromLeaderPoseComponent = true; \
-ComponentName->SetupAttachment(ParentMesh); \
+ComponentName->SetupAttachment(ParentMesh, ParentBoneName); \
 ComponentName->SetLeaderPoseComponent(ParentMesh); \
 ComponentName->SetReceivesDecals(false); \
 ComponentName->SetCollisionProfileName("CharacterMesh");
@@ -44,28 +45,20 @@ Super(ObjectInitializer
 	
 	if (UBSEquipmentMeshComponent* EquipmentMesh = Cast<UBSEquipmentMeshComponent>(GetMesh()))
 	{
-		EquipmentMesh->MeshTag = BSTags::Equipment_Part_Chest;
+		EquipmentMesh->MeshTag = BSTags::EquipmentMesh_Chest;
 	}
 	
-	CREATE_EQUIPMENT_MESH(HeadComponent, "HeadMeshComponent", GetMesh());
-	HeadComponent->MeshTag = BSTags::Equipment_Part_Head;
-	CREATE_EQUIPMENT_MESH(ArmsComponent, "ArmsMeshComponent", GetMesh());
-	ArmsComponent->MeshTag = BSTags::Equipment_Part_Arms;
-	CREATE_EQUIPMENT_MESH(LegsComponent, "LegsMeshComponent", GetMesh());
-	LegsComponent->MeshTag = BSTags::Equipment_Part_Legs;
+	CREATE_EQUIPMENT_MESH(HeadComponent, "HeadMeshComponent", GetMesh(), NAME_None);
+	HeadComponent->MeshTag = BSTags::EquipmentMesh_Head;
+	CREATE_EQUIPMENT_MESH(ArmsComponent, "ArmsMeshComponent", GetMesh(), NAME_None);
+	ArmsComponent->MeshTag = BSTags::EquipmentMesh_Arms;
+	CREATE_EQUIPMENT_MESH(LegsComponent, "LegsMeshComponent", GetMesh(), NAME_None);
+	LegsComponent->MeshTag = BSTags::EquipmentMesh_Legs;
 	
-	MainHandComponent = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT("MainHandComponent"));
-	MainHandComponent->SetupAttachment(GetMesh(), "MainHand");
-	MainHandComponent->SetReceivesDecals(false);
-	MainHandComponent->SetCollisionProfileName("CharacterMesh");
-	MainHandComponent->MeshTag = BSTags::Equipment_Part_Weapon_Main;
-	
-	OffHandComponent = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT("OffHandComponent"));
-	OffHandComponent->SetupAttachment(GetMesh(), "OffHand");
-	OffHandComponent->SetReceivesDecals(false);
-	OffHandComponent->SetCollisionProfileName("CharacterMesh");
-	//Not needed for now, such a specific case we just reference the comp directly.
-	OffHandComponent->MeshTag = BSTags::Internal_Part_Weapon_Off; 
+	CREATE_EQUIPMENT_MESH(MainHandComponent, "MainHandComponent", GetMesh(), "MainHand");
+	MainHandComponent->MeshTag = BSTags::EquipmentMesh_MainHand;
+	CREATE_EQUIPMENT_MESH(OffHandComponent, "OffHandComponent", GetMesh(), "OffHand");
+	OffHandComponent->MeshTag = BSTags::EquipmentMesh_Offhand;
 	
 	// =================================================================================================================
 	// Camera
@@ -86,47 +79,42 @@ void ABSPlayerCharacter::PossessedBy(AController* NewController)
 	InitializeCharacter(); //Init for server
 }
 
+void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABSPlayerCharacter, bIsDead);
+	DOREPLIFETIME(ABSPlayerCharacter, bIsInCombat);
+}
+
 void ABSPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	InitializeCharacter(); //Init for Client(s)
 }
 
-void ABSPlayerCharacter::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-}
-
-void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-}
-
-void ABSPlayerCharacter::OnPlayerEquipmentChanged(TArray<FBSEquipmentInstance>& EquipmentInstances)
-{
-	UpdateSkeletalMeshes(EquipmentInstances);
-}
-
 void ABSPlayerCharacter::InitializeCharacter()
 {
 	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
 	{
-		AbilitySystemComponent = PS->GetAbilitySystemComponent();
+		AbilitySystemComponent = PS->GetBSAbilitySystem();
 		AbilitySystemComponent.Get()->InitAbilityActorInfo(PS, this);
+
+		SetupMeshes();
+		
 		GetCharacterMovement<UBSPlayerMovementComponent>()->InitializeAsc(AbilitySystemComponent.Get());
 		
 		if (IsLocallyControlled()) //Save only exists on the local machine
-		{                         
-			PS->Server_ReceiveSaveData(PS->GetSaveGame());
+		{                      
+			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
+			SaveSubsystem->GetOnAsyncLoadCompleteDelegate().AddDynamic(this, &ABSPlayerCharacter::OnSaveLoaded);
+			SaveSubsystem->LoadGameAsync(PS->GetPlayerController());
+			
+			SaveSubsystem->GetOnAsyncSaveCompleteDelegate().AddDynamic(this, &ABSPlayerCharacter::OnAutoSave);
 		}
 		
 		//Update current skeletal colors, and also subscribe for future changes.
-		UpdateSkeletalColors(PS->GetPlayerColor());
+		OnPlayerColourChanged(PS->GetPlayerColor());
 		PS->GetOnPlayerColorChanged().AddDynamic(this, &ABSPlayerCharacter::OnPlayerColourChanged);
-		
-		//Update current skeletal meshes, and also subscribe for future changes.
-		UpdateSkeletalMeshes(PS->GetCurrentEquipment());
-		PS->GetEquipmentUpdatedDelegate().AddDynamic(this, &ABSPlayerCharacter::OnPlayerEquipmentChanged);
 		
 		if (PS->GetIsInitialized())
 		{                                             
@@ -135,6 +123,93 @@ void ABSPlayerCharacter::InitializeCharacter()
 		else
 		{
 			PS->GetInitCompleteDelegate().AddDynamic(this, &ABSPlayerCharacter::OnPlayerStateInitComplete);
+		}
+	}
+}
+
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+void ABSPlayerCharacter::OnSaveLoaded(UBSSaveGame* SaveGame)
+{
+	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
+	{
+		PS->Server_ReceiveSaveData(SaveGame->SaveData);
+		
+		SetAutoSaveTimer();
+	}
+}
+
+void ABSPlayerCharacter::SetAutoSaveTimer()
+{
+	if (!GetWorld()) return;
+	GetWorld()->GetTimerManager().SetTimer(AutoSaveHandle, [this]()
+	{
+		if (!GetWorld()) return;
+		if (!IsActorBeingDestroyed() && !IsPendingKillPending() && GetPlayerState())
+		{
+			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
+			//Ensure save is saved properly before continuing wanting a new save later
+			SaveSubsystem->SaveAscDataAsync(GetPlayerState()->GetPlayerController(), GetAbilitySystemComponent());
+		}
+		else
+		{
+			GetWorld()->GetTimerManager().ClearTimer(AutoSaveHandle);
+		}
+	}, 30, false, 30);
+}
+
+void ABSPlayerCharacter::OnAutoSave()
+{
+	SetAutoSaveTimer();
+	GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Auto save complete"));
+}
+
+void ABSPlayerCharacter::SetupMeshes()
+{
+	//Catch currents
+	TArray<FActiveGameplayEffectHandle> ActiveHandles = 
+		AbilitySystemComponent.Get()->GetActiveEffects(
+			FGameplayEffectQuery::MakeQuery_MatchNoEffectTags(FGameplayTagContainer()));
+	
+	for (const auto ActiveEffectHandle : ActiveHandles)
+	{
+		const FActiveGameplayEffect* GameplayEffect = 
+			AbilitySystemComponent.Get()->GetActiveGameplayEffect(ActiveEffectHandle);
+		
+		if (!GameplayEffect->Spec.Def.IsA(UBSEquipmentEffect::StaticClass())) continue;
+		LoadMeshesFromEquipmentEffect(Cast<UBSEquipmentEffect>(GameplayEffect->Spec.Def));
+	}
+	                               
+	//Subscribe to any further changes
+	AbilitySystemComponent.Get()->OnActiveGameplayEffectAddedDelegateToSelf.AddWeakLambda(
+		this,[this]
+		(UAbilitySystemComponent* Asc, const FGameplayEffectSpec& Spec, FActiveGameplayEffectHandle Handle)
+		{
+			if (!Spec.Def.IsA(UBSEquipmentEffect::StaticClass())) return;
+			LoadMeshesFromEquipmentEffect(Cast<UBSEquipmentEffect>(Spec.Def));
+		});
+}
+
+void ABSPlayerCharacter::LoadMeshesFromEquipmentEffect(const UBSEquipmentEffect* EffectMeshComp)
+{
+	//Lazy and inefficient, consider caching. Shouldn't have a real impact though.
+	TArray<UBSEquipmentMeshComponent*> MeshComps;
+	GetComponents<UBSEquipmentMeshComponent>(MeshComps);
+
+	if (EffectMeshComp->SlotTag.MatchesTagExact(BSTags::Equipment_Arms))
+	{
+		MainHandComponent->SetSkeletalMesh(nullptr);
+		OffHandComponent->SetSkeletalMesh(nullptr);
+	}
+	
+	for (auto& CurrentMeshInfo : EffectMeshComp->MeshInfo)
+	{
+		if (UBSEquipmentMeshComponent* FoundComp = *MeshComps.FindByPredicate(
+		[this, &CurrentMeshInfo](const UBSEquipmentMeshComponent* MeshComp)
+		{
+			return MeshComp->MeshTag.MatchesTagExact(CurrentMeshInfo.SlotTag);
+		}))
+		{
+			FoundComp->LazyLoadSkeletalMesh(CurrentMeshInfo.MeshAsset);
 		}
 	}
 }
@@ -186,7 +261,10 @@ void ABSPlayerCharacter::Client_LaunchCharacter_Implementation(const FVector Lau
 
 void ABSPlayerCharacter::Launch(const FVector LaunchMagnitude, const bool bAdditive)
 {
-	//AbilitySystemComponent.Get()->CancelAbilitiesWithTag(BSTags::Ability_Player_Legs);
+	if (AbilitySystemComponent.IsValid())
+	{
+		AbilitySystemComponent.Get()->CancelAbilitiesWithTag(BSTags::Ability_Player_Legs);
+	}
 	
 	if (HasAuthority() || IsLocallyControlled())
 	{
@@ -250,45 +328,12 @@ void ABSPlayerCharacter::BP_OnCombatChanged_Implementation(bool InCombat)
 {
 }
 
-void ABSPlayerCharacter::UpdateSkeletalMeshes(TArray<FBSEquipmentInstance> CurrentEquipment) const
-{
-	TArray<UBSEquipmentMeshComponent*> MeshComps;
-	GetComponents<UBSEquipmentMeshComponent>(MeshComps);
-	for (auto& EquipmentInstance : CurrentEquipment)
-	{
-		if (const UBSEquipment* EquipmentCDO = EquipmentInstance.GetSourceItemCDO(); 
-		EquipmentCDO && EquipmentCDO->HasSkeletalMesh()) //ensure this is a slot that has skeletal mesh, and valid
-		{
-			const bool bIsWeapon = EquipmentCDO->SlotTag.MatchesTagExact(BSTags::Equipment_Part_Weapon_Main);
-			
-			if (UBSEquipmentMeshComponent* MatchingMesh = *MeshComps.FindByPredicate(
-				[&EquipmentCDO](const UBSEquipmentMeshComponent* EquipmentMeshComponent)
-			{
-				return EquipmentCDO->SlotTag.MatchesTagExact(EquipmentMeshComponent->MeshTag);
-			}))
-			{
-				MatchingMesh->LazyLoadSkeletalMesh(EquipmentCDO->SkeletalMesh);
-			}
-			
-			if (bIsWeapon && !EquipmentCDO->OffHandSkeletalMesh.IsNull())
-			{
-				OffHandComponent->LazyLoadSkeletalMesh(EquipmentCDO->OffHandSkeletalMesh);
-			}
-		}
-	}
-}
-
-void ABSPlayerCharacter::UpdateSkeletalColors(FColor CurrentColor)
+void ABSPlayerCharacter::OnPlayerColourChanged(const FColor NewColor)
 {
 	TArray<UBSEquipmentMeshComponent*> MeshComps;
 	GetComponents<UBSEquipmentMeshComponent>(MeshComps);
 	for (const auto MeshComp : MeshComps)
 	{
-		MeshComp->SetColor(CurrentColor);
+		MeshComp->SetColor(NewColor);
 	}
-}
-
-void ABSPlayerCharacter::OnPlayerColourChanged(const FColor NewColor)
-{
-	UpdateSkeletalColors(NewColor);
 }

@@ -23,7 +23,7 @@ public:
 	
 	UBSTalentComponent();
 	
-	virtual void InitializeTalentComponent(UAbilitySystemComponent* InAbilitySystemComponent);
+	virtual void SetAbilitySystemComponent(UAbilitySystemComponent* InAbilitySystemComponent);
 	
 	//Best way to load in talents from save. Will avoid sending many RPCs.
 	UFUNCTION(Server, Reliable)

@@ -13,7 +13,7 @@ UBSTalentComponent::UBSTalentComponent()
 	SetIsReplicatedByDefault(true);
 }
 
-void UBSTalentComponent::InitializeTalentComponent(UAbilitySystemComponent* InAbilitySystemComponent)
+void UBSTalentComponent::SetAbilitySystemComponent(UAbilitySystemComponent* InAbilitySystemComponent)
 {
 	AbilitySystemComponent = InAbilitySystemComponent;
 }

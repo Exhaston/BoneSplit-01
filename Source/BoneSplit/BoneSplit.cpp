@@ -46,19 +46,24 @@ namespace BSTags
 	// =================================================================================================================
 
 	UE_DEFINE_GAMEPLAY_TAG(Equipment, "Equipment");
-
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part, "Equipment.Part");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Head, "Equipment.Part.Head");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Chest, "Equipment.Part.Chest");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Arms, "Equipment.Part.Arms");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Legs, "Equipment.Part.Legs");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Part_Weapon_Main, "Equipment.Part.Weapon.Main");
-	UE_DEFINE_GAMEPLAY_TAG(Internal_Part_Weapon_Off, "Internal.Part.Weapon.Off");
-
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Misc, "Equipment.Misc");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Misc_Curio, "Equipment.Misc.Curio");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Misc_Trinket, "Equipment.Misc.Trinket");
-	UE_DEFINE_GAMEPLAY_TAG(Equipment_Misc_Soul, "Equipment.Misc.Soul");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Head, "Equipment.Head");
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Chest, "Equipment.Chest");
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Arms, "Equipment.Arms");
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Legs, "Equipment.Legs");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Curio, "Equipment.Curio");
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Trinket, "Equipment.Trinket");
+	UE_DEFINE_GAMEPLAY_TAG(Equipment_Soul, "Equipment.Soul");
+	
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh, "EquipmentMesh");
+	
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_Head, "EquipmentMesh.Head");
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_Chest, "EquipmentMesh.Chest");
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_Arms, "EquipmentMesh.Arms");
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_Legs, "EquipmentMesh.Legs");
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_MainHand, "EquipmentMesh.MainHand");
+	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_Offhand, "EquipmentMesh.Offhand");
 
 	// =================================================================================================================
 	// Player Ability Tags

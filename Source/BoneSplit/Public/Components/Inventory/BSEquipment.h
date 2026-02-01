@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "IconThumbnailInterface.h"
 #include "UObject/Object.h"
@@ -10,97 +11,51 @@
 
 class UGameplayAbility;
 class UGameplayEffect;
-/**
- *   Class intended as a base for equipment instances. The instances will point to this, 
- *   information should only be from the CDO except dynamic changing information. This is stored on the instance.
- */
-UCLASS(Blueprintable, BlueprintType, Abstract, DisplayName="Item")
-class BONESPLIT_API UBSEquipment : public UObject, public IIconThumbnailInterface 
+
+USTRUCT(Blueprintable, BlueprintType, DisplayName="Equipment Mesh Info")
+struct FBSEffectMeshInfo
 {
 	GENERATED_BODY()
+	                                                                             
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="EquipmentMesh"))
+	FGameplayTag SlotTag;
 	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSoftObjectPtr<USkeletalMesh> MeshAsset;
+};
+
+UCLASS(Blueprintable, BlueprintType, Abstract, DisplayName="Equipment Defintion", HideCategories=("Duration", "Stacking"), meta=(PrioritizeCategories = "Equipment"))
+class UBSEquipmentEffect : public UGameplayEffect, public IIconThumbnailInterface
+{
+	GENERATED_BODY()
+
 public:
+	
+	UBSEquipmentEffect();
 	
 #if WITH_EDITOR
 	
-	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
-	
 	virtual bool CanEditChange(const FProperty* InProperty) const override;
 	
-	virtual void PreSave(FObjectPreSaveContext SaveContext) override;
-
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+	
 #endif
 	
 	virtual TSoftObjectPtr<UTexture2D> GetIcon_Implementation() const override;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Equipment")
 	FText EquipmentName;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Equipment")
 	TSoftObjectPtr<UTexture2D> Icon;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(Categories="Equipment"))
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(Categories="Equipment"), Category="Equipment")
 	FGameplayTag SlotTag;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	TArray<TSubclassOf<UGameplayEffect>> GrantedEffects;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	TArray<TSubclassOf<UGameplayAbility>> GrantedAbilities;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	FGameplayTagContainer GrantedTags;
-	
-	virtual bool HasSkeletalMesh() const;
-	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TSoftObjectPtr<USkeletalMesh> SkeletalMesh;
-	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TSoftObjectPtr<USkeletalMesh> OffHandSkeletalMesh;
+	//Optional info about slots to equip meshes into. 
+	//This doesn't enforce correct slots etc. because of edge cases like offhand or quivers and such.
+	//Remember if defining a weapon set main hand and offhand. If no offhand wanted set to null
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Equipment")
+	TArray<FBSEffectMeshInfo> MeshInfo;
 };
-
-USTRUCT(Blueprintable, BlueprintType, DisplayName="Equipment Instance")
-struct FBSEquipmentInstance
-{
-	GENERATED_BODY()
-	
-	FBSEquipmentInstance() = default;
-	
-	FBSEquipmentInstance(TSubclassOf<UBSEquipment> ParentClass, int32 InItemLevel);
-	
-	explicit FBSEquipmentInstance(TSubclassOf<UBSEquipment> ParentClass);
-	
-	const UBSEquipment* GetSourceItemCDO() const
-	{
-		return GetDefault<UBSEquipment>(SourceItemClass);
-	}
-	
-	TSubclassOf<UBSEquipment> GetSourceItemClass() const
-	{
-		return SourceItemClass;
-	}
-	
-	UPROPERTY()
-	int32 ItemLevel = 0;
-	
-	int32 SetItemLevel(const int32 InItemLevel, bool& ValidChange)
-	{
-		const int32 OldItemLevel = ItemLevel;
-		ItemLevel = FMath::Clamp<int32>(InItemLevel, 0, 4);
-		ValidChange = OldItemLevel != ItemLevel;
-		return ItemLevel;
-	}
-	
-	int32 GetItemLevel() const
-	{
-		return ItemLevel;
-	}
-	
-	FText GetItemName() const;
-	
-	FText GetItemDescription() const;
-	
-	UPROPERTY()
-	TSubclassOf<UBSEquipment> SourceItemClass;
-};
+                                                                        

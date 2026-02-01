@@ -18,7 +18,7 @@ class BONESPLIT_API UBSEquipmentMeshComponent : public USkeletalMeshComponent
 	
 public:
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true, Categories="EquipmentMesh"))
 	FGameplayTag MeshTag;
 	
 	virtual void SetColor(FColor Color);

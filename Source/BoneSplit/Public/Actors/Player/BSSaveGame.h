@@ -5,15 +5,15 @@
 #include "CoreMinimal.h"
 #include "AttributeSet.h"
 #include "GameplayTagContainer.h"
+#include "Components/Inventory/BSEquipment.h"
+#include "Components/TalentSystem/BSTalentEffect.h"
 #include "GameFramework/SaveGame.h"
 #include "BSSaveGame.generated.h"
 
-struct FBSTalentSaveData;
+class UBSEquipmentEffect;
 class UBSTalentEffect;
 class UGameplayAbility;
 class UGameplayEffect;
-class UBSEquipment;
-struct FBSEquipmentInstance;
 
 //Minimal storable effect data.
 USTRUCT(BlueprintType)
@@ -80,14 +80,6 @@ struct FBSSaveData
 	//Current selected color. This is just an identifier for a color array of available colors.
 	UPROPERTY(SaveGame, BlueprintReadOnly, EditDefaultsOnly)
 	int32 CurrentColor = 0;
-	                     
-	//Currently worn item instances.
-	UPROPERTY(SaveGame)
-	TArray<FBSEquipmentInstance> Equipment;
-	
-	//Items persistently unlocked to inventory. These are intended to be selected and equipped in the hub.
-	UPROPERTY(SaveGame)
-	TArray<TSubclassOf<UBSEquipment>> Inventory;
 	
 	UPROPERTY(SaveGame)
 	TArray<FBSTalentSaveData> GrantedTalents;
@@ -121,8 +113,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Initialization Data")
 	TMap<FGameplayTag, int32> DefaultTags;
 	
-	//Default Equipment to spawn with when first starting a new game. 
-	//Also, a fallback should the saved equipment be invalid or fail
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Initialization Data")
-	TArray<TSubclassOf<UBSEquipment>> DefaultEquipment;
+	TArray<TSubclassOf<UGameplayEffect>> SaveableEffectClasses = {
+		UBSEquipmentEffect::StaticClass(), 
+		UBSTalentEffect::StaticClass()
+	}; 
 };

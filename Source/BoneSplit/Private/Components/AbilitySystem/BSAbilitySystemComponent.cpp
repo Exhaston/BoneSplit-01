@@ -4,11 +4,36 @@
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 
 #include "Actors/Predictables/BSPredictableActor.h"
+#include "Components/Inventory/BSEquipment.h"
 
 
 UBSAbilitySystemComponent::UBSAbilitySystemComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	
+	//ensure that equipment is replaced.
+	OnGameplayEffectAppliedDelegateToSelf.AddWeakLambda(this, [this]
+		(UAbilitySystemComponent* Asc, const FGameplayEffectSpec& NewEffectSpec, FActiveGameplayEffectHandle NewHandle)
+	{
+		if (!NewEffectSpec.Def.IsA(UBSEquipmentEffect::StaticClass())) return;
+		
+		if (const UBSEquipmentEffect* NewActiveDef = Cast<UBSEquipmentEffect>(NewEffectSpec.Def))
+		{
+			TArray<FActiveGameplayEffectHandle> ActiveHandles = GetActiveEffects(
+				FGameplayEffectQuery::MakeQuery_MatchNoEffectTags(FGameplayTagContainer()));
+
+			for (const auto& ActiveHandle : ActiveHandles)
+			{
+				const FActiveGameplayEffect* ActiveGameplayEffect = GetActiveGameplayEffect(ActiveHandle);
+				if (const UBSEquipmentEffect* ActiveEffectDef = Cast<UBSEquipmentEffect>(ActiveGameplayEffect->Spec.Def); 
+					ActiveEffectDef && ActiveEffectDef != NewActiveDef && ActiveEffectDef->SlotTag.MatchesTagExact(NewActiveDef->SlotTag))
+				{
+					RemoveActiveGameplayEffect(ActiveHandle);
+					break;
+				}
+			}
+		}
+	});
 }
 
 void UBSAbilitySystemComponent::NotifyAbilityActivated(const FGameplayAbilitySpecHandle Handle,

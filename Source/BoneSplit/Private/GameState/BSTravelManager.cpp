@@ -4,7 +4,7 @@
 #include "GameState/BSTravelManager.h"
 
 #include "GameFramework/GameStateBase.h"
-#include "GameInstance/BSPersistantDataSubsystem.h"
+#include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -26,8 +26,8 @@ void UBSTravelManager::Server_TravelStart(const TSubclassOf<UBSMapData> MapData,
 	{
 		Multicast_TravelStart(MapData);
 		
-		UBSPersistantDataSubsystem* PersistantSubsystem = UBSPersistantDataSubsystem::Get(GetOwner());
-		PersistantSubsystem->StartTravel(MapData, TravelDestTag);
+		//UBSPersistantDataSubsystem* PersistantSubsystem = UBSPersistantDataSubsystem::Get(GetOwner());
+		//PersistantSubsystem->StartTravel(MapData, TravelDestTag);
 	}
 }
 
@@ -43,8 +43,8 @@ void UBSTravelManager::Multicast_TravelStart_Implementation(const TSubclassOf<UB
 {
 	const UBSMapData* MapDataCDO = GetDefault<UBSMapData>(MapData);
 	
-	UBSPersistantDataSubsystem* GameManagerSubsystem = UBSPersistantDataSubsystem::Get(GetOwner());
-	GameManagerSubsystem->AddLoadingScreen(MapDataCDO);
+	//UBSPersistantDataSubsystem* GameManagerSubsystem = UBSPersistantDataSubsystem::Get(GetOwner());
+	//GameManagerSubsystem->AddLoadingScreen(MapDataCDO);
 }
 
 UBSTravelManager* UBSTravelManager::GetTravelManager(const UObject* WorldContext)

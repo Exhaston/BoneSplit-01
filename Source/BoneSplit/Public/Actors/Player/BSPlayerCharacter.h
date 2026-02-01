@@ -5,15 +5,17 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativeCharacter.h"
-#include "GameplayTagContainer.h"
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
+struct FGameplayEffectSpec;
+class UBSEquipmentEffect;
+class UBSEffectMeshComp;
 class ABSPlayerState;
 class UCameraComponent;
 class USpringArmComponent;
 class UBSSaveGame;
-class UBSPersistantDataSubsystem;
+class UBSLoadingScreenSubsystem;
 class ABSPlayerStart;
 struct FBSEquipmentInstance;
 struct FBSSaveData;
@@ -44,13 +46,11 @@ public:
 	
 	explicit ABSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 	
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
 	virtual void PossessedBy(AController* NewController) override;
 	
-	virtual void OnRep_PlayerState() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
-	virtual void Tick(float DeltaSeconds) override;
+	virtual void OnRep_PlayerState() override;
 	
 	// =================================================================================================================
 	// Camera
@@ -131,10 +131,7 @@ public:
 protected:
 	
 	UPROPERTY(meta=(AllowPrivateAccess=true))
-	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
-	
-	void UpdateSkeletalMeshes(TArray<FBSEquipmentInstance> CurrentEquipment) const;
-	void UpdateSkeletalColors(FColor CurrentColor);
+	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* HeadComponent;
@@ -156,11 +153,23 @@ protected:
 	UFUNCTION()
 	void OnPlayerColourChanged(FColor NewColor);
 	
-	UFUNCTION()
-	void OnPlayerEquipmentChanged(TArray<FBSEquipmentInstance>& EquipmentInstances);
-	
 	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
 	virtual void InitializeCharacter();
+	
+	UPROPERTY()
+	FTimerHandle AutoSaveHandle;
+	
+	UFUNCTION()
+	void OnSaveLoaded(UBSSaveGame* SaveGame);
+	
+	void SetAutoSaveTimer();
+	
+	UFUNCTION()
+	void OnAutoSave();
+	
+	virtual void SetupMeshes();
+	
+	virtual void LoadMeshesFromEquipmentEffect(const UBSEquipmentEffect* EffectMeshComp);
 	
 	UFUNCTION()
 	void OnPlayerStateInitComplete();

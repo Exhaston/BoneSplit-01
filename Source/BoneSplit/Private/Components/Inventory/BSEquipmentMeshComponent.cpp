@@ -18,8 +18,17 @@ void UBSEquipmentMeshComponent::SetColor(const FColor InColor)
 
 void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset)
 {
-	if (MeshAsset.IsNull()) return;
+	if (StreamingHandle.IsValid() && StreamingHandle.Get()->IsLoadingInProgress()) 
+	{
+		StreamingHandle.Get()->CancelHandle(); //Already loading another mesh, cancel to load new
+	}
 	
+	if (MeshAsset.IsNull())
+	{
+		SetSkeletalMesh(nullptr); //Clears the mesh
+		return;
+	}
+	                                            
 	if (MeshAsset.IsValid()) //Already loaded, set directly
 	{
 		if (MeshAsset.Get() == GetSkeletalMeshAsset())
@@ -30,11 +39,6 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 		SetSkeletalMeshAsset(MeshAsset.Get());
 		SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		return;
-	}
-	
-	if (StreamingHandle.IsValid() && StreamingHandle.Get()->IsLoadingInProgress()) 
-	{
-		StreamingHandle.Get()->CancelHandle(); //Already loading another mesh, cancel to load new
 	}
 	
 	FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
