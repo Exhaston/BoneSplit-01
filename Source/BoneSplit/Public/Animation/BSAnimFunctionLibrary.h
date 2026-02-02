@@ -9,6 +9,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "BSAnimFunctionLibrary.generated.h"
 
+class UInitialActiveSoundParams;
 class UAbilitySystemComponent;
 struct FGameplayEventData;
 class UBSDynamicDecalComponent;
@@ -212,4 +213,59 @@ public:
 	
 	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 	
+};
+
+UCLASS(DisplayName="Play Sound By Material")
+class UBSNotify_PhysicsSound : public UAnimNotify
+{
+	GENERATED_BODY()
+
+public:
+	
+#if WITH_EDITOR
+	
+	virtual FString GetNotifyName_Implementation() const override;
+	
+#endif
+	
+	virtual void Notify(
+		USkeletalMeshComponent* MeshComp, 
+		UAnimSequenceBase* Animation,
+		const FAnimNotifyEventReference& EventReference) override;
+	                       
+	//Bone name to use as a source.
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(AnimNotifyBoneName=true), Category="Trace")
+	FName BoneName;
+	
+	//Sound Asset to play. This sound will be fed the physic material found by the trace as a param.
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Sound")            
+	USoundBase* Sound;
+	
+	//Use the bone or origin as the audio source location. If not the impact point of the trace will be used.
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Sound")  
+	bool bUseBoneAsOrigin = true;
+	
+	//Not supported yet.
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Sound")  
+	bool bAttachToOwner = false;
+	
+	//Duh
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Sound") 
+	float Volume = 1;
+	
+	//dUUUUUUUUUUUUUUuuuuuh
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Sound")            
+	float Pitch = 1;
+	
+	//Offset from the selected bone as origin for trace and audio source
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Units=Centimeters), Category="Trace")
+	FVector OriginOffset;
+	            
+	//Direction of the trace.
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(ClampMin=-1, ClampMax=1), Category="Trace")
+	FVector Direction = { 0, 0, -1 };
+	
+	//Distance of the trace from the origin in direction
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Units=Centimeters), Category="Trace")
+	float Distance = 100;
 };

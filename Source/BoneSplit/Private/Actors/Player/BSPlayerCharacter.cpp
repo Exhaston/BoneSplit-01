@@ -14,6 +14,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/BSLocalWidgetSubsystem.h"
+#include "Widgets/BSWRoot.h"
 
 #define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName) \
 ComponentName = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT(DisplayName)); \
@@ -218,6 +220,13 @@ void ABSPlayerCharacter::OnPlayerStateInitComplete()
 {
 	if (IsLocallyControlled())
 	{
+		if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
+		{
+			UBSLocalWidgetSubsystem* WidgetSubsystem = 
+				PS->GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
+			WidgetSubsystem->CreatePlayerUI(PS->GetPlayerController());
+		}
+		 
 		//Local world space UI elements here
 	}
 	

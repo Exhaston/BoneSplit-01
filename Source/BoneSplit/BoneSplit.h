@@ -9,9 +9,9 @@ DEFINE_LOG_CATEGORY_STATIC(BoneSplit, Log, All);
 
 #define BS_HIT_DEBUG \
 BSConsoleVariables::CVarBSDebugHitDetection.GetValueOnGameThread()
-
+			                                         
 UENUM(BlueprintType)
-enum EBSAbilityInputID : uint8
+enum EBSAbilityInputID : uint8                         
 {
 	None = 0,
 	Jump = 1,

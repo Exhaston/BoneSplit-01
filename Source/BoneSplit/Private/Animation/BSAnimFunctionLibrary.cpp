@@ -5,13 +5,20 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "AudioDevice.h"
+#include "Animation/AnimNotifies/AnimNotify_PlaySound.h"
+#include "Audio/ActorSoundParameterInterface.h"
 #include "BoneSplit/BoneSplit.h"
+#include "Components/AudioComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/AbilitySystem/BSDynamicDecalComponent.h"
 #include "Components/AbilitySystem/BSShapeLibrary.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameSettings/BSDeveloperSettings.h"
+#include "Kismet/GameplayStatics.h"
 
 #define ENSURE_OWNER \
 if (!MeshComp || !MeshComp->GetOwner()) return;
@@ -378,6 +385,75 @@ void UBSAN_SendEventToAsc::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenc
 		Payload.EventTag = EventTag;
 		Payload.ContextHandle = AscInterface->GetAbilitySystemComponent()->MakeEffectContext();
 		AscInterface->GetAbilitySystemComponent()->HandleGameplayEvent(EventTag, &Payload);
+	}
+}
+
+#if WITH_EDITOR
+FString UBSNotify_PhysicsSound::GetNotifyName_Implementation() const
+{
+	return "Play sound by material";
+}
+#endif
+
+void UBSNotify_PhysicsSound::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+                                    const FAnimNotifyEventReference& EventReference)
+{
+	Super::Notify(MeshComp, Animation, EventReference);
+	
+	ENSURE_OWNER
+	
+	if (!Sound || !GEngine || !GEngine->UseSound())
+	{
+		return;
+	}
+
+	UWorld* ThisWorld = GEngine->GetWorldFromContextObject(MeshComp->GetOwner(), EGetWorldErrorMode::LogAndReturnNull);
+	if (!ThisWorld || !ThisWorld->bAllowAudioPlayback || ThisWorld->IsNetMode(NM_DedicatedServer))
+	{
+		return;
+	}
+	
+	const FTransform BoneTransform = MeshComp->GetBoneTransform(BoneName);
+
+	FVector StartLocation = BoneTransform.TransformPosition(OriginOffset);
+	const FVector DestLocation = StartLocation + BoneTransform.TransformVector(Direction) * Distance;
+	
+#if WITH_EDITOR
+	if (!ThisWorld->IsGameWorld())
+	{
+		DrawDebugCoordinateSystem(ThisWorld, StartLocation, BoneTransform.TransformVector(Direction).ToOrientationRotator(), 20, false, 1, 0, 1);
+		DrawDebugLine(ThisWorld, StartLocation, DestLocation, NotifyColor, false, 1, 0, 1);
+	}
+#endif
+
+	if (FHitResult Result; MeshComp->GetOwner()->GetWorld()->LineTraceSingleByObjectType(
+	Result, StartLocation,DestLocation, ECC_WorldStatic) && Result.IsValidBlockingHit() && Result.PhysMaterial.IsValid())
+	{
+		if (FAudioDeviceHandle AudioDevice = ThisWorld->GetAudioDevice())
+		{
+			FAudioParameter AudioParameter;
+			AudioParameter.ParamName = "PhysicMaterial";
+			AudioParameter.ObjectParam = Result.PhysMaterial.Get();
+			AudioParameter.ParamType = EAudioParameterType::Object;
+			
+			TArray AudioParams = { AudioParameter };
+			
+			const AActor* ActiveSoundOwner = MeshComp->GetOwner();
+			UActorSoundParameterInterface::Fill(ActiveSoundOwner, AudioParams);
+			
+			AudioDevice->PlaySoundAtLocation(
+				Sound, 
+				ThisWorld, 
+				Volume, 
+				Pitch, 
+				0, 
+				bUseBoneAsOrigin ? StartLocation : Result.ImpactPoint, 
+				FRotator::ZeroRotator, 
+				nullptr, 
+				nullptr,
+				MoveTemp(AudioParams), 
+				ActiveSoundOwner);
+		}
 	}
 }
 

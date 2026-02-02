@@ -9,6 +9,9 @@
 #include "Engine/DeveloperSettings.h"
 #include "GameInstance/BSCalendarEventSubsystem.h"
 #include "Widgets/BSLoadingScreenWidget.h"
+#include "Widgets/BSWHud.h"
+#include "Widgets/BSWRoot.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "BSDeveloperSettings.generated.h"
 
 /**
@@ -49,5 +52,12 @@ public:
 	TArray<FColor> PlayerColors;
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSWRoot> RootWidgetClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSWHud> HudWidgetClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSLoadingScreenWidget> LoadingScreenWidget;
+	
 };

@@ -7,6 +7,7 @@
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "BSAttributeBar.generated.h"
 
+class UCommonTextBlock;
 class UBSAttributeSet;
 struct FGameplayAttribute;
 class UImage;
@@ -20,14 +21,26 @@ class BONESPLIT_API UBSAttributeBar : public UCommonUserWidget
 	
 public:
 	
+	virtual void NativePreConstruct() override;
 	virtual void NativeConstruct() override;
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
 	void UpdateBar(float DeltaTime);
 	
+	void UpdateText();
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	bool bViewNumbers = true;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	bool bShowPercent = true;
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	float InterpSpeed = 8;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FLinearColor Color = FLinearColor::White;
+	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FGameplayAttribute CurrentAttribute = UBSAttributeSet::GetHealthAttribute();
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -44,6 +57,14 @@ public:
 	UPROPERTY()
 	float Current = 1;
 	
+	UPROPERTY()
+	float CurrentValue = 100;
+	
+	UPROPERTY()
+	float CurrentMaxValue = 100;
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(BindWidget=true))
 	UImage* HealthBarImage;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(BindWidget=true))
+	UCommonTextBlock* HealthBarText;
 };

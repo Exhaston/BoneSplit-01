@@ -22,7 +22,6 @@ public:
 	
 	virtual void NativeInitializeAnimation() override;
 	
-	
 	virtual void InitializeAbilitySystemComponent(UAbilitySystemComponent* InAbilitySystemComponent);
 	
 	UFUNCTION(BlueprintNativeEvent)

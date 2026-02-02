@@ -5,7 +5,17 @@
 
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
+#include "CommonTextBlock.h"
 #include "Components/Image.h"
+
+void UBSAttributeBar::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+	if (HealthBarImage && HealthBarImage->GetDynamicMaterial())
+	{
+		HealthBarImage->GetDynamicMaterial()->SetVectorParameterValue("Color", Color);
+	}
+}
 
 void UBSAttributeBar::NativeConstruct()
 {
@@ -34,14 +44,15 @@ void UBSAttributeBar::NativeConstruct()
 		}
 	}
 	
-	float CurrentAttributeValue = AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute);
-	float MaxAttributeValue = AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute);
+	CurrentValue = AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute);
+	CurrentMaxValue = AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute);
 	
-	if (MaxAttributeValue > 0)
+	if (CurrentMaxValue > 0)
 	{
-		Current = CurrentAttributeValue / MaxAttributeValue;
+		Current = CurrentValue / CurrentMaxValue;
 		SmoothedCurrent = Current;
 		UpdateBar(-1);
+		UpdateText();
 	}
 	
 	if (AbilitySystemComponent.IsValid())
@@ -49,24 +60,31 @@ void UBSAttributeBar::NativeConstruct()
 		AbilitySystemComponent.Get()->GetGameplayAttributeValueChangeDelegate(CurrentAttribute).AddWeakLambda(
 		this, [this](const FOnAttributeChangeData& Data)
 		{
-			float MaxAttributeValue = AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute);
-			
-			if (MaxAttributeValue > 0)
+			CurrentMaxValue = AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute);
+			UpdateText();
+			if (CurrentMaxValue > 0)
 			{
-				Current = AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute) / MaxAttributeValue;
+				CurrentValue = AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute);
+				Current = CurrentValue / CurrentMaxValue;
 			}
 
 		});
 		AbilitySystemComponent.Get()->GetGameplayAttributeValueChangeDelegate(MaxAttribute).AddWeakLambda(
 		this, [this](const FOnAttributeChangeData& Data)
 		{
-			float MaxAttributeValue = AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute);
-			
-			if (MaxAttributeValue > 0)
+			CurrentMaxValue = AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute);
+			UpdateText();
+			if (CurrentMaxValue > 0)
 			{
-				Current = AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute) / MaxAttributeValue;
+				CurrentValue = AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute);
+				Current = CurrentValue / CurrentMaxValue;
 			}
 		});
+	}
+	
+	if (HealthBarImage->GetDynamicMaterial())
+	{
+		HealthBarImage->GetDynamicMaterial()->SetVectorParameterValue("Color", Color);
 	}
 }
 
@@ -88,7 +106,14 @@ void UBSAttributeBar::UpdateBar(const float DeltaTime)
 	if (AbilitySystemComponent.IsValid() && CurrentAttribute.IsValid() && MaxAttribute.IsValid())
 	{
 		SmoothedCurrent = FMath::FInterpTo(SmoothedCurrent, Current, DeltaTime, InterpSpeed);
-		HealthBarImage->GetDynamicMaterial()->SetScalarParameterValue("Current", Current);
 		HealthBarImage->GetDynamicMaterial()->SetScalarParameterValue("Previous", SmoothedCurrent);
 	}
+}
+
+void UBSAttributeBar::UpdateText()
+{
+	HealthBarImage->GetDynamicMaterial()->SetScalarParameterValue("Current", Current);
+	const FString CurrentNum = FString::FromInt(FMath::RoundToInt(CurrentValue));
+	const FString CurrentMaxNum = FString::FromInt(FMath::RoundToInt(CurrentMaxValue));
+	HealthBarText->SetText(FText::FromString(CurrentNum + " / " + CurrentMaxNum));
 }
