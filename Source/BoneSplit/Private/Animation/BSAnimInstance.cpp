@@ -17,16 +17,22 @@ void UBSAnimInstance::NativeInitializeAnimation()
 	Super::NativeInitializeAnimation();
 }
 
-void UBSAnimInstance::NativeOnInitialized()
+void UBSAnimInstance::InitializeAbilitySystemComponent(UAbilitySystemComponent* InAbilitySystemComponent)
 {
 	CharacterOwner = Cast<ACharacter>(TryGetPawnOwner());
-	if (CharacterOwner && Cast<IAbilitySystemInterface>(CharacterOwner))
+	if (CharacterOwner)
 	{
-		GetAbilitySystemComponent()->RegisterGenericGameplayTagEvent().AddUObject(
-		this, &UBSAnimInstance::NativeOnGameplayTagAdded);
+		AbilitySystemComponent = InAbilitySystemComponent;
+		InAbilitySystemComponent->RegisterGenericGameplayTagEvent().AddUObject(
+		this, &UBSAnimInstance::NativeOnTagEvent);
 	
 		bInitialized = true;
+		OnAbilitySystemReady(InAbilitySystemComponent);
 	}
+}
+
+void UBSAnimInstance::OnAbilitySystemReady_Implementation(UAbilitySystemComponent* OwnerAbilitySystemComponent)
+{
 }
 
 void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
@@ -48,25 +54,27 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 	AimRotation = 
 		UKismetMathLibrary::RInterpTo(AimRotation, TargetRotation, DeltaSeconds, LookInterpSpeed);
 	
-	float CurrentVelocity;
+	float VelocityLength;
+	const FVector Velocity = CharacterOwner->GetCharacterMovement()->Velocity;
+	GravityVelocity = Velocity.Z;
 	
 	if (CharacterOwner->IsLocallyControlled() && CharacterOwner->IsPlayerControlled())
 	{
 		float CurrentAccel = CharacterOwner->GetCharacterMovement()->GetCurrentAcceleration().Size();
 		CurrentAccel = FMath::Clamp(CurrentAccel, 0.f, CharacterOwner->GetCharacterMovement()->GetMaxSpeed());
-		CurrentVelocity = CurrentAccel;
+		VelocityLength = CurrentAccel;
 	}
 	else
 	{
-		FVector VelocityXY = CharacterOwner->GetCharacterMovement()->Velocity;
+		FVector VelocityXY = Velocity;
 		VelocityXY.Z = 0;
-		CurrentVelocity = VelocityXY.Size();
+		VelocityLength = VelocityXY.Size();
 	}
 
 	if (const float BaseWalkSpeed = CharacterOwner->GetCharacterMovement()->MaxWalkSpeed; 
 		!FMath::IsNearlyZero(BaseWalkSpeed))
 	{
-		VelocityPercentage = (CurrentVelocity / BaseWalkSpeed) * 100.f;
+		VelocityPercentage = (VelocityLength / BaseWalkSpeed) * 100.f;
 	}
 	
 	const float TargetDirection = 
@@ -88,9 +96,16 @@ UAbilitySystemComponent* UBSAnimInstance::GetAbilitySystemComponent()
 	return nullptr;
 }
 
-void UBSAnimInstance::NativeOnGameplayTagAdded(const FGameplayTag Tag, int32 Count)
+void UBSAnimInstance::NativeOnTagEvent(const FGameplayTag Tag, int32 Count)
 {
-	FGameplayTag ChangedTag = Tag;
+	const FGameplayTag ChangedTag = Tag;
+	
+	if (Tag.MatchesTag(BSTags::WeaponType) && Count > 0)
+	{
+		WeaponTypeTag = ChangedTag;
+	}
+	
+	if (Tag.MatchesTag(BSTags::WeaponType_SwordNBoard))
 	
 	if (Count > 0)
 	{

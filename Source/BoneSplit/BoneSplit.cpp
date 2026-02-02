@@ -64,6 +64,12 @@ namespace BSTags
 	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_Legs, "EquipmentMesh.Legs");
 	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_MainHand, "EquipmentMesh.MainHand");
 	UE_DEFINE_GAMEPLAY_TAG(EquipmentMesh_Offhand, "EquipmentMesh.Offhand");
+	
+	UE_DEFINE_GAMEPLAY_TAG(WeaponType, "WeaponType");
+	UE_DEFINE_GAMEPLAY_TAG(WeaponType_Daggers, "WeaponType.Daggers");
+	UE_DEFINE_GAMEPLAY_TAG(WeaponType_Staff, "WeaponType.Staff");
+	UE_DEFINE_GAMEPLAY_TAG(WeaponType_SwordNBoard, "WeaponType.SwordNBoard");
+	UE_DEFINE_GAMEPLAY_TAG(WeaponType_Bow, "WeaponType.Bow");
 
 	// =================================================================================================================
 	// Player Ability Tags

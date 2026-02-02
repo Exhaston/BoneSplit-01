@@ -223,7 +223,7 @@ void ABSPlayerCharacter::OnPlayerStateInitComplete()
 	
 	if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
 	{
-		AnimInstance->NativeOnInitialized();
+		AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
 	}
 }
 

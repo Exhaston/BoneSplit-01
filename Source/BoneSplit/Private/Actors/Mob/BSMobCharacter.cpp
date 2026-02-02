@@ -45,12 +45,12 @@ void ABSMobCharacter::BeginPlay()
 	
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	GetCharacterMovement<UBSMobMovementComponent>()->InitializeAsc(AbilitySystemComponent);
-	Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance())->NativeOnInitialized();
+	Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance())->InitializeAbilitySystemComponent(AbilitySystemComponent);
 	if (HasAuthority())
 	{
 		int32 DifficultyLevel = 1;
 		
-		for (const auto DefaultAbility : GameplayAbility)
+		for (const auto& DefaultAbility : GameplayAbility)
 		{
 			FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(DefaultAbility);
 			AbilitySpec.Level = DifficultyLevel;

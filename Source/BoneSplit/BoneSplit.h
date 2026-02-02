@@ -113,6 +113,13 @@ namespace BSTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EquipmentMesh_Legs);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EquipmentMesh_MainHand);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EquipmentMesh_Offhand);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(WeaponType);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(WeaponType_Daggers);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(WeaponType_Staff);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(WeaponType_SwordNBoard);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(WeaponType_Bow);
+	
 	// =================================================================================================================
 	// Player Ability Tags
 	// =================================================================================================================

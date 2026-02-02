@@ -26,10 +26,7 @@ class UBSInventoryComponent;
 class UBSAbilitySystemComponent;
 
 /**
- * TODO: Document
- * Reasoning for not utilizing the player state as a 
- * hub for information is to simplify branching from network race conditions. 
- * Avoid deleting the player, and if so save data first.
+ *
  */
 UCLASS(DisplayName="Player Character", Blueprintable, BlueprintType, 
 	Category="BoneSplit", ClassGroup="BoneSplit", Abstract)

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Animation/AnimInstance.h"
+#include "BoneSplit/BoneSplit.h"
 #include "BSAnimInstance.generated.h"
 
 class UAbilitySystemComponent;
@@ -18,11 +19,14 @@ class BONESPLIT_API UBSAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	
 public:
-
 	
 	virtual void NativeInitializeAnimation() override;
 	
-	virtual void NativeOnInitialized();
+	
+	virtual void InitializeAbilitySystemComponent(UAbilitySystemComponent* InAbilitySystemComponent);
+	
+	UFUNCTION(BlueprintNativeEvent)
+	void OnAbilitySystemReady(UAbilitySystemComponent* OwnerAbilitySystemComponent);
 	
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	
@@ -42,7 +46,7 @@ public:
 	FGameplayTagContainer GetGameplayTagContainer() const { return OwnedGameplayTags; }
 	
 	UFUNCTION()
-	void NativeOnGameplayTagAdded(const FGameplayTag Tag, int32 Count);
+	void NativeOnTagEvent(const FGameplayTag Tag, int32 Count);
 	                                                                                 
 	UFUNCTION(BlueprintNativeEvent, Category="Bone Split", DisplayName="OnGameplayTagAdded")
 	void BP_OnGameplayTagAdded(const FGameplayTag& Tag, const int32& Count);
@@ -73,6 +77,10 @@ public:
 		meta=(Units=Degrees, ClampMin=-180, ClampMax=180))
 	float VelocityDirection;
 	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Bone Split", BlueprintGetter=GetGravityVelocity,
+	meta=(Units=Centimeters))
+	float GravityVelocity;
+	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Bone Split", BlueprintGetter=GetIsFalling)
 	bool IsFalling;
 	
@@ -84,6 +92,9 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	float LookInterpSpeed = 15;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="WeaponType"))
+	FGameplayTag WeaponTypeTag = BSTags::WeaponType_SwordNBoard;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Bone Split", BlueprintGetter=GetAimRotation)
 	FRotator AimRotation;
@@ -100,6 +111,9 @@ public:
 	//Returns the angle of velocity from forward. -180 - 180 = Backward, -90 - 90 = Strafe.
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
 	float GetVelocityDirection() const { return VelocityPercentage; }
+	
+	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
+	float GetGravityVelocity() const { return GravityVelocity; }
 	
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
 	void GetBlendSpaceProperties(float& OutHorizontal, float& OutVertical, float& OutOffset) const
