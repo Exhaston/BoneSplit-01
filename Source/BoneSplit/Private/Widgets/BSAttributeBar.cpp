@@ -74,7 +74,7 @@ void UBSAttributeBar::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	
-	if (IsInViewport())
+	if (IsValid(this))
 	{
 		if (Current != SmoothedCurrent)
 		{

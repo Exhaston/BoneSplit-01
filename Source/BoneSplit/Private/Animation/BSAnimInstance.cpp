@@ -23,8 +23,16 @@ void UBSAnimInstance::InitializeAbilitySystemComponent(UAbilitySystemComponent* 
 	if (CharacterOwner)
 	{
 		AbilitySystemComponent = InAbilitySystemComponent;
+		
 		InAbilitySystemComponent->RegisterGenericGameplayTagEvent().AddUObject(
 		this, &UBSAnimInstance::NativeOnTagEvent);
+		
+		OwnedGameplayTags.AppendTags(AbilitySystemComponent->GetOwnedGameplayTags());
+
+		for (const auto OwnedTag : OwnedGameplayTags)
+		{
+			NativeOnTagEvent(OwnedTag, AbilitySystemComponent->GetGameplayTagCount(OwnedTag));
+		}
 	
 		bInitialized = true;
 		OnAbilitySystemReady(InAbilitySystemComponent);
@@ -82,6 +90,7 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 	
 	VelocityDirection = FMath::RoundToFloat(TargetDirection / VelocityDirectionStepSize) * VelocityDirectionStepSize;
 	
+	GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, FString::FromInt(GetVelocityDirection()));
 	Super::NativeUpdateAnimation(DeltaSeconds);
 }
 

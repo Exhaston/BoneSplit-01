@@ -110,7 +110,7 @@ public:
 	                          
 	//Returns the angle of velocity from forward. -180 - 180 = Backward, -90 - 90 = Strafe.
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
-	float GetVelocityDirection() const { return VelocityPercentage; }
+	float GetVelocityDirection() const { return VelocityDirection; }
 	
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
 	float GetGravityVelocity() const { return GravityVelocity; }
