@@ -122,6 +122,9 @@ public:
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
 	bool GetIsFalling() const { return IsFalling; }
 	
+	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
+	bool GetIsGrounded() const { return !IsFalling; }
+	
 	//Returns the current rotation from the Pawns Base Aim Rotation(Replicated).
 	//Used to apply additive animations based on camera directions.
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")

@@ -46,7 +46,7 @@ void UBSAnimInstance::OnAbilitySystemReady_Implementation(UAbilitySystemComponen
 void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 {
 	if (!bInitialized) return;
-
+	
 	FRotator TargetRotation;
 	
 	if (CharacterOwner->GetCharacterMovement()->bUseControllerDesiredRotation)
@@ -57,7 +57,7 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 	{
 		TargetRotation = FRotator::ZeroRotator;
 	}
-
+	
 	TargetRotation.Pitch *= -1;
 	AimRotation = 
 		UKismetMathLibrary::RInterpTo(AimRotation, TargetRotation, DeltaSeconds, LookInterpSpeed);
@@ -78,19 +78,20 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 		VelocityXY.Z = 0;
 		VelocityLength = VelocityXY.Size();
 	}
-
+	
 	if (const float BaseWalkSpeed = CharacterOwner->GetCharacterMovement()->MaxWalkSpeed; 
 		!FMath::IsNearlyZero(BaseWalkSpeed))
 	{
 		VelocityPercentage = (VelocityLength / BaseWalkSpeed) * 100.f;
 	}
 	
+	IsFalling = CharacterOwner->GetCharacterMovement()->IsFalling();
+	
 	const float TargetDirection = 
 		UKismetAnimationLibrary::CalculateDirection(CharacterOwner->GetVelocity(), CharacterOwner->GetActorRotation());
 	
 	VelocityDirection = FMath::RoundToFloat(TargetDirection / VelocityDirectionStepSize) * VelocityDirectionStepSize;
 	
-	GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, FString::FromInt(GetVelocityDirection()));
 	Super::NativeUpdateAnimation(DeltaSeconds);
 }
 
