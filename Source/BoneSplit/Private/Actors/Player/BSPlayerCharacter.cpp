@@ -17,11 +17,11 @@
 #include "Widgets/BSLocalWidgetSubsystem.h"
 #include "Widgets/BSWRoot.h"
 
-#define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName) \
+#define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName, SetLeader) \
 ComponentName = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT(DisplayName)); \
 ComponentName->bUseBoundsFromLeaderPoseComponent = true; \
 ComponentName->SetupAttachment(ParentMesh, ParentBoneName); \
-ComponentName->SetLeaderPoseComponent(ParentMesh); \
+ComponentName->SetLeaderPoseComponent(SetLeader ? ParentMesh : nullptr, true); \
 ComponentName->SetReceivesDecals(false); \
 ComponentName->SetCollisionProfileName("CharacterMesh");
 
@@ -50,16 +50,16 @@ Super(ObjectInitializer
 		EquipmentMesh->MeshTag = BSTags::EquipmentMesh_Chest;
 	}
 	
-	CREATE_EQUIPMENT_MESH(HeadComponent, "HeadMeshComponent", GetMesh(), NAME_None);
+	CREATE_EQUIPMENT_MESH(HeadComponent, "HeadMeshComponent", GetMesh(), NAME_None, true);
 	HeadComponent->MeshTag = BSTags::EquipmentMesh_Head;
-	CREATE_EQUIPMENT_MESH(ArmsComponent, "ArmsMeshComponent", GetMesh(), NAME_None);
+	CREATE_EQUIPMENT_MESH(ArmsComponent, "ArmsMeshComponent", GetMesh(), NAME_None, true);
 	ArmsComponent->MeshTag = BSTags::EquipmentMesh_Arms;
-	CREATE_EQUIPMENT_MESH(LegsComponent, "LegsMeshComponent", GetMesh(), NAME_None);
+	CREATE_EQUIPMENT_MESH(LegsComponent, "LegsMeshComponent", GetMesh(), NAME_None, true);
 	LegsComponent->MeshTag = BSTags::EquipmentMesh_Legs;
 	
-	CREATE_EQUIPMENT_MESH(MainHandComponent, "MainHandComponent", GetMesh(), "MainHand");
+	CREATE_EQUIPMENT_MESH(MainHandComponent, "MainHandComponent", GetMesh(), "MainHand", false);
 	MainHandComponent->MeshTag = BSTags::EquipmentMesh_MainHand;
-	CREATE_EQUIPMENT_MESH(OffHandComponent, "OffHandComponent", GetMesh(), "OffHand");
+	CREATE_EQUIPMENT_MESH(OffHandComponent, "OffHandComponent", GetMesh(), "OffHand", false);
 	OffHandComponent->MeshTag = BSTags::EquipmentMesh_Offhand;
 	
 	// =================================================================================================================
