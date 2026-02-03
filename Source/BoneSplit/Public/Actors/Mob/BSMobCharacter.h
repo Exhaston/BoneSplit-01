@@ -12,6 +12,7 @@
 #include "GameFramework/Character.h"
 #include "BSMobCharacter.generated.h"
 
+class UWidgetComponent;
 class UBSFiniteState;
 class UBSFiniteStateComponent;
 class UBSThreatComponent;
@@ -117,6 +118,12 @@ public:
 	virtual float BP_GetAggroRange_Implementation() override;
 
 protected:
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	bool bShowHealthBar = true;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TObjectPtr<UWidgetComponent> WidgetComponent;
 	
 	// =================================================================================================================
 	// Components

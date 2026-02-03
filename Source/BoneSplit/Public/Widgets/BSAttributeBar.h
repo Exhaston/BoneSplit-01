@@ -22,24 +22,26 @@ class BONESPLIT_API UBSAttributeBar : public UCommonUserWidget
 public:
 	
 	virtual void NativePreConstruct() override;
+	
 	virtual void NativeConstruct() override;
+	
+	virtual UMaterialInstanceDynamic* GetBarMaterial();
+	
+	virtual void InitializeAttributeBar(UAbilitySystemComponent* Asc);
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
-	void UpdateBar(float DeltaTime);
+	void SmoothOldToCurrent(float DeltaTime);
 	
-	void UpdateText();
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	bool bViewNumbers = true;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	bool bShowPercent = true;
+	virtual void SetAttributeValues(float InCurrentValue, float InMaxValue);
+	virtual void SetTextElements(int32 InCurrentValue, int32 InMaxValue, float InNormalizedPercent);
+	virtual void SetBarProgress(float InNormalizedPercent);
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	float InterpSpeed = 8;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	FLinearColor Color = FLinearColor::White;
+	FLinearColor Color = FLinearColor::Red;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FGameplayAttribute CurrentAttribute = UBSAttributeSet::GetHealthAttribute();
@@ -49,22 +51,24 @@ public:
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bPlayerAsc = false;
+	UPROPERTY()
+	float SmoothNormalizedPercent = 1;
 	
 	UPROPERTY()
-	float SmoothedCurrent = 1;
-	UPROPERTY()
-	float Current = 1;
+	float NormalizedPercent = 1;
 	
 	UPROPERTY()
-	float CurrentValue = 100;
+	float Value = 100;
 	
 	UPROPERTY()
-	float CurrentMaxValue = 100;
+	float MaxValue = 100;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(BindWidget=true))
 	UImage* HealthBarImage;
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(BindWidget=true))
 	UCommonTextBlock* HealthBarText;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(BindWidget=true))
+	UCommonTextBlock* HealthBarPercentText;
 };

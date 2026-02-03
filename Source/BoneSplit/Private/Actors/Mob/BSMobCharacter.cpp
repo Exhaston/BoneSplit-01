@@ -6,6 +6,7 @@
 #include "Actors/Mob/BSMobSubsystem.h"
 #include "Animation/BSAnimInstance.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/FSM/BSFiniteState.h"
@@ -13,6 +14,7 @@
 #include "Components/Targeting/BSThreatComponent.h"
 #include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/BSAttributeBar.h"
 
 ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) : 
 Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(CharacterMovementComponentName))
@@ -37,6 +39,9 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	GetMesh()->SetReceivesDecals(false);
 	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::Type::QueryOnly);
+	
+	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WorldUIInfo"));
+	WidgetComponent->SetupAttachment(GetMesh());
 }
 
 void ABSMobCharacter::BeginPlay()
@@ -75,6 +80,14 @@ void ABSMobCharacter::BeginPlay()
 	if (UBSMobSubsystem* MobSubsystem = GetWorld()->GetSubsystem<UBSMobSubsystem>())
 	{
 		MobSubsystem->RegisterMob(this);
+	}
+	
+	if (!IsRunningDedicatedServer())
+	{
+		if (UBSAttributeBar* Bar = Cast<UBSAttributeBar>(WidgetComponent->GetWidget()))
+		{
+			Bar->InitializeAttributeBar(AbilitySystemComponent);
+		}
 	}
 }
 
