@@ -28,7 +28,7 @@ struct FBSAnimEventPayloadData
 	float EventMagnitude = 1;
 	
 	//This will be the origin of knockbacks etc. This will be from the axis of the source actor
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(ClampMin=0, ClampMax=1))
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(ClampMin=-1, ClampMax=1))
 	FVector KnockbackDirection = { 0, -1, -1 };
 	
 	void SendPayload(UAbilitySystemComponent* SourceAsc, AActor* TargetActor) const;

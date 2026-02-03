@@ -53,6 +53,7 @@ bool UBSEquipmentEffect::CanEditChange(const FProperty* InProperty) const
 
 EDataValidationResult UBSEquipmentEffect::IsDataValid(FDataValidationContext& Context) const
 {
+	if (!IsInBlueprint()) return Super::IsDataValid(Context);
 	if (!SlotTag.IsValid())
 	{
 		Context.AddError(FText::FromString("No valid slot tag defined"));
