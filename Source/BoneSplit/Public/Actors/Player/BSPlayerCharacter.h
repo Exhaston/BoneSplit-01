@@ -8,6 +8,7 @@
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
+class UTextRenderComponent;
 struct FGameplayEffectSpec;
 class UBSEquipmentEffect;
 class UBSEffectMeshComp;
@@ -52,6 +53,12 @@ public:
 	// =================================================================================================================
 	// Camera
 	// ================================================================================================================= 
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	FVector CameraMenuOffset = {-150, -150, 0 };
+	
+	UPROPERTY()
+	FVector DefaultCameraOffset;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TObjectPtr<USpringArmComponent> SpringArmComponent;
@@ -131,6 +138,9 @@ protected:
 	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
+	TObjectPtr<UTextRenderComponent> PlayerNameTextComponent;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* HeadComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
@@ -152,17 +162,6 @@ protected:
 	
 	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
 	virtual void InitializeCharacter();
-	
-	UPROPERTY()
-	FTimerHandle AutoSaveHandle;
-	
-	UFUNCTION()
-	void OnSaveLoaded(UBSSaveGame* SaveGame);
-	
-	void SetAutoSaveTimer();
-	
-	UFUNCTION()
-	void OnAutoSave();
 	
 	virtual void SetupMeshes();
 	

@@ -11,6 +11,7 @@
 #include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "Net/UnrealNetwork.h"
+#include "Widgets/BSLocalWidgetSubsystem.h"
 
 ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -33,7 +34,46 @@ void ABSPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	if (GetPlayerController() && GetPlayerController()->IsLocalController())
+	{
+		UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
+		SaveSubsystem->GetOnAsyncLoadCompleteDelegate().AddDynamic(this, &ABSPlayerState::OnSaveLoaded);
+		SaveSubsystem->LoadGameAsync(GetPlayerController());
+			
+		SaveSubsystem->GetOnAsyncSaveCompleteDelegate().AddDynamic(this, &ABSPlayerState::OnAutoSave);
+	}
+}
 
+void ABSPlayerState::OnSaveLoaded(UBSSaveGame* SaveGame)
+{
+	Server_ReceiveSaveData(SaveGame->SaveData);
+		
+	SetAutoSaveTimer();
+}
+
+void ABSPlayerState::SetAutoSaveTimer()
+{
+	if (!GetWorld()) return;
+	GetWorld()->GetTimerManager().SetTimer(AutoSaveHandle, [this]()
+	{
+		if (!GetWorld()) return;
+		if (!IsActorBeingDestroyed() && !IsPendingKillPending())
+		{
+			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
+			//Ensure save is saved properly before continuing wanting a new save later
+			SaveSubsystem->SaveAscDataAsync(GetPlayerController(), GetAbilitySystemComponent());
+		}
+		else
+		{
+			GetWorld()->GetTimerManager().ClearTimer(AutoSaveHandle);
+		}
+	}, 30, false, 30);
+}
+
+void ABSPlayerState::OnAutoSave()
+{
+	SetAutoSaveTimer();
+	GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Auto save complete"));
 }
 
 void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -57,8 +97,14 @@ void ABSPlayerState::OnRep_Initialized() const
 			OnInitComplete.Broadcast();
 		}
 		
-		if (HasLocalNetOwner())
+		//UI
+		if (HasLocalNetOwner() && !IsRunningDedicatedServer())
 		{
+			UBSLocalWidgetSubsystem* WidgetSubsystem = 
+				GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
+			
+			WidgetSubsystem->CreatePlayerUI(GetPlayerController());
+			
 			UBSLoadingScreenSubsystem* PSDS = GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>();
 			PSDS->RemoveLoadingScreen();
 		}

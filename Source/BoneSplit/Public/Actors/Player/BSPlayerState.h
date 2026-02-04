@@ -28,6 +28,14 @@ public:
 	
 	virtual void BeginPlay() override;
 	
+	UPROPERTY()
+	FTimerHandle AutoSaveHandle;
+	UFUNCTION()
+	void OnSaveLoaded(UBSSaveGame* SaveGame);
+	void SetAutoSaveTimer();
+	UFUNCTION()
+	void OnAutoSave();
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	//Send the save data to the server to initialize the Asc.

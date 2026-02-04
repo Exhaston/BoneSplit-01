@@ -3,19 +3,17 @@
 
 #include "Actors/Player/BSPlayerCharacter.h"
 
-#include "Actors/Player/BSLocalSaveSubsystem.h"
 #include "Actors/Player/BSPlayerMovementComponent.h"
 #include "Actors/Player/BSPlayerState.h"
 #include "Animation/BSAnimInstance.h"
 #include "Camera/CameraComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/Inventory/BSEquipment.h"
 #include "Components/Inventory/BSEquipmentMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "Widgets/BSLocalWidgetSubsystem.h"
-#include "Widgets/BSWRoot.h"
 
 #define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName, SetLeader) \
 ComponentName = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT(DisplayName)); \
@@ -73,6 +71,14 @@ Super(ObjectInitializer
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComponent->SetupAttachment(SpringArmComponent, USpringArmComponent::SocketName);
 	bUseControllerRotationYaw = false;
+	
+	//This component should use a world space billboard material, hence absolute rotation
+	PlayerNameTextComponent = CreateDefaultSubobject<UTextRenderComponent>(TEXT("PlayerNameTextComponent"));
+	PlayerNameTextComponent->SetupAttachment(GetMesh());
+	PlayerNameTextComponent->SetUsingAbsoluteRotation(true);
+	PlayerNameTextComponent->SetText(FText::FromString("PlayerName"));
+	PlayerNameTextComponent->SetHorizontalAlignment(EHTA_Center);
+	PlayerNameTextComponent->SetVerticalAlignment(EVRTA_TextCenter);
 }
 
 void ABSPlayerCharacter::PossessedBy(AController* NewController)
@@ -105,15 +111,6 @@ void ABSPlayerCharacter::InitializeCharacter()
 		
 		GetCharacterMovement<UBSPlayerMovementComponent>()->InitializeAsc(AbilitySystemComponent.Get());
 		
-		if (IsLocallyControlled()) //Save only exists on the local machine
-		{                      
-			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
-			SaveSubsystem->GetOnAsyncLoadCompleteDelegate().AddDynamic(this, &ABSPlayerCharacter::OnSaveLoaded);
-			SaveSubsystem->LoadGameAsync(PS->GetPlayerController());
-			
-			SaveSubsystem->GetOnAsyncSaveCompleteDelegate().AddDynamic(this, &ABSPlayerCharacter::OnAutoSave);
-		}
-		
 		//Update current skeletal colors, and also subscribe for future changes.
 		OnPlayerColourChanged(PS->GetPlayerColor());
 		PS->GetOnPlayerColorChanged().AddDynamic(this, &ABSPlayerCharacter::OnPlayerColourChanged);
@@ -129,41 +126,7 @@ void ABSPlayerCharacter::InitializeCharacter()
 	}
 }
 
-// ReSharper disable once CppParameterMayBeConstPtrOrRef
-void ABSPlayerCharacter::OnSaveLoaded(UBSSaveGame* SaveGame)
-{
-	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
-	{
-		PS->Server_ReceiveSaveData(SaveGame->SaveData);
-		
-		SetAutoSaveTimer();
-	}
-}
 
-void ABSPlayerCharacter::SetAutoSaveTimer()
-{
-	if (!GetWorld()) return;
-	GetWorld()->GetTimerManager().SetTimer(AutoSaveHandle, [this]()
-	{
-		if (!GetWorld()) return;
-		if (!IsActorBeingDestroyed() && !IsPendingKillPending() && GetPlayerState())
-		{
-			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
-			//Ensure save is saved properly before continuing wanting a new save later
-			SaveSubsystem->SaveAscDataAsync(GetPlayerState()->GetPlayerController(), GetAbilitySystemComponent());
-		}
-		else
-		{
-			GetWorld()->GetTimerManager().ClearTimer(AutoSaveHandle);
-		}
-	}, 30, false, 30);
-}
-
-void ABSPlayerCharacter::OnAutoSave()
-{
-	SetAutoSaveTimer();
-	GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Auto save complete"));
-}
 
 void ABSPlayerCharacter::SetupMeshes()
 {
@@ -218,21 +181,19 @@ void ABSPlayerCharacter::LoadMeshesFromEquipmentEffect(const UBSEquipmentEffect*
 
 void ABSPlayerCharacter::OnPlayerStateInitComplete()
 {
-	if (IsLocallyControlled())
-	{
-		if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
-		{
-			UBSLocalWidgetSubsystem* WidgetSubsystem = 
-				PS->GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-			WidgetSubsystem->CreatePlayerUI(PS->GetPlayerController());
-		}
-		 
-		//Local world space UI elements here
-	}
+	const ABSPlayerState* PS = GetPlayerState<ABSPlayerState>();
+	
+	DefaultCameraOffset = SpringArmComponent->TargetOffset;
+	DefaultCameraOffset.X = SpringArmComponent->TargetArmLength;
 	
 	if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
 	{
 		AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
+	}
+	
+	if (!IsRunningDedicatedServer() && PS)
+	{
+		PlayerNameTextComponent->SetText(FText::FromString(PS->GetPlayerName()));
 	}
 }
 
