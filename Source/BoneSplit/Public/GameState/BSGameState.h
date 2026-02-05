@@ -17,6 +17,13 @@ public:
 	
 	explicit ABSGameState(const FObjectInitializer& Initializer);
 	
+	void Server_RequestPause(APlayerState* PS);
+	
+	void Server_ReleasePauseRequest(APlayerState* PS);
+	
+	UPROPERTY()
+	TArray<APlayerState*> PauseRequestedPlayers;
+	
 	UPROPERTY()
 	TObjectPtr<UBSTravelManager> TravelManagerComponent;
 };

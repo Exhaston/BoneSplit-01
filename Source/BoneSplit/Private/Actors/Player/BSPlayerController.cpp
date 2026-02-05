@@ -11,6 +11,9 @@
 #include "Components/TimelineComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerState.h"
+#include "Widgets/BSLocalWidgetSubsystem.h"
+#include "Widgets/CharacterWidgets/BSPauseMenu.h"
+#include "Widgets/CharacterWidgets/BSCharacterPane.h"
 
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -22,13 +25,8 @@ void ABSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 	
-	UEnhancedInputLocalPlayerSubsystem* Subsystem =
-	GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	
 	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	check(EnhancedInputComponent);
-	
-	Subsystem->AddMappingContext(MappingContext, 1);
 	
 	// =================================================================================================================
 	// Movement and Looking
@@ -60,6 +58,29 @@ void ABSPlayerController::SetupInputComponent()
 			AddYawInput(ValueX);
 		}
 	});	
+	
+	EnhancedInputComponent->BindActionValueLambda(PauseAction, ETriggerEvent::Started, 
+	[this](const FInputActionValue& Value)
+	{
+		UBSLocalWidgetSubsystem* LocalWidgetSubsystem = GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
+		if (LocalWidgetSubsystem->bIsPaused) return;
+		LocalWidgetSubsystem->AddWidgetToStack<UBSPauseMenu>(LocalWidgetSubsystem->PauseMenuWidgetClass);
+	});	
+	
+	EnhancedInputComponent->BindActionValueLambda(CharacterPaneAction, ETriggerEvent::Started, 
+	[this](const FInputActionValue& Value)
+	{
+		UBSLocalWidgetSubsystem* LocalWidgetSubsystem = GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
+		if (LocalWidgetSubsystem->IsWidgetActive(UBSCharacterPane::StaticClass()))
+		{
+			LocalWidgetSubsystem->RootWidgetInstance->WidgetStack->GetActiveWidget()->DeactivateWidget();
+		}
+		else
+		{
+			LocalWidgetSubsystem->AddWidgetToStack<UBSCharacterPane>(LocalWidgetSubsystem->CharacterPaneWidgetClass);
+		}
+
+	});
 	
 	EnhancedInputComponent->BindActionValueLambda(FreeCamAction, ETriggerEvent::Started, 
 	[this](const FInputActionValue& Value)
@@ -140,22 +161,22 @@ void ABSPlayerController::SetupInputComponent()
 	// =================================================================================================================
 	
 	BindAbilityToAction(EnhancedInputComponent, 
-	SpecialAction, Special);
+	SpecialAction, 5);
 	
 	BindAbilityToAction(EnhancedInputComponent, 
 	SoulAction, Soul);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	HeadAction, Head);
+	HeadAction, 3);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	PrimaryArmAction, PrimaryArm);
+	PrimaryArmAction, 1);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	SecondaryArmAction,SecondaryArm);
+	SecondaryArmAction,2);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	LegsAction, Legs);
+	LegsAction, 4);
 }
 
 void ABSPlayerController::Tick(const float DeltaSeconds)

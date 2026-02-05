@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "BSSaveGame.h"
-#include "Components/Inventory/BSEquipment.h"
 #include "GameFramework/PlayerState.h"
 #include "BSPlayerState.generated.h"
 
@@ -28,14 +27,6 @@ public:
 	
 	virtual void BeginPlay() override;
 	
-	UPROPERTY()
-	FTimerHandle AutoSaveHandle;
-	UFUNCTION()
-	void OnSaveLoaded(UBSSaveGame* SaveGame);
-	void SetAutoSaveTimer();
-	UFUNCTION()
-	void OnAutoSave();
-
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	//Send the save data to the server to initialize the Asc.
@@ -62,7 +53,30 @@ public:
 	
 	UBSAbilitySystemComponent* GetBSAbilitySystem() const;
 	
+	UFUNCTION(Server, Reliable)
+	void Server_ReceiveWantPause();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_ReceiveWantResume();
+	
 protected:
+	
+	UPROPERTY()
+	FTimerHandle AutoSaveHandle;
+	
+	UFUNCTION()
+	void OnSaveLoaded(UBSSaveGame* SaveGame);
+	
+	void SetAutoSaveTimer();
+	
+	UFUNCTION()
+	void OnAutoSave();
+	
+	UFUNCTION()
+	void OnPlayerPaused();
+	
+	UFUNCTION()
+	void OnPlayerResumed();
 	
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing=OnRep_Initialized)
 	bool bInitialized = false;

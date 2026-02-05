@@ -12,6 +12,9 @@
 #include "Widgets/BSWHud.h"
 #include "Widgets/BSWRoot.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
+#include "Widgets/CharacterWidgets/BSCharacterPane.h"
+#include "Widgets/CharacterWidgets/BSPauseMenu.h"
+#include "Widgets/BSWToolTipBase.h"
 #include "BSDeveloperSettings.generated.h"
 
 /**
@@ -56,6 +59,15 @@ public:
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSWHud> HudWidgetClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSCharacterPane> CharacterPaneWidgetClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSPauseMenu> PauseMenuWidgetClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSWToolTipBase> DefaultTooltipWidgetClass;
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSLoadingScreenWidget> LoadingScreenWidget;

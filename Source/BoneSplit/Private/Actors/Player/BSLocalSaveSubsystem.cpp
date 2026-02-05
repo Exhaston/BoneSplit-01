@@ -145,6 +145,11 @@ void UBSLocalSaveSubsystem::PopulateAscFromSaveData(UAbilitySystemComponent* Asc
 	}
 }
 
+void UBSLocalSaveSubsystem::SetProfileName(FString InProfileName)
+{
+	CurrentProfile = InProfileName;
+}
+
 void UBSLocalSaveSubsystem::SaveAscData(UAbilitySystemComponent* Asc, FBSSaveData& Data)
 {
 	//Save attribute bases

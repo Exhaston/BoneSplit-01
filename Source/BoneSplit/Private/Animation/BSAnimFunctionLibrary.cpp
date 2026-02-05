@@ -26,6 +26,7 @@ if (!MeshComp || !MeshComp->GetOwner()) return;
 void FBSAnimEventPayloadData::SendPayload(
 UAbilitySystemComponent* SourceAsc, AActor* TargetActor) const
 {
+	if (!SourceAsc || !TargetActor) return;
 	FGameplayEventData Payload;
 	Payload.EventTag = EventPayloadTag;
 	Payload.EventMagnitude = EventMagnitude;

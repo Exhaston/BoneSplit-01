@@ -166,7 +166,8 @@ bool UBSPlayerMovementComponent::DoJump(const bool bReplayingMoves, const float 
 				ConsumeCoyoteTime();
 			}
 			
-			if (!IsMovingOnGround()) //Double jump snap to input direction. GetCurrentAcceleration is replicated
+			//Double jump snap to input direction. GetCurrentAcceleration is replicated
+			if (!IsMovingOnGround() && !FMath::IsNearlyZero(GetCurrentAcceleration().Length()))
 			{
 				const float VerticalVelocity = Velocity.Z;
 				Velocity = GetCurrentAcceleration().GetSafeNormal() * GetMaxSpeed();

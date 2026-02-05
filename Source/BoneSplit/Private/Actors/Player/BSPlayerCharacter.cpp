@@ -14,6 +14,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "BoneSplit/BoneSplit.h"
+#include "Widgets/BSLocalWidgetSubsystem.h"
 
 #define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName, SetLeader) \
 ComponentName = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT(DisplayName)); \
@@ -42,6 +44,7 @@ Super(ObjectInitializer
 	
 	GetMesh()->SetReceivesDecals(false);
 	GetMesh()->SetCollisionProfileName("CharacterMesh");
+	GetMesh()->SetTickableWhenPaused(false);
 	
 	if (UBSEquipmentMeshComponent* EquipmentMesh = Cast<UBSEquipmentMeshComponent>(GetMesh()))
 	{
@@ -81,12 +84,17 @@ Super(ObjectInitializer
 	PlayerNameTextComponent->SetVerticalAlignment(EVRTA_TextCenter);
 }
 
+void ABSPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
 void ABSPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	InitializeCharacter(); //Init for server
+	
 }
-
 void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -100,8 +108,42 @@ void ABSPlayerCharacter::OnRep_PlayerState()
 	InitializeCharacter(); //Init for Client(s)
 }
 
+void ABSPlayerCharacter::OnUICharacterPane()
+{
+	SpringArmComponent->bUsePawnControlRotation = false;
+	SpringArmComponent->SetRelativeRotation({0, -45, 0});
+}
+
+void ABSPlayerCharacter::OnUICharacterPaneClose()
+{	
+	SpringArmComponent->bUsePawnControlRotation = true;
+	SpringArmComponent->SetRelativeRotation({0, 90, 0});
+}
+
 void ABSPlayerCharacter::InitializeCharacter()
 {
+	if (!IsLocallyControlled())
+	{	
+		PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowPlayerHoverNames->GetBool());
+		BSConsoleVariables::CVarShowPlayerHoverNames->OnChangedDelegate().AddWeakLambda(
+		this, [this](IConsoleVariable* ConsoleVariable)
+		{
+			if (IsValid(this))
+			{
+				PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
+			}
+		});
+	}
+	else
+	{
+		PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowOwnHoverName->GetBool());
+		BSConsoleVariables::CVarShowOwnHoverName->OnChangedDelegate().AddWeakLambda(
+		this, [this](IConsoleVariable* ConsoleVariable)
+		{
+			PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
+		});
+	}
+	
 	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
 	{
 		AbilitySystemComponent = PS->GetBSAbilitySystem();
@@ -183,8 +225,18 @@ void ABSPlayerCharacter::OnPlayerStateInitComplete()
 {
 	const ABSPlayerState* PS = GetPlayerState<ABSPlayerState>();
 	
-	DefaultCameraOffset = SpringArmComponent->TargetOffset;
-	DefaultCameraOffset.X = SpringArmComponent->TargetArmLength;
+	if (IsLocallyControlled())
+	{
+		if (PS->GetPlayerController())
+		{
+			if (const ULocalPlayer* LocalPlayer = GetController<APlayerController>()->GetLocalPlayer())
+			{
+				UBSLocalWidgetSubsystem* LocalWidgetSubsystem = LocalPlayer->GetSubsystem<UBSLocalWidgetSubsystem>();
+				LocalWidgetSubsystem->GetOnCharacterPaneDelegate().AddDynamic(this, &ABSPlayerCharacter::OnUICharacterPane);
+				LocalWidgetSubsystem->GetOnCharacterPaneCloseDelegate().AddDynamic(this, &ABSPlayerCharacter::OnUICharacterPaneClose);
+			}
+		}
+	}
 	
 	if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
 	{

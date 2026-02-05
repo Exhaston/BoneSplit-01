@@ -4,10 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "BoneSplit/BoneSplit.h"
 #include "BSActionButton.generated.h"
 
+struct FGameplayAbilitySpec;
+class UAbilitySystemComponent;
 class UCommonLazyImage;
 /**
  * 
@@ -19,15 +22,39 @@ class BONESPLIT_API UBSActionButton : public UCommonUserWidget
 	
 public:
 	
-	virtual void NativeConstruct() override;
+	virtual void InitializeActionButton(UAbilitySystemComponent* InAbilitySystemComponent);
+	
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const;
+	
+	UMaterialInstanceDynamic* GetButtonMaterial() const;
+	
+	FGameplayAbilitySpec* GetAbilitySpecForID();
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="Ability"))
+	int32 InputID;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	FGameplayTag AbilityTag = BSTags::Ability_Player_PrimaryArm;
+	FName TextureParamName = FName("IconTexture");
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName PercentParamName = FName("Percent");
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName CanActivateParam = FName("CanActivate");
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName PressedParamName = FName("Pressed");
 	
 	UPROPERTY(meta=(BindWidget))
 	UCommonLazyImage* AbilityIcon;
 	
-	UPROPERTY(meta=(BindWidget))
-	UCommonLazyImage* BackgroundImage;
+protected:
 	
+	UPROPERTY()
+	FGameplayAbilitySpecHandle CurrentCachedHandle;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 };

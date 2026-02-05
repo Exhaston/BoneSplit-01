@@ -32,6 +32,8 @@ public:
 	//Returns the correct BP subclass, as defined in developer settings.
 	TSubclassOf<UBSSaveGame> GetSaveGameClass();
 	
+	virtual void SetProfileName(FString InProfileName);
+	
 	//Gets all the available 'profile' names. Finds the save files in the folder.
 	static bool GetSaveGameNames(TArray<FString>& FoundSaves, const int32 UserIndex);
 	
@@ -60,7 +62,7 @@ public:
 	FBSAsyncSaveDelegate& GetOnAsyncSaveCompleteDelegate() { return OnAsyncSaveComplete; }
 	
 	FBSAsyncLoadDelegate& GetOnAsyncLoadCompleteDelegate() { return OnAsyncLoadComplete; }
-	
+
 protected:
 	
 	FBSAsyncSaveDelegate OnAsyncSaveComplete;

@@ -279,7 +279,12 @@ public:
 	virtual void OnRep_SoulCharge(const FGameplayAttributeData& OldAttributeData)
 	{
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, SoulCharge, OldAttributeData);
-	}
+	}	
+	
+	//Non replicated "static" value for simplicity when selecting attributes
+	UPROPERTY(BlueprintReadOnly)
+	FGameplayAttributeData MaxSoulCharge = 1;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, MaxSoulCharge)
 	
 	// =================================================================================================================
 	// Thorns - Reflect damage back to attackers

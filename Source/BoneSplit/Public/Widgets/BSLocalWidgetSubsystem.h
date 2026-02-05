@@ -9,8 +9,12 @@
 #include "Widgets/CommonActivatableWidgetContainer.h"
 #include "BSLocalWidgetSubsystem.generated.h"
 
+class UBSCharacterPane;
+class UBSPauseMenu;
 class UBSWHud;
 class UBSWRoot;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBSWidgetDelegate);
 /**
  * 
  */
@@ -21,7 +25,20 @@ class BONESPLIT_API UBSLocalWidgetSubsystem : public ULocalPlayerSubsystem
 	
 public:
 	
+	static UBSLocalWidgetSubsystem* GetWidgetSubsystem(const UUserWidget* Context);
+	static UBSLocalWidgetSubsystem* GetWidgetSubsystem(const APlayerController* Context);
+	static UBSLocalWidgetSubsystem* GetWidgetSubsystem(const ULocalPlayer* Context);
+	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	
+	template <class T>
+	T* CreateWidgetFromClass(TSubclassOf<T> WidgetToAdd)
+	{
+		return CreateWidget<T>(GetLocalPlayer()->GetPlayerController(GetWorld()), WidgetToAdd);
+	}
+	
+	UBSWToolTipBase* CreateGenericToolTip(
+		const FText& Header, const FText& Text, const FText& AltHeader = FText::GetEmpty());
 	
 	//Initializes the player UI Root Widget. This is required to push and remove widgets.
 	virtual UBSWRoot* CreatePlayerUI(APlayerController* InPlayerController);
@@ -32,18 +49,61 @@ public:
 		check(RootWidgetInstance);
 		static_assert(std::is_base_of_v<UCommonActivatableWidget, T>,
 			"T must be a subclass of UCommonActivatableWidget");
+		
+		if (RootWidgetInstance->WidgetStack->GetWidgetList().ContainsByPredicate(
+			[WidgetToAdd](const UCommonActivatableWidget* Widget)
+		{
+				return Widget->IsA(WidgetToAdd);
+		})) return nullptr; //Already contains               
+		
 		return RootWidgetInstance->WidgetStack->AddWidget<T>(WidgetToAdd);
 	}
+	
+	virtual bool IsWidgetActive(TSubclassOf<UCommonActivatableWidget> WidgetClass);
 	
 	//Removes an activatable widget from the stack by class
 	void RemoveWidgetFromStack(TSubclassOf<UCommonActivatableWidget> WidgetInstance) const;
 	
+	//Will be called whenever a player is in the pause menu
+	FBSWidgetDelegate& GetOnPauseMenuDelegate();     
+	
+	//Will be called whenever the player left the pause menu
+	FBSWidgetDelegate& GetOnResumeDelegate();
+	
+	//Will be called whenever a player is in the pause menu
+	FBSWidgetDelegate& GetOnCharacterPaneDelegate() { return OnCharacterPaneDelegate; }     
+	
+	//Will be called whenever the player left the pause menu
+	FBSWidgetDelegate& GetOnCharacterPaneCloseDelegate() { return OnCloseCharacterPaneDelegate; }
+	
+	UBSWRoot* GetRootWidgetInstance();
+	
 	UPROPERTY(Transient)
 	UBSWRoot* RootWidgetInstance;
+	
+	UPROPERTY()
+	bool bIsPaused = false;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TSubclassOf<UBSWRoot> RootWidgetClass;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TSubclassOf<UBSWHud> HudWidgetClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSCharacterPane> CharacterPaneWidgetClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSPauseMenu> PauseMenuWidgetClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSWToolTipBase> DefaultToolTipWidgetClass;
+	
+protected:
+	
+	FBSWidgetDelegate OnCharacterPaneDelegate;
+	FBSWidgetDelegate OnCloseCharacterPaneDelegate;
+	
+	FBSWidgetDelegate OnPauseMenuDelegate;
+	FBSWidgetDelegate OnResumeDelegate;
 };

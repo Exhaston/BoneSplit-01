@@ -107,6 +107,9 @@ protected:
 	UInputAction* PauseAction;
 	
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
+	UInputAction* CharacterPaneAction;
+	
+	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
 	UInputAction* MoveAction;
 	
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")

@@ -44,6 +44,8 @@ public:
 	
 	explicit ABSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 	
+	virtual void BeginPlay() override;
+	
 	virtual void PossessedBy(AController* NewController) override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -54,11 +56,11 @@ public:
 	// Camera
 	// ================================================================================================================= 
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	FVector CameraMenuOffset = {-150, -150, 0 };
+	UFUNCTION()
+	void OnUICharacterPane();
 	
-	UPROPERTY()
-	FVector DefaultCameraOffset;
+	UFUNCTION()
+	void OnUICharacterPaneClose();
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TObjectPtr<USpringArmComponent> SpringArmComponent;

@@ -29,11 +29,6 @@ void UBSAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 void UBSAbilityBase::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
 {
 	Super::OnAvatarSet(ActorInfo, Spec);
-	
-	if (FGameplayAbilitySpec* CurrentSpec = GetCurrentAbilitySpec(); PlayerInputID != None)
-	{
-		CurrentSpec->InputID = PlayerInputID;
-	}
 }
 
 TSoftObjectPtr<UTexture2D> UBSAbilityBase::GetIcon_Implementation() const

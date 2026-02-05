@@ -73,7 +73,7 @@ float UBSAttributeSet::GetMaxForAttribute(const FGameplayAttribute& Attribute) c
 	if (Attribute == GetHealthAttribute() && GetMaxHealth() != -1) return GetMaxHealth();
 	
 	if (Attribute == GetManaAttribute() && GetMaxMana() != -1) return GetMaxMana();
-	
+	if (Attribute == GetSoulChargeAttribute()) return 1;
 	return FLT_MAX;
 }
 

@@ -9,7 +9,8 @@
 #include "Actors/Player/BSPlayerState.h"
 #include "Components/TalentSystem/BSTalentComponent.h"
 #include "Components/TalentSystem/BSTalentEffect.h"
-
+#include "Widgets/BSLocalWidgetSubsystem.h"
+#include "Widgets/BSWToolTipBase.h"
 
 void UBSWTalentNode::NativePreConstruct()
 {
@@ -36,6 +37,13 @@ void UBSWTalentNode::NativeConstruct()
 		
 		if (const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>())
 		{
+			if (UBSLocalWidgetSubsystem* WidgetSubsystem = UBSLocalWidgetSubsystem::GetWidgetSubsystem(this))
+			{
+				UBSWToolTipBase* ToolTip = WidgetSubsystem->CreateGenericToolTip(
+					TalentCDO->TalentName, TalentCDO->Description, FText::FromString("Talent"));
+				SetToolTip(ToolTip);
+			}
+			
 			UpdateTalentWidget();
 			PS->GetAbilitySystemComponent()->OnActiveGameplayEffectAddedDelegateToSelf.AddWeakLambda(this, [this, PS]
 				(UAbilitySystemComponent* Asc, const FGameplayEffectSpec& Spec, FActiveGameplayEffectHandle Handle)
@@ -101,7 +109,6 @@ void UBSWTalentNode::UpdateText(int32 Level)
 	const FString MaxLevel = FString::FromInt(TalentCDO->GetMaxLevel());
 	LevelText->SetText(FText::FromString(CurrentLevel + "/" + MaxLevel));
 	
-	SetToolTipText(FText::Format(FText::FromString("{0}, {1}"), TalentCDO->TalentName, TalentCDO->Description ));
 }
 
 void UBSWTalentNode::NativeOnPressed()

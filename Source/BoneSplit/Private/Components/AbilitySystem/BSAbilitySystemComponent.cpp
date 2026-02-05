@@ -40,10 +40,12 @@ void UBSAbilitySystemComponent::NotifyAbilityActivated(const FGameplayAbilitySpe
 	UGameplayAbility* Ability)
 {
 	Super::NotifyAbilityActivated(Handle, Ability);
+	/*
 	if (GetCurrentMontage())
 	{
 		StopMontageIfCurrent(*GetCurrentMontage(), -1);
 	}
+	*/
 }
 
 void UBSAbilitySystemComponent::AdjustBlendTimeForMontage(

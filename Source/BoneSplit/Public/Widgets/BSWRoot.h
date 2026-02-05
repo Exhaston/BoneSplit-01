@@ -6,6 +6,7 @@
 #include "CommonUserWidget.h"
 #include "BSWRoot.generated.h"
 
+class UBSWToolTipBase;
 class UCommonActivatableWidgetStack;
 /**
  * 

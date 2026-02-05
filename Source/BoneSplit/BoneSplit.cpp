@@ -204,6 +204,27 @@ namespace BSConsoleVariables
 	TEXT("false = Default"),
 	ECVF_Default);
 	
-
+	TAutoConsoleVariable<bool> CVarBSBarsShowNumbers(
+	TEXT("BS.NamePlates.ShowNumbers"),
+	false,
+	TEXT("false = Default"),
+	ECVF_Default);
 	
+	TAutoConsoleVariable<bool> CVarBSBarsShowPercentages(
+	TEXT("BS.NamePlates.ShowPercentages"),
+	false,
+	TEXT("false = Default"),
+	ECVF_Default);	
+	
+	TAutoConsoleVariable<bool> CVarShowPlayerHoverNames(
+	TEXT("BS.PlayerNames.ShowOthers"),
+	true,
+	TEXT("true = Default"),
+	ECVF_Default);	
+	
+	TAutoConsoleVariable<bool> CVarShowOwnHoverName(
+	TEXT("BS.PlayerNames.ShowSelf"),
+	false,
+	TEXT("false = Default"),
+	ECVF_Default);
 }

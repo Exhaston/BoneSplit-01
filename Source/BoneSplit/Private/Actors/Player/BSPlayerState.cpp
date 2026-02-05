@@ -10,6 +10,7 @@
 #include "Components/TalentSystem/BSTalentComponent.h"
 #include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "GameSettings/BSDeveloperSettings.h"
+#include "GameState/BSGameState.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
@@ -44,6 +45,7 @@ void ABSPlayerState::BeginPlay()
 	}
 }
 
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
 void ABSPlayerState::OnSaveLoaded(UBSSaveGame* SaveGame)
 {
 	Server_ReceiveSaveData(SaveGame->SaveData);
@@ -73,7 +75,7 @@ void ABSPlayerState::SetAutoSaveTimer()
 void ABSPlayerState::OnAutoSave()
 {
 	SetAutoSaveTimer();
-	GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Auto save complete"));
+	UE_LOG(BoneSplit, Display, TEXT("Auto Save Completed"));
 }
 
 void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -86,6 +88,34 @@ void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const
 {
 	return AbilitySystemComponent.Get();
+}
+
+void ABSPlayerState::OnPlayerPaused()
+{
+	Server_ReceiveWantPause();
+}
+
+void ABSPlayerState::OnPlayerResumed()
+{
+	Server_ReceiveWantResume();
+}
+
+void ABSPlayerState::Server_ReceiveWantResume_Implementation()
+{
+	if (IsRunningDedicatedServer()) return;
+	if (ABSGameState* GS = GetWorld()->GetGameState<ABSGameState>())
+	{
+		GS->Server_ReleasePauseRequest(this);
+	}
+}
+
+void ABSPlayerState::Server_ReceiveWantPause_Implementation()
+{
+	if (IsRunningDedicatedServer()) return;
+	if (ABSGameState* GS = GetWorld()->GetGameState<ABSGameState>())
+	{
+		GS->Server_RequestPause(this);
+	}
 }
 
 void ABSPlayerState::OnRep_Initialized() const
@@ -103,10 +133,16 @@ void ABSPlayerState::OnRep_Initialized() const
 			UBSLocalWidgetSubsystem* WidgetSubsystem = 
 				GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
 			
+			
 			WidgetSubsystem->CreatePlayerUI(GetPlayerController());
 			
-			UBSLoadingScreenSubsystem* PSDS = GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>();
-			PSDS->RemoveLoadingScreen();
+			WidgetSubsystem->GetOnPauseMenuDelegate().AddDynamic(this, &ABSPlayerState::OnPlayerPaused);
+			WidgetSubsystem->GetOnResumeDelegate().AddDynamic(this, &ABSPlayerState::OnPlayerResumed);
+			
+			UBSLoadingScreenSubsystem* LoadingScreenSubsystem = 
+				GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>();
+			
+			LoadingScreenSubsystem->RemoveLoadingScreen();
 		}
 	}
 }

@@ -25,6 +25,22 @@ public:
 	UAnimMontage* MontageSequence;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName MontageStartSection = NAME_None;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(ClampMin=0.1))
+	float MontageSpeed = 1;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	float MontageRootMotionScale = 1;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	bool bIsComboAbility = true;
+	                                            
+	//If this is set to false it expects a section after the current section to have a 'recover' sequence to idle
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(EditCondition=bIsComboAbility, EditConditionHides))
+	bool bAutoBlendFromSectionEnd = false;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(EditCondition=bIsComboAbility, EditConditionHides))
 	FGameplayTag TriggerComboTag = BSTags::AnimEvent_StoreCombo;
 	
 	UFUNCTION()
@@ -32,4 +48,6 @@ public:
 	
 	UFUNCTION()
 	void OnEventReceived(FGameplayTag Tag, FGameplayEventData EventData);
+	
+	virtual void HandleMontageComboEnd(FGameplayTag Tag, FGameplayEventData EventData);
 };

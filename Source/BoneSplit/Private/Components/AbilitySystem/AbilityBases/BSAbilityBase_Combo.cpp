@@ -19,18 +19,23 @@ void UBSAbilityBase_Combo::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	}
 	
 	FGameplayTagContainer Tags;
-	Tags.AddTagFast(TriggerComboTag);
+	
+	if (bIsComboAbility)
+	{
+		Tags.AddTagFast(TriggerComboTag);
+	}
 	
 	UBSAT_PlayMontageAndWaitForEvent* MontageTask = UBSAT_PlayMontageAndWaitForEvent::PlayMontageAndWaitForEvent(
 		this, 
 		"ComboMontageTask",
 		MontageSequence,
 		Tags,
-		1,
-		NAME_None,
-		false, //Avoid this montage end section to end when the ability actually ended.
-		1);
+		MontageSpeed,
+		MontageStartSection,
+		bAutoBlendFromSectionEnd, //Avoid this montage end section to end when the ability actually ended.
+		MontageRootMotionScale);
 	
+	MontageTask->OnInterrupted.AddDynamic(this, &UBSAbilityBase_Combo::OnMontageEnded);
 	MontageTask->OnCompleted.AddDynamic(this, &UBSAbilityBase_Combo::OnMontageEnded);
 	MontageTask->EventReceived.AddDynamic(this, &UBSAbilityBase_Combo::OnEventReceived);
 	MontageTask->ReadyForActivation();
@@ -44,11 +49,20 @@ void UBSAbilityBase_Combo::OnMontageEnded(FGameplayTag Tag, FGameplayEventData E
 
 void UBSAbilityBase_Combo::OnEventReceived(const FGameplayTag Tag, FGameplayEventData EventData)
 {
+	if (bIsComboAbility)
+	{
+		HandleMontageComboEnd(Tag, EventData);
+	}
+}
+
+void UBSAbilityBase_Combo::HandleMontageComboEnd(FGameplayTag Tag, FGameplayEventData EventData)
+{
 	if (Tag.MatchesTagExact(TriggerComboTag))
 	{
 		if (!GetCurrentAbilitySpec()->InputPressed)
 		{
-			if (const UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance())
+			if (const UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance(); 
+				AnimInstance && bAutoBlendFromSectionEnd)
 			{
 				const FName CurrentSection = AnimInstance->Montage_GetCurrentSection(GetCurrentMontage());
 				
