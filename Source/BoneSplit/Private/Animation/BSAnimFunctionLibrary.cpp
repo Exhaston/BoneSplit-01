@@ -6,19 +6,14 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "AudioDevice.h"
-#include "Animation/AnimNotifies/AnimNotify_PlaySound.h"
 #include "Audio/ActorSoundParameterInterface.h"
 #include "BoneSplit/BoneSplit.h"
-#include "Components/AudioComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/AbilitySystem/BSDynamicDecalComponent.h"
 #include "Components/AbilitySystem/BSShapeLibrary.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameSettings/BSDeveloperSettings.h"
-#include "Kismet/GameplayStatics.h"
 
 #define ENSURE_OWNER \
 if (!MeshComp || !MeshComp->GetOwner()) return;
@@ -455,6 +450,76 @@ void UBSNotify_PhysicsSound::Notify(USkeletalMeshComponent* MeshComp, UAnimSeque
 				MoveTemp(AudioParams), 
 				ActiveSoundOwner);
 		}
+	}
+}
+
+UBSNotify_SpawnStaticMesh::UBSNotify_SpawnStaticMesh()
+{
+#if WITH_EDITOR
+	NotifyColor = FColor::Blue;
+#endif
+}
+
+#if WITH_EDITOR
+FString UBSNotify_SpawnStaticMesh::GetNotifyName_Implementation() const
+{
+	return "Spawn Static Mesh";
+}
+#endif
+
+void UBSNotify_SpawnStaticMesh::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+                                               const float TotalDuration, const FAnimNotifyEventReference& EventReference)
+{
+	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
+	
+	ENSURE_OWNER
+
+	if (StaticMeshInstances.Contains(MeshComp))
+	{
+		StaticMeshInstances[MeshComp]->DestroyComponent();
+		StaticMeshInstances.Remove(MeshComp);
+	}
+	
+	if (!StaticMesh) return;
+	
+	UStaticMeshComponent* NewComp =
+		StaticMeshInstances.Add(MeshComp, NewObject<UStaticMeshComponent>(MeshComp->GetOwner()));
+	
+	NewComp->SetStaticMesh(StaticMesh);
+	NewComp->SetReceivesDecals(false);
+	NewComp->SetupAttachment(MeshComp, ParentBone);
+	NewComp->SetRelativeTransform(RelativeTransform);
+	NewComp->RegisterComponent();
+}
+
+void UBSNotify_SpawnStaticMesh::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+	float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
+{
+	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
+	
+	ENSURE_OWNER
+	
+#if WITH_EDITOR
+	if (StaticMeshInstances.Contains(MeshComp))
+	{
+		StaticMeshInstances[MeshComp]->SetStaticMesh(StaticMesh);
+		StaticMeshInstances[MeshComp]->SetupAttachment(MeshComp, ParentBone);
+		StaticMeshInstances[MeshComp]->SetRelativeTransform(RelativeTransform);
+	}
+#endif
+}
+
+void UBSNotify_SpawnStaticMesh::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+                                          const FAnimNotifyEventReference& EventReference)
+{
+	Super::NotifyEnd(MeshComp, Animation, EventReference);
+	
+	ENSURE_OWNER
+	
+	if (StaticMeshInstances.Contains(MeshComp))
+	{
+		StaticMeshInstances[MeshComp]->DestroyComponent();
+		StaticMeshInstances.Remove(MeshComp);
 	}
 }
 

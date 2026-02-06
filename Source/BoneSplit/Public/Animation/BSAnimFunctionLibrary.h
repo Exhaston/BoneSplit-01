@@ -269,3 +269,45 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Units=Centimeters), Category="Trace")
 	float Distance = 100;
 };
+
+UCLASS(DisplayName="Spawn Static Mesh")
+class UBSNotify_SpawnStaticMesh : public UAnimNotifyState
+{
+	GENERATED_BODY()
+
+public:
+	
+	UBSNotify_SpawnStaticMesh();
+	
+#if WITH_EDITOR
+
+	virtual FString GetNotifyName_Implementation() const override;
+	
+#endif
+	
+	virtual void NotifyBegin(
+		USkeletalMeshComponent* MeshComp, 
+		UAnimSequenceBase* Animation, 
+		float TotalDuration, 
+		const FAnimNotifyEventReference& EventReference) override;
+	
+	virtual void NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference) override;
+	
+	virtual void NotifyEnd(
+		USkeletalMeshComponent* MeshComp, 
+		UAnimSequenceBase* Animation, 
+		const FAnimNotifyEventReference& EventReference) override;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(AnimNotifyBoneName=true))
+	FName ParentBone;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FTransform RelativeTransform;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	UStaticMesh* StaticMesh;
+	
+	UPROPERTY()
+	TMap<USkeletalMeshComponent*, UStaticMeshComponent*> StaticMeshInstances;
+	
+};

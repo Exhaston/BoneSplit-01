@@ -23,6 +23,14 @@ namespace BSTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_CombatEnded, "GameplayEvent.CombatEnded");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_EquipmentRefreshed, "GameplayEvent.EquipmentRefreshed");
 	
+	//EffectTags
+	
+	UE_DEFINE_GAMEPLAY_TAG(EffectTag_Important, "EffectTag.Important");
+	UE_DEFINE_GAMEPLAY_TAG(EffectTag_Critical, "EffectTag.Critical");
+	UE_DEFINE_GAMEPLAY_TAG(EffectTag_DamageType_Physical, "EffectTag.DamageType.Physical");
+	UE_DEFINE_GAMEPLAY_TAG(EffectTag_DamageType_Magic, "EffectTag.DamageType.Magic");
+	UE_DEFINE_GAMEPLAY_TAG(EffectTag_DamageType_Healing, "EffectTag.DamageType.Healing");
+	
 	// =================================================================================================================
 	// Anim Events
 	// =================================================================================================================
@@ -226,5 +234,23 @@ namespace BSConsoleVariables
 	TEXT("BS.PlayerNames.ShowSelf"),
 	false,
 	TEXT("false = Default"),
+	ECVF_Default);	
+	
+	TAutoConsoleVariable<bool> CVarBSShowDamageNumbers(
+	TEXT("BS.FloatingNumbers.ShowDamage"),
+	true,
+	TEXT("true = Default"),
+	ECVF_Default);	
+	
+	TAutoConsoleVariable<bool> CVarBSShowIncomingDamageNumbers(
+	TEXT("BS.FloatingNumbers.ShowIncomingDamage"),
+	true,
+	TEXT("true = Default"),
+	ECVF_Default);	
+	
+	TAutoConsoleVariable<bool> CVarBSShowHealingNumbers(
+	TEXT("BS.FloatingNumbers.ShowHealing"),
+	true,
+	TEXT("true = Default"),
 	ECVF_Default);
 }

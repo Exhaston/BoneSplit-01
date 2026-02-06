@@ -39,10 +39,6 @@ public:
 	
 	virtual void BeginPlay() override;
 	
-	virtual void Tick(float DeltaSeconds) override;
-	
-	virtual void PossessedBy(AController* NewController) override;
-	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	// =================================================================================================================
@@ -72,6 +68,11 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_OnDeath(UAbilitySystemComponent* SourceAsc, float Damage);
 	
+	
+	
+	UPROPERTY()
+	FTimerHandle DeathTimerHandle;
+	
 	UPROPERTY(ReplicatedUsing=OnRep_Death)
 	bool bIsDead = false;
 	
@@ -82,7 +83,7 @@ public:
 	
 	// =================================================================================================================
 	// Asc
-	// =================================================================================================================   
+	// ================================================================================================================= 
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
@@ -108,8 +109,6 @@ public:
 	UFUNCTION()
 	void OnCombatChanged(bool bCombat);
 	
-	virtual void Destroyed() override;
-	
 	virtual void NativeOnCombatBegin() override;
 	virtual void NativeOnCombatEnd() override;
 	virtual void NativeOnCombatTick(bool bReceivedToken, float DeltaTime) override;
@@ -119,11 +118,25 @@ public:
 
 protected:
 	
+	virtual void SetRandomColor();
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TArray<FLinearColor> ColorVariations;
+	
+	UPROPERTY(ReplicatedUsing=OnRep_RandomColor)
+	int32 RandomColor = -1;
+	
+	UFUNCTION()
+	void OnRep_RandomColor();
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bShowHealthBar = true;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TObjectPtr<UWidgetComponent> WidgetComponent;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TArray<UAnimMontage*> DeathAnimations;
 	
 	// =================================================================================================================
 	// Components
@@ -134,9 +147,6 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	FGameplayTagContainer GrantedTags;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	UBSFiniteStateComponent* StateMachineComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	UBSThreatComponent* ThreatComponent;

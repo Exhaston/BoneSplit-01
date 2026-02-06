@@ -4,11 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "AttributeSet.h"
 #include "BSAbilityLibrary.h"
 #include "UObject/Interface.h"
 #include "BSAbilitySystemInterface.generated.h"
 
 class UBSThreatComponent;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBSOnDamageOther, FGameplayAttribute, Attribute, float, Damage);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(
 	FBSOnDeathDelegate, UAbilitySystemComponent*, SourceAsc, UAbilitySystemComponent*, TargetAsc, float, Damage);

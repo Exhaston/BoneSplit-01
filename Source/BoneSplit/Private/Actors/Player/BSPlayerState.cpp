@@ -20,6 +20,9 @@ ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Su
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
 	AbilitySystemComponent->SetIsReplicated(true);
 	
+	AbilitySystemComponent->AddGameplayEventTagContainerDelegate(FGameplayTagContainer(BSTags::GameplayEvent_DamageDealt), 
+	FGameplayEventTagMulticastDelegate::FDelegate::CreateUObject(this, &ABSPlayerState::OnDamageOther));
+	
 	AttributeSetSubObject = CreateDefaultSubobject<UBSAttributeSet>(TEXT("AttributeSet"));
 	AbilitySystemComponent->AddAttributeSetSubobject(AttributeSetSubObject.Get());
 	
@@ -88,6 +91,26 @@ void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const
 {
 	return AbilitySystemComponent.Get();
+}
+
+void ABSPlayerState::OnDamageOther(FGameplayTag EventTag, const FGameplayEventData* Payload)
+{
+	if (HasAuthority())
+	{
+		Client_SpawnDamageNumber(*Payload);
+	}
+}
+
+void ABSPlayerState::Client_SpawnDamageNumber_Implementation(const FGameplayEventData Payload)
+{
+	if (const APlayerController* PC = GetPlayerController())
+	{
+		if (PC->GetLocalPlayer())
+		{
+			UBSLocalWidgetSubsystem* WidgetSubsystem = PC->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
+			WidgetSubsystem->SpawnDamageNumber(Payload);
+		}
+	}
 }
 
 void ABSPlayerState::OnPlayerPaused()

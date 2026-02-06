@@ -77,7 +77,7 @@ protected:
 	
 	virtual void BufferAbility(int32 ID);
 	
-	virtual void BindAbilityToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action, int32 ID);
+	virtual void BindAbilityToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action, int32 ID, bool bCanReTrigger = false);
 	
 	virtual void BindJumpToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action);
 	

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativeCharacter.h"
+#include "GameplayTagContainer.h"
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
@@ -171,5 +172,7 @@ protected:
 	
 	UFUNCTION()
 	void OnPlayerStateInitComplete();
+	
+
 	
 };

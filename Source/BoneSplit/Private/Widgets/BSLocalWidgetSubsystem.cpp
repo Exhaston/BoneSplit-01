@@ -51,6 +51,10 @@ void UBSLocalWidgetSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		DefaultToolTipWidgetClass = DS->DefaultTooltipWidgetClass.LoadSynchronous();
 	}
+	if (!DS->DefaultDamageNumberWidgetClass.IsNull())
+	{
+		DamageNumberWidgetClass = DS->DefaultDamageNumberWidgetClass.LoadSynchronous();
+	}
 }
 
 UBSWToolTipBase* UBSLocalWidgetSubsystem::CreateGenericToolTip(
@@ -68,6 +72,30 @@ UBSWRoot* UBSLocalWidgetSubsystem::CreatePlayerUI(APlayerController* InPlayerCon
 	RootWidgetInstance = CreateWidget<UBSWRoot>(InPlayerController, RootWidgetClass, "RootWidget");
 	RootWidgetInstance->AddToPlayerScreen();
 	return RootWidgetInstance;
+}
+
+void UBSLocalWidgetSubsystem::SpawnDamageNumber(const FGameplayEventData EventData)
+{
+	//TODO; This will be called A LOT. Maybe cache some values here to reduce load.
+	if (!GetRootWidgetInstance()) return;
+	if (!GetRootWidgetInstance()->GetOwningPlayerPawn()) return;
+	
+	bool bBlocked = false;
+	
+	if (GetRootWidgetInstance()->GetOwningPlayerPawn() == EventData.Target)
+	{
+		if (!BSConsoleVariables::CVarBSShowIncomingDamageNumbers.GetValueOnGameThread()) bBlocked = true;
+	}
+	else
+	{
+		if (!BSConsoleVariables::CVarBSShowDamageNumbers.GetValueOnGameThread()) bBlocked = true;
+	}
+	
+	if (bBlocked) return;
+	
+	UBSWDamageNumber* NewDamageNumber = CreateWidgetFromClass<UBSWDamageNumber>(DamageNumberWidgetClass);
+	NewDamageNumber->InitializeDamageNumber(EventData);
+	NewDamageNumber->AddToPlayerScreen();
 }
 
 bool UBSLocalWidgetSubsystem::IsWidgetActive(TSubclassOf<UCommonActivatableWidget> WidgetClass)

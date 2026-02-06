@@ -170,7 +170,7 @@ void ABSPlayerController::SetupInputComponent()
 	HeadAction, 3);
 	
 	BindAbilityToAction(EnhancedInputComponent,
-	PrimaryArmAction, 1);
+	PrimaryArmAction, 1, true);
 	
 	BindAbilityToAction(EnhancedInputComponent,
 	SecondaryArmAction,2);
@@ -285,13 +285,13 @@ void ABSPlayerController::BufferAbility(int32 ID)
 	BufferedAbilities.Add(NewBufferedAbility);
 }
 
-void ABSPlayerController::BindAbilityToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action, int32 ID)
+void ABSPlayerController::BindAbilityToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action, int32 ID, const bool bCanReTrigger)
 {
 	if (!Action) return;
-	EnhancedInputComponent->BindActionValueLambda(Action, ETriggerEvent::Started,
-	[this, ID](const FInputActionValue& Value)
+	EnhancedInputComponent->BindActionValueLambda(Action, bCanReTrigger ? ETriggerEvent::Triggered : ETriggerEvent::Started,
+	[this, ID, bCanReTrigger](const FInputActionValue& Value)
 	{
-		TryActivatePawnAbility(ID, true);
+		TryActivatePawnAbility(ID, !bCanReTrigger);
 		if (GetAbilitySystemComponent())
 		{
 			GetAbilitySystemComponent()->PressInputID(ID);

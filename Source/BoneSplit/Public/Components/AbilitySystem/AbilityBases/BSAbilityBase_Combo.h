@@ -31,6 +31,9 @@ public:
 	float MontageSpeed = 1;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	bool bScaleWithAttackSpeed = true;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	float MontageRootMotionScale = 1;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)

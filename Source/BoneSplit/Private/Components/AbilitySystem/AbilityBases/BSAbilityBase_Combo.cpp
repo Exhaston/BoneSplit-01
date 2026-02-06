@@ -31,8 +31,9 @@ void UBSAbilityBase_Combo::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		MontageSequence,
 		Tags,
 		MontageSpeed,
+		bScaleWithAttackSpeed,
 		MontageStartSection,
-		bAutoBlendFromSectionEnd, //Avoid this montage end section to end when the ability actually ended.
+		false, //Avoid this montage end section to end when the ability actually ended.
 		MontageRootMotionScale);
 	
 	MontageTask->OnInterrupted.AddDynamic(this, &UBSAbilityBase_Combo::OnMontageEnded);
@@ -62,8 +63,9 @@ void UBSAbilityBase_Combo::HandleMontageComboEnd(FGameplayTag Tag, FGameplayEven
 		if (!GetCurrentAbilitySpec()->InputPressed)
 		{
 			if (const UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance(); 
-				AnimInstance && bAutoBlendFromSectionEnd)
+				AnimInstance && !bAutoBlendFromSectionEnd)
 			{
+				GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("DID IT"));
 				const FName CurrentSection = AnimInstance->Montage_GetCurrentSection(GetCurrentMontage());
 				
 				const FName NextSection = 

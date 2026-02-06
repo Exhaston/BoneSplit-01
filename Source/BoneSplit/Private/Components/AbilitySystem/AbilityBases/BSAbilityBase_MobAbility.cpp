@@ -105,6 +105,7 @@ void UBSAbilityBase_MobAbility::StartMontageTask(
 		MontageAsset,
 		EventTags,
 		Rate,
+		true,
 		NAME_None,
 		true,
 		RootMotionScale);

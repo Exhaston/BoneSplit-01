@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "BSWRoot.h"
 #include "CommonActivatableWidget.h"
+#include "CharacterWidgets/BSWDamageNumber.h"
 #include "Subsystems/LocalPlayerSubsystem.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 #include "BSLocalWidgetSubsystem.generated.h"
@@ -59,6 +60,8 @@ public:
 		return RootWidgetInstance->WidgetStack->AddWidget<T>(WidgetToAdd);
 	}
 	
+	virtual void SpawnDamageNumber(FGameplayEventData EventData);
+	
 	virtual bool IsWidgetActive(TSubclassOf<UCommonActivatableWidget> WidgetClass);
 	
 	//Removes an activatable widget from the stack by class
@@ -99,6 +102,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TSubclassOf<UBSWToolTipBase> DefaultToolTipWidgetClass;
 	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSWDamageNumber> DamageNumberWidgetClass;
+
 protected:
 	
 	FBSWidgetDelegate OnCharacterPaneDelegate;

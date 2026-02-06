@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "Components/AbilitySystem/BSAttributeSet.h"
 #include "GameFramework/Character.h"
 
 UBSAT_PlayMontageAndWaitForEvent::UBSAT_PlayMontageAndWaitForEvent(const FObjectInitializer& ObjectInitializer)
@@ -88,7 +89,7 @@ void UBSAT_PlayMontageAndWaitForEvent::OnGameplayEvent(FGameplayTag EventTag, co
 }
 
 UBSAT_PlayMontageAndWaitForEvent* UBSAT_PlayMontageAndWaitForEvent::PlayMontageAndWaitForEvent(UGameplayAbility* OwningAbility,
-	FName TaskInstanceName, UAnimMontage* MontageToPlay, FGameplayTagContainer EventTags, float Rate, FName StartSection, bool bStopWhenAbilityEnds, float AnimRootMotionTranslationScale)
+	FName TaskInstanceName, UAnimMontage* MontageToPlay, FGameplayTagContainer EventTags, float Rate, bool bScaleWithAttackSpeed, FName StartSection, bool bStopWhenAbilityEnds, float AnimRootMotionTranslationScale)
 {
 	UAbilitySystemGlobals::NonShipping_ApplyGlobalAbilityScaler_Rate(Rate);
 
@@ -96,6 +97,7 @@ UBSAT_PlayMontageAndWaitForEvent* UBSAT_PlayMontageAndWaitForEvent::PlayMontageA
 	MyObj->MontageToPlay = MontageToPlay;
 	MyObj->EventTags = EventTags;
 	MyObj->Rate = Rate;
+	MyObj->bScaleWithAttackSpeed = bScaleWithAttackSpeed;
 	MyObj->StartSection = StartSection;
 	MyObj->AnimRootMotionTranslationScale = AnimRootMotionTranslationScale;
 	MyObj->bStopWhenAbilityEnds = bStopWhenAbilityEnds;
@@ -115,6 +117,9 @@ void UBSAT_PlayMontageAndWaitForEvent::Activate()
 
 	if (AbilitySystemComponent.IsValid())
 	{
+		float BonusRate = bScaleWithAttackSpeed ? 
+		AbilitySystemComponent.Get()->GetNumericAttribute(UBSAttributeSet::GetAttackSpeedAttribute()) : 1;
+		
 		const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
 		UAnimInstance* AnimInstance = ActorInfo->GetAnimInstance();
 		if (AnimInstance != nullptr)
@@ -125,13 +130,23 @@ void UBSAT_PlayMontageAndWaitForEvent::Activate()
 					this, &UBSAT_PlayMontageAndWaitForEvent::OnGameplayEvent));
 
 			if (AbilitySystemComponent->PlayMontage(Ability, Ability->GetCurrentActivationInfo(), 
-				MontageToPlay, Rate, StartSection) > 0.f)
+				MontageToPlay, Rate * BonusRate, StartSection) > 0.f)
 			{
 				// Playing a montage could potentially fire off a callback into game code which could kill this ability! Early out if we are  pending kill.
 				if (ShouldBroadcastAbilityTaskDelegates() == false)
 				{
 					return;
 				}
+				
+				AbilitySystemComponent.Get()->
+				GetGameplayAttributeValueChangeDelegate(UBSAttributeSet::GetAttackSpeedAttribute()).
+				AddWeakLambda(this, [this, AnimInstance](const FOnAttributeChangeData& Data)
+				{
+					if (AnimInstance)
+					{
+						AnimInstance->Montage_SetPlayRate(MontageToPlay, Rate * Data.NewValue);
+					}
+				});
 
 				CancelledHandle = Ability->OnGameplayAbilityCancelled.AddUObject(this, &UBSAT_PlayMontageAndWaitForEvent::OnAbilityCancelled);
 
@@ -200,6 +215,9 @@ void UBSAT_PlayMontageAndWaitForEvent::OnDestroy(bool AbilityEnded)
 
 	if (AbilitySystemComponent.IsValid())
 	{
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			UBSAttributeSet::GetAttackSpeedAttribute()).RemoveAll(this);
+		
 		AbilitySystemComponent->RemoveGameplayEventTagContainerDelegate(EventTags, EventHandle);
 	}
 

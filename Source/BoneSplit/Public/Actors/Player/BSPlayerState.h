@@ -61,6 +61,11 @@ public:
 	
 protected:
 	
+	void OnDamageOther(FGameplayTag EventTag, const FGameplayEventData* Payload);
+	
+	UFUNCTION(Client, Reliable)
+	void Client_SpawnDamageNumber(FGameplayEventData Payload);
+	
 	UPROPERTY()
 	FTimerHandle AutoSaveHandle;
 	

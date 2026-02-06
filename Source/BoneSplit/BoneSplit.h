@@ -74,6 +74,16 @@ namespace BSTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_EquipmentRefreshed);
 	
 	// =================================================================================================================
+	// EffectTags
+	// =================================================================================================================
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EffectTag_Important);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EffectTag_Critical);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EffectTag_DamageType_Physical);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EffectTag_DamageType_Magic);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(EffectTag_DamageType_Healing);
+	
+	// =================================================================================================================
 	// Anim Events
 	// =================================================================================================================
 	
@@ -233,4 +243,8 @@ namespace BSConsoleVariables
 	
 	extern TAutoConsoleVariable<bool> CVarShowPlayerHoverNames;
 	extern TAutoConsoleVariable<bool> CVarShowOwnHoverName;
+	
+	extern TAutoConsoleVariable<bool> CVarBSShowDamageNumbers;
+	extern TAutoConsoleVariable<bool> CVarBSShowIncomingDamageNumbers;
+	extern TAutoConsoleVariable<bool> CVarBSShowHealingNumbers;
 }

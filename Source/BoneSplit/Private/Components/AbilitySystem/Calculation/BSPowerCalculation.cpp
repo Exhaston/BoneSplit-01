@@ -9,6 +9,7 @@
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Components/Targeting/BSThreatInterface.h"
 #include "GameFramework/Character.h"
+#include "Kismet/KismetMathLibrary.h"
 
 UBSPowerCalculation::UBSPowerCalculation()
 {
@@ -135,10 +136,11 @@ void UBSPowerCalculation::Execute_Implementation(
     ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CritChanceDef, EvalParams, SourceCritChance);
     ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CritModDef, EvalParams, SourceCritMod);
     ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(PowerDef, EvalParams, SourcePower);
-
-    const float TotalCritChance = FMath::Clamp(BaseCritChance + SourceCritChance, 0.0f, 100.0f);
+    
     const float TotalCritMod = BaseCritMod + SourceCritMod;
-    const bool bCrit = FMath::FRandRange(0.0f, 1.0f) <= TotalCritChance * 0.01f;
+    const float TotalCritChance = FMath::Clamp(BaseCritChance + SourceCritChance, 0.0f, 1.f);
+    
+    const bool bCrit = UKismetMathLibrary::RandomBoolWithWeight(TotalCritChance);
     
     const float PowerDr = SourcePower / (SourcePower + DiminishingReturnFactor);
     const float PowerModifier = 1 + PowerDr;
@@ -199,12 +201,16 @@ void UBSPowerCalculation::Execute_Implementation(
     
     if (SourceAsc) //We broadcast event regardless of shields, damage done is damage done.
     {
-        FGameplayEventData Data;                     
+        FGameplayEventData Data;
+        Data.Target = TargetAsc->GetAvatarActor();
         Data.ContextHandle = Spec.GetEffectContext();
         Data.EventMagnitude = DamageRemaining;
+        FGameplayTagContainer EffectTags;
+        Spec.GetAllAssetTags(EffectTags);
+        Data.InstigatorTags.AppendTags(EffectTags);
         if (bCrit)
         {
-            Data.InstigatorTags.AddTag(BSTags::Effect_Crit);
+            Data.InstigatorTags.AddTagFast(BSTags::EffectTag_Critical);
         }
         SourceAsc->HandleGameplayEvent(BSTags::GameplayEvent_DamageDealt, &Data);
     }

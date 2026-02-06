@@ -2,6 +2,7 @@
 
 #include "Actors/Mob/BSMobCharacter.h"
 
+#include "AIController.h"
 #include "Actors/Mob/BSMobMovementComponent.h"
 #include "Actors/Mob/BSMobSubsystem.h"
 #include "Animation/BSAnimInstance.h"
@@ -9,10 +10,7 @@
 #include "Components/WidgetComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
-#include "Components/FSM/BSFiniteState.h"
-#include "Components/FSM/BSFiniteStateComponent.h"
 #include "Components/Targeting/BSThreatComponent.h"
-#include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/BSAttributeBar.h"
 
@@ -32,8 +30,6 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	ThreatComponent = CreateDefaultSubobject<UBSThreatComponent>(TEXT("ThreatComponent"));
 	ThreatComponent->OnCombatChanged.AddDynamic(this, &ABSMobCharacter::OnCombatChanged);
 	
-	StateMachineComponent = CreateDefaultSubobject<UBSFiniteStateComponent>(TEXT("StateMachineComponent"));
-	
 	GetReplicatedMovement_Mutable().RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
 	
 	GetMesh()->SetReceivesDecals(false);
@@ -42,6 +38,8 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	
 	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WorldUIInfo"));
 	WidgetComponent->SetupAttachment(GetMesh());
+	WidgetComponent->SetRelativeLocation({0,0, 100});
+	WidgetComponent->SetDrawSize({100, 20});
 }
 
 void ABSMobCharacter::BeginPlay()
@@ -50,9 +48,18 @@ void ABSMobCharacter::BeginPlay()
 	
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	GetCharacterMovement<UBSMobMovementComponent>()->InitializeAsc(AbilitySystemComponent);
-	Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance())->InitializeAbilitySystemComponent(AbilitySystemComponent);
+	
+	if (GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		if (UBSAnimInstance* BSAnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
+		{
+			BSAnimInstance->InitializeAbilitySystemComponent(AbilitySystemComponent);
+		}
+	}
+	
 	if (HasAuthority())
 	{
+		SetRandomColor();
 		int32 DifficultyLevel = 1;
 		
 		for (const auto& DefaultAbility : GameplayAbility)
@@ -72,10 +79,6 @@ void ABSMobCharacter::BeginPlay()
 		
 		AbilitySystemComponent->AddLooseGameplayTags(GrantedTags, 1, EGameplayTagReplicationState::TagAndCountToAll);
 	}
-	else
-	{
-		StateMachineComponent->SetActive(false); //Server only comp
-	}
 
 	if (UBSMobSubsystem* MobSubsystem = GetWorld()->GetSubsystem<UBSMobSubsystem>())
 	{
@@ -89,16 +92,6 @@ void ABSMobCharacter::BeginPlay()
 			Bar->InitializeAttributeBar(AbilitySystemComponent);
 		}
 	}
-}
-
-void ABSMobCharacter::Tick(const float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-}
-
-void ABSMobCharacter::PossessedBy(AController* NewController)
-{
-	Super::PossessedBy(NewController);
 }
 
 void ABSMobCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -150,15 +143,30 @@ FBSOnDeathDelegate& ABSMobCharacter::GetOnDeathDelegate()
 
 void ABSMobCharacter::Die(UAbilitySystemComponent* SourceAsc, float Damage)
 {
-	if (HasAuthority())
-	{
+	if (HasAuthority() && !bIsDead)
+	{             
+		if (GetController()) GetController()->UnPossess();
 		bIsDead = true;
-		Multicast_OnDeath(SourceAsc, Damage);
+		GetCharacterMovement()->Velocity = FVector::Zero();
+		
+		if (!IsActorBeingDestroyed() && GetIsReplicated()) Multicast_OnDeath(SourceAsc, Damage);
 	}
 }
 
 void ABSMobCharacter::Multicast_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage)
 {
+	//Stop further overlaps with this component
+	GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+	GetCapsuleComponent()->SetCollisionObjectType(ECC_WorldDynamic);
+	GetMesh()->SetGenerateOverlapEvents(false);
+	
+	if (SourceAsc && SourceAsc->GetAvatarActor())
+	{
+		FVector LookDir = SourceAsc->GetAvatarActor()->GetActorLocation() - GetActorLocation();
+		LookDir.Normalize();
+		SetActorRotation({0, LookDir.ToOrientationRotator().Yaw, 0});
+	}
+	
 	if (OnDeathDelegate.IsBound())
 	{
 		OnDeathDelegate.Broadcast(SourceAsc, GetAbilitySystemComponent(), Damage);	
@@ -166,7 +174,20 @@ void ABSMobCharacter::Multicast_OnDeath_Implementation(UAbilitySystemComponent* 
 	
 	Execute_BP_OnDeath(this, SourceAsc, Damage);
 	
-	Destroy();
+	if (GetMesh() && GetMesh()->GetAnimInstance() && !DeathAnimations.IsEmpty())
+	{
+		UAnimMontage* MontageToPlay = DeathAnimations[FMath::RandRange(0, DeathAnimations.Num() - 1)];
+		float DeathTime = PlayAnimMontage(MontageToPlay, 1);
+		
+		GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [this]()
+		{
+			Destroy();
+		}, DeathTime, false);
+	}
+	else
+	{
+		Destroy();
+	}
 }
 
 UBSThreatComponent* ABSMobCharacter::GetThreatComponent()
@@ -191,17 +212,6 @@ void ABSMobCharacter::Launch(const FVector LaunchMagnitude, const bool bAdditive
 		
 		Multicast_OnLaunched(LaunchMagnitude);
 	}
-}
-
-void ABSMobCharacter::Destroyed()
-{
-	StateMachineComponent->ChangeState(nullptr);
-	if (UBSMobSubsystem* MobSubsystem = GetWorld()->GetSubsystem<UBSMobSubsystem>())
-	{
-		MobSubsystem->UnRegisterMob(this);
-	}
-	
-	Super::Destroyed();
 }
 
 void ABSMobCharacter::NativeOnCombatBegin()
@@ -230,6 +240,23 @@ void ABSMobCharacter::BP_OnCombatChanged_Implementation(bool InCombat)
 float ABSMobCharacter::BP_GetAggroRange_Implementation()
 {
 	return AggroSphereRadius;
+}
+
+void ABSMobCharacter::SetRandomColor()
+{
+	if (!ColorVariations.IsEmpty() && HasAuthority())
+	{
+		RandomColor = FMath::RandRange(0, ColorVariations.Num() - 1);
+		OnRep_RandomColor();
+	}
+}
+
+void ABSMobCharacter::OnRep_RandomColor()
+{
+	if (RandomColor != -1 &&  ColorVariations.IsValidIndex(RandomColor))
+	{
+		GetMesh()->SetVectorParameterValueOnMaterials("Color", FVector(ColorVariations[RandomColor]));
+	}
 }
 
 void ABSMobCharacter::OnRep_OnCombatChanged()

@@ -77,6 +77,7 @@ public:
 			UAnimMontage* MontageToPlay,
 			FGameplayTagContainer EventTags,
 			float Rate = 1.f,
+			bool bScaleWithAttackSpeed = true,
 			FName StartSection = NAME_None,
 			bool bStopWhenAbilityEnds = true,
 			float AnimRootMotionTranslationScale = 1.f);
@@ -85,6 +86,9 @@ private:
 	/** Montage that is playing */
 	UPROPERTY()
 	UAnimMontage* MontageToPlay;
+	
+	UPROPERTY()
+	bool bScaleWithAttackSpeed;
 
 	/** List of tags to match against gameplay events */
 	UPROPERTY()

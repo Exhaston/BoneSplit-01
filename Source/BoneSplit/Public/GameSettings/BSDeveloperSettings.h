@@ -15,6 +15,7 @@
 #include "Widgets/CharacterWidgets/BSCharacterPane.h"
 #include "Widgets/CharacterWidgets/BSPauseMenu.h"
 #include "Widgets/BSWToolTipBase.h"
+#include "Widgets/CharacterWidgets/BSWDamageNumber.h"
 #include "BSDeveloperSettings.generated.h"
 
 /**
@@ -68,6 +69,9 @@ public:
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSWToolTipBase> DefaultTooltipWidgetClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSWDamageNumber> DefaultDamageNumberWidgetClass;
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSLoadingScreenWidget> LoadingScreenWidget;

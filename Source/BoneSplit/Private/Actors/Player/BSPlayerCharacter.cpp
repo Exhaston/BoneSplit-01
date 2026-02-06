@@ -122,26 +122,29 @@ void ABSPlayerCharacter::OnUICharacterPaneClose()
 
 void ABSPlayerCharacter::InitializeCharacter()
 {
-	if (!IsLocallyControlled())
-	{	
-		PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowPlayerHoverNames->GetBool());
-		BSConsoleVariables::CVarShowPlayerHoverNames->OnChangedDelegate().AddWeakLambda(
-		this, [this](IConsoleVariable* ConsoleVariable)
+	if (!IsRunningDedicatedServer())
+	{
+		if (!IsLocallyControlled())
+		{	
+			PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowPlayerHoverNames->GetBool());
+			BSConsoleVariables::CVarShowPlayerHoverNames->OnChangedDelegate().AddWeakLambda(
+			this, [this](IConsoleVariable* ConsoleVariable)
+			{
+				if (IsValid(this))
+				{
+					PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
+				}
+			});
+		}
+		else
 		{
-			if (IsValid(this))
+			PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowOwnHoverName->GetBool());
+			BSConsoleVariables::CVarShowOwnHoverName->OnChangedDelegate().AddWeakLambda(
+			this, [this](IConsoleVariable* ConsoleVariable)
 			{
 				PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
-			}
-		});
-	}
-	else
-	{
-		PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowOwnHoverName->GetBool());
-		BSConsoleVariables::CVarShowOwnHoverName->OnChangedDelegate().AddWeakLambda(
-		this, [this](IConsoleVariable* ConsoleVariable)
-		{
-			PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
-		});
+			});
+		}
 	}
 	
 	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
