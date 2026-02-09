@@ -12,7 +12,7 @@
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "Widgets/BSAttributeBar.h"
+#include "Widgets/HUD/BSAttributeBar.h"
 
 ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) : 
 Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(CharacterMovementComponentName))
@@ -149,11 +149,17 @@ void ABSMobCharacter::Die(UAbilitySystemComponent* SourceAsc, float Damage)
 		bIsDead = true;
 		GetCharacterMovement()->Velocity = FVector::Zero();
 		
-		if (!IsActorBeingDestroyed() && GetIsReplicated()) Multicast_OnDeath(SourceAsc, Damage);
+		UAnimMontage* MontageToPlay = nullptr;
+		if (!DeathAnimations.IsEmpty())
+		{
+			 MontageToPlay = DeathAnimations[FMath::RandRange(0, DeathAnimations.Num() - 1)];
+		}
+		
+		if (!IsActorBeingDestroyed() && GetIsReplicated()) Multicast_OnDeath(SourceAsc, Damage, MontageToPlay);
 	}
 }
 
-void ABSMobCharacter::Multicast_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage)
+void ABSMobCharacter::Multicast_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage, UAnimMontage* Montage)
 {
 	//Stop further overlaps with this component
 	GetCapsuleComponent()->SetGenerateOverlapEvents(false);
@@ -174,10 +180,10 @@ void ABSMobCharacter::Multicast_OnDeath_Implementation(UAbilitySystemComponent* 
 	
 	Execute_BP_OnDeath(this, SourceAsc, Damage);
 	
-	if (GetMesh() && GetMesh()->GetAnimInstance() && !DeathAnimations.IsEmpty())
+	if (Montage && GetMesh() && GetMesh()->GetAnimInstance())
 	{
-		UAnimMontage* MontageToPlay = DeathAnimations[FMath::RandRange(0, DeathAnimations.Num() - 1)];
-		float DeathTime = PlayAnimMontage(MontageToPlay, 1);
+
+		float DeathTime = PlayAnimMontage(Montage, 1);
 		
 		GetWorld()->GetTimerManager().SetTimer(DeathTimerHandle, [this]()
 		{

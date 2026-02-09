@@ -15,6 +15,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "BoneSplit/BoneSplit.h"
+#include "Components/InteractionSystem/BSInteractionComponent.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
 #define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName, SetLeader) \
@@ -82,6 +83,8 @@ Super(ObjectInitializer
 	PlayerNameTextComponent->SetText(FText::FromString("PlayerName"));
 	PlayerNameTextComponent->SetHorizontalAlignment(EHTA_Center);
 	PlayerNameTextComponent->SetVerticalAlignment(EVRTA_TextCenter);
+	
+	InteractionComponent = CreateDefaultSubobject<UBSInteractionComponent>(TEXT("InteractionComponent"));
 }
 
 void ABSPlayerCharacter::BeginPlay()
@@ -106,6 +109,24 @@ void ABSPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	InitializeCharacter(); //Init for Client(s)
+}
+
+void ABSPlayerCharacter::Destroyed()
+{
+	if (IsLocallyControlled())
+	{
+		if (GetController<APlayerController>() && GetController<APlayerController>()->GetLocalPlayer())
+		{
+			if (const ULocalPlayer* LocalPlayer = GetController<APlayerController>()->GetLocalPlayer())
+			{
+				UBSLocalWidgetSubsystem* LocalWidgetSubsystem = LocalPlayer->GetSubsystem<UBSLocalWidgetSubsystem>();
+				LocalWidgetSubsystem->GetOnCharacterPaneDelegate().RemoveAll(this);
+				LocalWidgetSubsystem->GetOnCharacterPaneCloseDelegate().RemoveAll(this);
+			}
+		}
+	}
+	
+	Super::Destroyed();
 }
 
 void ABSPlayerCharacter::OnUICharacterPane()

@@ -134,6 +134,8 @@ namespace BSTags
 	// Player Ability Tags
 	// =================================================================================================================
 
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability);
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Player_Head);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Player_PrimaryArm);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Player_SecondaryArm);

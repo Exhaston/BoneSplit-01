@@ -11,6 +11,9 @@ UBSAbilityBase::UBSAbilityBase()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+	
+	//*Most* abilities will block other abilities
+	BlockAbilitiesWithTag = FGameplayTagContainer(BSTags::Ability);
 }
 
 void UBSAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,

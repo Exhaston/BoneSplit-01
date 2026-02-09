@@ -46,6 +46,8 @@ class BONESPLIT_API ABSPlayerController : public AClientAuthoritativePlayerContr
 public:
 	explicit ABSPlayerController(const FObjectInitializer& ObjectInitializer);
 	
+	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
+	
 	virtual void SetupInputComponent() override;
 	
 	virtual void Tick(float DeltaSeconds) override;

@@ -137,7 +137,7 @@ void UBSPlayerMovementComponent::BindAttributes(UAbilitySystemComponent* InAsc)
 
 bool UBSPlayerMovementComponent::CanAttemptJump() const
 {
-	return CanMove() && (Super::CanAttemptJump() || IsCoyoteTimeActive());
+	return !CharacterOwner->IsPlayingRootMotion() && CanMove() && (Super::CanAttemptJump() || IsCoyoteTimeActive());
 }
 
 bool UBSPlayerMovementComponent::DoJump(const bool bReplayingMoves, const float DeltaTime)

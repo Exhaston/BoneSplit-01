@@ -7,18 +7,38 @@
 #include "AbilitySystemInterface.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Actors/Player/BSLocalSaveSubsystem.h"
+#include "Actors/Player/BSPlayerState.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/TimelineComponent.h"
+#include "Components/InteractionSystem/BSInteractionComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerState.h"
+#include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
-#include "Widgets/CharacterWidgets/BSPauseMenu.h"
-#include "Widgets/CharacterWidgets/BSCharacterPane.h"
+#include "Widgets/Base/BSPauseMenu.h"
+#include "Widgets/HUD/BSCharacterPane.h"
 
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	
+}
+
+void ABSPlayerController::PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel)
+{
+	if (GetAbilitySystemComponent() && GetGameInstance())
+	{
+		GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>()->SaveAscDataSync(
+			this, GetAbilitySystemComponent());
+	}
+	
+	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
+	
+	if (UBSLoadingScreenSubsystem* LoadingScreenSubsystem = GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>(); GetLocalPlayer()->IsPrimaryPlayer())
+	{
+		LoadingScreenSubsystem->AddLoadingScreen(nullptr);
+	}
 }
 
 void ABSPlayerController::SetupInputComponent()
@@ -127,6 +147,19 @@ void ABSPlayerController::SetupInputComponent()
 	});
 	
 	BindJumpToAction(EnhancedInputComponent, JumpAction);
+	
+	EnhancedInputComponent->BindActionValueLambda(InteractAction, ETriggerEvent::Started, 
+	[this](const FInputActionValue& Value)
+	{
+		if (GetPawn() && !GetPawn()->IsActorBeingDestroyed())
+		{
+			if (UBSInteractionComponent* InteractionComponent = 
+				GetPawn()->GetComponentByClass<UBSInteractionComponent>())
+			{
+				InteractionComponent->TryInteract();
+			}
+		}
+	});
 	
 	// =================================================================================================================
 	// Quick Turn Timeline

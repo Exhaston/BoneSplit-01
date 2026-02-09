@@ -27,6 +27,7 @@ public:
 	
 	virtual void BeginPlay() override;
 	
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	//Send the save data to the server to initialize the Asc.
@@ -59,6 +60,8 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_ReceiveWantResume();
 	
+	virtual void Destroyed() override;
+	
 protected:
 	
 	void OnDamageOther(FGameplayTag EventTag, const FGameplayEventData* Payload);
@@ -66,16 +69,8 @@ protected:
 	UFUNCTION(Client, Reliable)
 	void Client_SpawnDamageNumber(FGameplayEventData Payload);
 	
-	UPROPERTY()
-	FTimerHandle AutoSaveHandle;
-	
 	UFUNCTION()
 	void OnSaveLoaded(UBSSaveGame* SaveGame);
-	
-	void SetAutoSaveTimer();
-	
-	UFUNCTION()
-	void OnAutoSave();
 	
 	UFUNCTION()
 	void OnPlayerPaused();

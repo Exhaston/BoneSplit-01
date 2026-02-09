@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BSWRoot.h"
+#include "Base/BSWRoot.h"
 #include "CommonActivatableWidget.h"
-#include "CharacterWidgets/BSWDamageNumber.h"
+#include "HUD/BSWDamageNumber.h"
 #include "Subsystems/LocalPlayerSubsystem.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 #include "BSLocalWidgetSubsystem.generated.h"

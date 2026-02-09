@@ -8,7 +8,6 @@
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Components/Targeting/BSThreatInterface.h"
-#include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
 
 UBSPowerCalculation::UBSPowerCalculation()
@@ -204,7 +203,7 @@ void UBSPowerCalculation::Execute_Implementation(
         FGameplayEventData Data;
         Data.Target = TargetAsc->GetAvatarActor();
         Data.ContextHandle = Spec.GetEffectContext();
-        Data.EventMagnitude = DamageRemaining;
+        Data.EventMagnitude = DamageRemaining * Spec.GetStackCount();
         FGameplayTagContainer EffectTags;
         Spec.GetAllAssetTags(EffectTags);
         Data.InstigatorTags.AppendTags(EffectTags);

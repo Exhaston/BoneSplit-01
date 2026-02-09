@@ -7,7 +7,7 @@
 #include "Blueprint/UserWidget.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "GameState/BSTravelManager.h"
-#include "Widgets/BSLoadingScreenWidget.h"
+#include "Widgets/Base/BSLoadingScreenWidget.h"
 
 UBSLoadingScreenSubsystem::UBSLoadingScreenSubsystem()
 {
@@ -17,17 +17,6 @@ UBSLoadingScreenSubsystem::UBSLoadingScreenSubsystem()
 void UBSLoadingScreenSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	
-	/*
-	FCoreUObjectDelegates::PreLoadMap.AddWeakLambda(this, [this]
-		(const FString& Dest)
-	{
-		if (GetLocalPlayer()->IsPrimaryPlayer())
-		{
-			AddLoadingScreen(nullptr);
-		}
-	});
-	*/
 }
 
 void UBSLoadingScreenSubsystem::StartTravel(const TSubclassOf<UBSMapData> MapData, FString TravelDestTag)

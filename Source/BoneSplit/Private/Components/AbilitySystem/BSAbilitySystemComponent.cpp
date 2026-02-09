@@ -102,13 +102,3 @@ bool UBSAbilitySystemComponent::CancelAbilitiesWithTag(const FGameplayTag InTag)
 	return Result;
 }
 
-FGameplayEffectContextHandle UBSAbilitySystemComponent::MakeEffectContext() const
-{
-	FGameplayEffectContextHandle Handle = Super::MakeEffectContext();
-	if (!Handle.HasOrigin())
-	{
-		Handle.AddOrigin(GetAvatarActor()->GetActorLocation());
-	}
-	return Handle;
-}
-

@@ -43,8 +43,6 @@ void ABSPlayerState::BeginPlay()
 		UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
 		SaveSubsystem->GetOnAsyncLoadCompleteDelegate().AddDynamic(this, &ABSPlayerState::OnSaveLoaded);
 		SaveSubsystem->LoadGameAsync(GetPlayerController());
-			
-		SaveSubsystem->GetOnAsyncSaveCompleteDelegate().AddDynamic(this, &ABSPlayerState::OnAutoSave);
 	}
 }
 
@@ -52,33 +50,6 @@ void ABSPlayerState::BeginPlay()
 void ABSPlayerState::OnSaveLoaded(UBSSaveGame* SaveGame)
 {
 	Server_ReceiveSaveData(SaveGame->SaveData);
-		
-	SetAutoSaveTimer();
-}
-
-void ABSPlayerState::SetAutoSaveTimer()
-{
-	if (!GetWorld()) return;
-	GetWorld()->GetTimerManager().SetTimer(AutoSaveHandle, [this]()
-	{
-		if (!GetWorld()) return;
-		if (!IsActorBeingDestroyed() && !IsPendingKillPending())
-		{
-			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
-			//Ensure save is saved properly before continuing wanting a new save later
-			SaveSubsystem->SaveAscDataAsync(GetPlayerController(), GetAbilitySystemComponent());
-		}
-		else
-		{
-			GetWorld()->GetTimerManager().ClearTimer(AutoSaveHandle);
-		}
-	}, 30, false, 30);
-}
-
-void ABSPlayerState::OnAutoSave()
-{
-	SetAutoSaveTimer();
-	UE_LOG(BoneSplit, Display, TEXT("Auto Save Completed"));
 }
 
 void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -91,6 +62,16 @@ void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const
 {
 	return AbilitySystemComponent.Get();
+}
+
+void ABSPlayerState::Destroyed()
+{
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
+	}
+	
+	Super::Destroyed();
 }
 
 void ABSPlayerState::OnDamageOther(FGameplayTag EventTag, const FGameplayEventData* Payload)

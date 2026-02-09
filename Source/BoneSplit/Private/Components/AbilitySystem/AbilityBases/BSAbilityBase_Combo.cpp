@@ -5,6 +5,19 @@
 
 #include "AbilitySystemComponent.h"
 #include "Components/AbilitySystem/AbilityTasks/BSPlayMontageWaitForEvent.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
+bool UBSAbilityBase_Combo::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,
+                                              const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags,
+                                              const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (bRequireGrounded && ActorInfo->AvatarActor.IsValid() && Cast<ACharacter>(ActorInfo->AvatarActor.Get()))
+	{
+		if (Cast<ACharacter>(ActorInfo->AvatarActor.Get())->GetCharacterMovement()->IsFalling()) return false;
+	}
+	return Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags);
+}
 
 void UBSAbilityBase_Combo::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
                                            const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
@@ -36,6 +49,7 @@ void UBSAbilityBase_Combo::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		false, //Avoid this montage end section to end when the ability actually ended.
 		MontageRootMotionScale);
 	
+	MontageTask->OnCancelled.AddDynamic(this, &UBSAbilityBase_Combo::OnMontageEnded);
 	MontageTask->OnInterrupted.AddDynamic(this, &UBSAbilityBase_Combo::OnMontageEnded);
 	MontageTask->OnCompleted.AddDynamic(this, &UBSAbilityBase_Combo::OnMontageEnded);
 	MontageTask->EventReceived.AddDynamic(this, &UBSAbilityBase_Combo::OnEventReceived);

@@ -66,9 +66,7 @@ public:
 	virtual void Die(UAbilitySystemComponent* SourceAsc, float Damage) override;
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnDeath(UAbilitySystemComponent* SourceAsc, float Damage);
-	
-	
+	void Multicast_OnDeath(UAbilitySystemComponent* SourceAsc, float Damage, UAnimMontage* Montage);
 	
 	UPROPERTY()
 	FTimerHandle DeathTimerHandle;
@@ -137,6 +135,10 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TArray<UAnimMontage*> DeathAnimations;
+	
+	//Choose death montage according to last damage received before death.
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TMap<FGameplayTag, UAnimMontage*> DeathMontages;
 	
 	// =================================================================================================================
 	// Components

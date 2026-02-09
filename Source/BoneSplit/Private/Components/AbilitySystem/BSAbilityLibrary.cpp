@@ -172,7 +172,8 @@ void UBSAbilityLibrary::ApplyPayloadEffect(UGameplayAbility* Ability, const FGam
 		for (auto EffectClass : Effects)
 		{
 			const FGameplayEffectSpecHandle Handle = 
-				SourceAsc->MakeOutgoingSpec(EffectClass, EffectLevel, ContextHandle);
+				SourceAsc->MakeOutgoingSpec(EffectClass, EffectLevel * Payload.EventMagnitude, ContextHandle);
+			
 			SourceAsc->ApplyGameplayEffectSpecToTarget(*Handle.Data, TargetAsc);
 		}
 	}

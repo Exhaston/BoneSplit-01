@@ -82,7 +82,9 @@ namespace BSTags
 	// =================================================================================================================
 	// Player Ability Tags
 	// =================================================================================================================
-
+	
+	UE_DEFINE_GAMEPLAY_TAG(Ability, "Ability");
+	
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Player_Head, "Ability.Player.Head");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Player_PrimaryArm, "Ability.Player.PrimaryArm");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Player_SecondaryArm, "Ability.Player.SecondaryArm");

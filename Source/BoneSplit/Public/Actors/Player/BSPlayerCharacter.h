@@ -9,6 +9,7 @@
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
+class UBSInteractionComponent;
 class UTextRenderComponent;
 struct FGameplayEffectSpec;
 class UBSEquipmentEffect;
@@ -52,6 +53,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	virtual void OnRep_PlayerState() override;
+	
+	virtual void Destroyed() override;
 	
 	// =================================================================================================================
 	// Camera
@@ -138,6 +141,9 @@ public:
 protected:
 	
 	UPROPERTY(meta=(AllowPrivateAccess=true))
+	TObjectPtr<UBSInteractionComponent>	InteractionComponent;
+	
+	UPROPERTY(meta=(AllowPrivateAccess=true))
 	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
@@ -173,6 +179,6 @@ protected:
 	UFUNCTION()
 	void OnPlayerStateInitComplete();
 	
-
+	
 	
 };

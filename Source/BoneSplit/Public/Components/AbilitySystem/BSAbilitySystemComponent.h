@@ -39,6 +39,4 @@ public:
 		UAnimMontage* Montage, float InPlayRate, FName StartSectionName = NAME_None) override;
 	
 	virtual bool CancelAbilitiesWithTag(FGameplayTag InTag);
-	
-	virtual FGameplayEffectContextHandle MakeEffectContext() const override;
 };
