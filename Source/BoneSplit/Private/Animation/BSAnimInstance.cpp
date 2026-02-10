@@ -116,8 +116,6 @@ void UBSAnimInstance::NativeOnTagEvent(const FGameplayTag Tag, int32 Count)
 		WeaponTypeTag = ChangedTag;
 	}
 	
-	if (Tag.MatchesTag(BSTags::WeaponType_SwordNBoard))
-	
 	if (Count > 0)
 	{
 		OwnedGameplayTags.AddTag(ChangedTag);
