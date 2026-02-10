@@ -116,17 +116,20 @@ void UBSAnimInstance::NativeOnTagEvent(const FGameplayTag Tag, int32 Count)
 		WeaponTypeTag = ChangedTag;
 	}
 	
-	if (Count > 0)
+	if (Count != 0)
 	{
-		OwnedGameplayTags.AddTag(ChangedTag);
 		BP_OnGameplayTagAdded(ChangedTag, Count);
 	}
 	else
 	{
-		OwnedGameplayTags.RemoveTag(ChangedTag);
 		BP_OnGameplayTagRemoved(ChangedTag, Count);
 	}
-
+	
+	if (AbilitySystemComponent.IsValid())
+	{
+		OwnedGameplayTags = AbilitySystemComponent.Get()->GetOwnedGameplayTags();
+	}
+	
 	BP_OnGameplayTagChanged(ChangedTag, Count);
 }
 
