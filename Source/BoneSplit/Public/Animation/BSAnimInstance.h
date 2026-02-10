@@ -44,6 +44,9 @@ public:
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
 	FGameplayTagContainer GetGameplayTagContainer() const { return OwnedGameplayTags; }
 	
+	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
+	FGameplayTag GetWeaponTypeTag() const { return WeaponTypeTag; }
+	
 	UFUNCTION()
 	void NativeOnTagEvent(const FGameplayTag Tag, int32 Count);
 	                                                                                 
