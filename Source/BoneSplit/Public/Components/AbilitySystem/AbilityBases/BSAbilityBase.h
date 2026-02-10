@@ -8,6 +8,8 @@
 #include "BoneSplit/BoneSplit.h"
 #include "BSAbilityBase.generated.h"
 
+class ABSProjectileBase;
+class UBSAbilitySystemComponent;
 enum EBSAbilityInputID : uint8;
 class ABSPredictableActor;
 
@@ -20,7 +22,8 @@ if (!CommitAbility(Handle, ActorInfo, ActivationInfo))      \
 #define CANCEL_ABILITY() \
 CancelAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true); return;
 /**
- * 
+ * Ability base that supports Icons, Ability Charges through Effect Stacking (Assumes Full Replication mode on Asc), 
+ * Spawning Predictable Actors such as projectiles.
  */
 UCLASS(Abstract, BlueprintType, Blueprintable, DisplayName="Ability Base")
 class BONESPLIT_API UBSAbilityBase : public UGameplayAbility, public IIconThumbnailInterface
@@ -33,9 +36,9 @@ public:
 	
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	
-	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
-	
 	virtual TSoftObjectPtr<UTexture2D> GetIcon_Implementation() const override;
+	
+	virtual bool CheckCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 	
 	void Native_OnGameplayEventReceived(FGameplayTag EventTag, const FGameplayEventData* Payload);
 	
@@ -45,13 +48,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TSoftObjectPtr<UTexture2D> AbilityIcon;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input")
-	TEnumAsByte<EBSAbilityInputID> PlayerInputID = None;
-	
-	virtual void SpawnPredictedActor(const TSubclassOf<ABSPredictableActor> ActorToSpawn,
-	const FTransform& SpawnTransform,
-	const FGameplayAbilityTargetDataHandle& TargetData);
-	
 	virtual void EndAbility(
 		const FGameplayAbilitySpecHandle Handle, 
 		const FGameplayAbilityActorInfo* ActorInfo, 
@@ -59,8 +55,18 @@ public:
 		bool bReplicateEndAbility, 
 		bool bWasCancelled) override;
 	
+	UFUNCTION(BlueprintCallable)
+	virtual void SpawnProjectileForPlayer(TSubclassOf<ABSProjectileBase> Projectile, FTransform SpawnTransform);
+	
+	UFUNCTION(BlueprintCallable)
+	void GetTargetRotationForProjectile(const FVector& ProjectileOrigin, FVector& BaseAimDirection, FVector& OutProjectileBaseAimPoint, FVector& OutCameraBaseAimPoint) const;
+	
 protected:
 	
+	UFUNCTION(BlueprintPure)
+	UBSAbilitySystemComponent* GetBSAbilitySystemComponent() const;
+	
+	//Event tags to listen to. OnGameplayEvent will fire if any event was received that matches these tags.
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="AnimEvent"))
 	FGameplayTagContainer EventTagsToListenTo;
 	

@@ -60,7 +60,15 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_ReceiveWantResume();
 	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
 	virtual void Destroyed() override;
+	
+	UFUNCTION()
+	void OnPlayerPaused();
+	
+	UFUNCTION()
+	void OnPlayerResumed();
 	
 protected:
 	
@@ -71,12 +79,6 @@ protected:
 	
 	UFUNCTION()
 	void OnSaveLoaded(UBSSaveGame* SaveGame);
-	
-	UFUNCTION()
-	void OnPlayerPaused();
-	
-	UFUNCTION()
-	void OnPlayerResumed();
 	
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing=OnRep_Initialized)
 	bool bInitialized = false;

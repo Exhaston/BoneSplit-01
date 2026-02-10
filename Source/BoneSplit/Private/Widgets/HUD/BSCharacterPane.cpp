@@ -3,29 +3,24 @@
 
 #include "Widgets/HUD/BSCharacterPane.h"
 
+#include "Actors/Player/BSPlayerCharacter.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
 void UBSCharacterPane::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	
-	if (GetOwningLocalPlayer())
+	if (ABSPlayerCharacter* BSPlayerCharacter = GetOwningPlayerPawn<ABSPlayerCharacter>())
 	{
-		UBSLocalWidgetSubsystem* Subsystem = GetOwningLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-		Subsystem->GetOnCharacterPaneDelegate().Broadcast();
+		BSPlayerCharacter->SetMenuCamera();
 	}
 }
 
 void UBSCharacterPane::NativeOnDeactivated()
 {
-	if (GetOwningLocalPlayer())
+	if (ABSPlayerCharacter* BSPlayerCharacter = GetOwningPlayerPawn<ABSPlayerCharacter>())
 	{
-		UBSLocalWidgetSubsystem* Subsystem = GetOwningLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-
-		if (IsValid(Subsystem) && Subsystem->GetOnPauseMenuDelegate().IsBound())
-		{
-			Subsystem->GetOnCharacterPaneCloseDelegate().Broadcast();
-		}
+		BSPlayerCharacter->ResetCamera();
 	}
 	
 	Super::NativeOnDeactivated();

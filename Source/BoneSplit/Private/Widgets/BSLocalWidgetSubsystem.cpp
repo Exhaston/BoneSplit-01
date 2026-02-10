@@ -119,16 +119,6 @@ void UBSLocalWidgetSubsystem::RemoveWidgetFromStack(const TSubclassOf<UCommonAct
 	}
 }
 
-FBSWidgetDelegate& UBSLocalWidgetSubsystem::GetOnPauseMenuDelegate()
-{
-	return OnPauseMenuDelegate;
-}
-
-FBSWidgetDelegate& UBSLocalWidgetSubsystem::GetOnResumeDelegate()
-{
-	return OnResumeDelegate;
-}
-
 UBSWRoot* UBSLocalWidgetSubsystem::GetRootWidgetInstance()
 {
 	return RootWidgetInstance;

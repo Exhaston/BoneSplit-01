@@ -42,26 +42,18 @@ void UBSPauseMenu::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	
-	if (GetOwningLocalPlayer())
+	if (ABSPlayerState* OwningPS = GetOwningPlayerState<ABSPlayerState>())
 	{
-		UBSLocalWidgetSubsystem* Subsystem = GetOwningLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-		Subsystem->bIsPaused = true;
-		Subsystem->GetOnPauseMenuDelegate().Broadcast();
+		OwningPS->OnPlayerPaused();
 	}
 }
 
 void UBSPauseMenu::NativeOnDeactivated()
 {
-	if (GetOwningLocalPlayer())
-	{
-		UBSLocalWidgetSubsystem* Subsystem = GetOwningLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-
-		if (IsValid(Subsystem) && Subsystem->GetOnPauseMenuDelegate().IsBound())
-		{
-			Subsystem->bIsPaused = false;
-			Subsystem->GetOnResumeDelegate().Broadcast();
-		}
-	}
-	
 	Super::NativeOnDeactivated();
+	
+	if (ABSPlayerState* OwningPS = GetOwningPlayerState<ABSPlayerState>())
+	{
+		OwningPS->OnPlayerResumed();
+	}
 }

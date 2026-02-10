@@ -100,7 +100,7 @@ TArray<AActor*> UBSAbilityLibrary::GetActorsInRadiusFromPoint(
 		FCollisionShape::MakeSphere(Radius), 
 		QueryParams);
 
-	for (auto Overlap : Overlaps)
+	for (auto& Overlap : Overlaps)
 	{
 		if (Overlap.GetActor())
 		{

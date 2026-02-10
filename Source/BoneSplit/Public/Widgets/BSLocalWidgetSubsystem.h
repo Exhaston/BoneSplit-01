@@ -15,7 +15,8 @@ class UBSPauseMenu;
 class UBSWHud;
 class UBSWRoot;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBSWidgetDelegate);
+DECLARE_MULTICAST_DELEGATE(FBSWidgetDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBSWidgetDelegateDynamic);
 /**
  * 
  */
@@ -67,18 +68,6 @@ public:
 	//Removes an activatable widget from the stack by class
 	void RemoveWidgetFromStack(TSubclassOf<UCommonActivatableWidget> WidgetInstance) const;
 	
-	//Will be called whenever a player is in the pause menu
-	FBSWidgetDelegate& GetOnPauseMenuDelegate();     
-	
-	//Will be called whenever the player left the pause menu
-	FBSWidgetDelegate& GetOnResumeDelegate();
-	
-	//Will be called whenever a player is in the pause menu
-	FBSWidgetDelegate& GetOnCharacterPaneDelegate() { return OnCharacterPaneDelegate; }     
-	
-	//Will be called whenever the player left the pause menu
-	FBSWidgetDelegate& GetOnCharacterPaneCloseDelegate() { return OnCloseCharacterPaneDelegate; }
-	
 	UBSWRoot* GetRootWidgetInstance();
 	
 	UPROPERTY(Transient)
@@ -104,12 +93,4 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TSubclassOf<UBSWDamageNumber> DamageNumberWidgetClass;
-
-protected:
-	
-	FBSWidgetDelegate OnCharacterPaneDelegate;
-	FBSWidgetDelegate OnCloseCharacterPaneDelegate;
-	
-	FBSWidgetDelegate OnPauseMenuDelegate;
-	FBSWidgetDelegate OnResumeDelegate;
 };

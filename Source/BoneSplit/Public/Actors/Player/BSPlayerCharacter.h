@@ -54,17 +54,12 @@ public:
 	
 	virtual void OnRep_PlayerState() override;
 	
-	virtual void Destroyed() override;
-	
 	// =================================================================================================================
 	// Camera
-	// ================================================================================================================= 
+	// =================================================================================================================
 	
-	UFUNCTION()
-	void OnUICharacterPane();
-	
-	UFUNCTION()
-	void OnUICharacterPaneClose();
+	virtual void SetMenuCamera();
+	virtual void ResetCamera();
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TObjectPtr<USpringArmComponent> SpringArmComponent;

@@ -7,6 +7,8 @@
 #include "BSAbilitySystemComponent.generated.h"
 
 
+struct FBSProjectileAlignment;
+class ABSProjectileBase;
 class ABSPredictableActor;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -17,8 +19,6 @@ class BONESPLIT_API UBSAbilitySystemComponent : public UAbilitySystemComponent
 public:
 	
 	UBSAbilitySystemComponent();
-	
-	virtual void NotifyAbilityActivated(const FGameplayAbilitySpecHandle Handle, UGameplayAbility* Ability) override;
 	
 	// =================================================================================================================
 	// Overrides for animation speed / blend time scaling
@@ -39,4 +39,12 @@ public:
 		UAnimMontage* Montage, float InPlayRate, FName StartSectionName = NAME_None) override;
 	
 	virtual bool CancelAbilitiesWithTag(FGameplayTag InTag);
+
+	UFUNCTION(Server, Reliable)
+	void Server_SpawnProjectile(AActor* Owner, TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform);
+
+private:
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_SpawnProjectile(AActor* Owner, TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform);
 };

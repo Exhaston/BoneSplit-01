@@ -194,10 +194,10 @@ void ABSPlayerController::SetupInputComponent()
 	// =================================================================================================================
 	
 	BindAbilityToAction(EnhancedInputComponent, 
-	SpecialAction, 5);
+	SpecialAction, 6);
 	
 	BindAbilityToAction(EnhancedInputComponent, 
-	SoulAction, Soul);
+	SoulAction, 5);
 	
 	BindAbilityToAction(EnhancedInputComponent,
 	HeadAction, 3);

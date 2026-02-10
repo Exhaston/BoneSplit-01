@@ -9,6 +9,8 @@
 #include "BoneSplit/BoneSplit.h"
 #include "BSActionButton.generated.h"
 
+class UCommonRichTextBlock;
+class UGameplayAbility;
 struct FGameplayAbilitySpec;
 class UAbilitySystemComponent;
 class UCommonLazyImage;
@@ -25,6 +27,8 @@ public:
 	virtual void InitializeActionButton(UAbilitySystemComponent* InAbilitySystemComponent);
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	
+	void Test(UGameplayAbility* AbilityInstance, float& TimeRemaining, float& CooldownDuration);
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const;
 	
@@ -49,6 +53,9 @@ public:
 	
 	UPROPERTY(meta=(BindWidget))
 	UCommonLazyImage* AbilityIcon;
+	
+	UPROPERTY(meta=(BindWidget))
+	UCommonRichTextBlock* AbilityChargeText;
 	
 protected:
 	

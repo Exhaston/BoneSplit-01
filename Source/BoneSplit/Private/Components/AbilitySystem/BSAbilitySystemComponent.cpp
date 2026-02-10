@@ -4,6 +4,7 @@
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 
 #include "Actors/Predictables/BSPredictableActor.h"
+#include "Actors/Predictables/BSProjectileBase.h"
 #include "Components/Inventory/BSEquipment.h"
 
 
@@ -34,16 +35,6 @@ UBSAbilitySystemComponent::UBSAbilitySystemComponent()
 			}
 		}
 	});
-}
-
-void UBSAbilitySystemComponent::NotifyAbilityActivated(const FGameplayAbilitySpecHandle Handle,
-	UGameplayAbility* Ability)
-{
-	Super::NotifyAbilityActivated(Handle, Ability);
-	if (GetCurrentMontage() && GetCurrentMontage()->HasRootMotion())
-	{
-		StopMontageIfCurrent(*GetCurrentMontage(), -1);
-	}
 }
 
 void UBSAbilitySystemComponent::AdjustBlendTimeForMontage(
@@ -101,4 +92,21 @@ bool UBSAbilitySystemComponent::CancelAbilitiesWithTag(const FGameplayTag InTag)
 	
 	return Result;
 }
+
+void UBSAbilitySystemComponent::Server_SpawnProjectile_Implementation(AActor* Owner,
+																	  TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform)
+{
+	NetMulticast_SpawnProjectile(Owner, ClassToSpawn, SpawnTransform, CameraTransform);
+}
+
+void UBSAbilitySystemComponent::NetMulticast_SpawnProjectile_Implementation(AActor* Owner,
+	TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform)
+{
+	if (!GetAvatarActor()->HasLocalNetOwner())
+	{
+		ABSProjectileBase::SpawnProjectile(Owner, ClassToSpawn, SpawnTransform, CameraTransform);
+	}
+}
+
+
 

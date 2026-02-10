@@ -64,13 +64,18 @@ UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const
 	return AbilitySystemComponent.Get();
 }
 
-void ABSPlayerState::Destroyed()
+void ABSPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	Super::EndPlay(EndPlayReason);
+	
 	if (GetWorld())
 	{
 		GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 	}
-	
+}
+
+void ABSPlayerState::Destroyed()
+{
 	Super::Destroyed();
 }
 
@@ -137,11 +142,7 @@ void ABSPlayerState::OnRep_Initialized() const
 			UBSLocalWidgetSubsystem* WidgetSubsystem = 
 				GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
 			
-			
 			WidgetSubsystem->CreatePlayerUI(GetPlayerController());
-			
-			WidgetSubsystem->GetOnPauseMenuDelegate().AddDynamic(this, &ABSPlayerState::OnPlayerPaused);
-			WidgetSubsystem->GetOnResumeDelegate().AddDynamic(this, &ABSPlayerState::OnPlayerResumed);
 			
 			UBSLoadingScreenSubsystem* LoadingScreenSubsystem = 
 				GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>();

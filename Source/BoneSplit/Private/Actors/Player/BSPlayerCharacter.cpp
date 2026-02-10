@@ -16,7 +16,6 @@
 #include "Net/UnrealNetwork.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/InteractionSystem/BSInteractionComponent.h"
-#include "Widgets/BSLocalWidgetSubsystem.h"
 
 #define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName, SetLeader) \
 ComponentName = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT(DisplayName)); \
@@ -70,8 +69,9 @@ Super(ObjectInitializer
 	
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
 	SpringArmComponent->SetupAttachment(GetMesh());
+	SpringArmComponent->SetRelativeLocation(FVector(0,0,100));
 	SpringArmComponent->bUsePawnControlRotation = true;
-	
+	SpringArmComponent->SocketOffset = FVector(0, 100, 25);
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComponent->SetupAttachment(SpringArmComponent, USpringArmComponent::SocketName);
 	bUseControllerRotationYaw = false;
@@ -111,32 +111,14 @@ void ABSPlayerCharacter::OnRep_PlayerState()
 	InitializeCharacter(); //Init for Client(s)
 }
 
-void ABSPlayerCharacter::Destroyed()
-{
-	if (IsLocallyControlled())
-	{
-		if (GetController<APlayerController>() && GetController<APlayerController>()->GetLocalPlayer())
-		{
-			if (const ULocalPlayer* LocalPlayer = GetController<APlayerController>()->GetLocalPlayer())
-			{
-				UBSLocalWidgetSubsystem* LocalWidgetSubsystem = LocalPlayer->GetSubsystem<UBSLocalWidgetSubsystem>();
-				LocalWidgetSubsystem->GetOnCharacterPaneDelegate().RemoveAll(this);
-				LocalWidgetSubsystem->GetOnCharacterPaneCloseDelegate().RemoveAll(this);
-			}
-		}
-	}
-	
-	Super::Destroyed();
-}
-
-void ABSPlayerCharacter::OnUICharacterPane()
+void ABSPlayerCharacter::SetMenuCamera()
 {
 	SpringArmComponent->bUsePawnControlRotation = false;
 	SpringArmComponent->SetRelativeRotation({0, -45, 0});
 }
 
-void ABSPlayerCharacter::OnUICharacterPaneClose()
-{	
+void ABSPlayerCharacter::ResetCamera()
+{
 	SpringArmComponent->bUsePawnControlRotation = true;
 	SpringArmComponent->SetRelativeRotation({0, 90, 0});
 }
@@ -248,19 +230,6 @@ void ABSPlayerCharacter::LoadMeshesFromEquipmentEffect(const UBSEquipmentEffect*
 void ABSPlayerCharacter::OnPlayerStateInitComplete()
 {
 	const ABSPlayerState* PS = GetPlayerState<ABSPlayerState>();
-	
-	if (IsLocallyControlled())
-	{
-		if (PS->GetPlayerController())
-		{
-			if (const ULocalPlayer* LocalPlayer = GetController<APlayerController>()->GetLocalPlayer())
-			{
-				UBSLocalWidgetSubsystem* LocalWidgetSubsystem = LocalPlayer->GetSubsystem<UBSLocalWidgetSubsystem>();
-				LocalWidgetSubsystem->GetOnCharacterPaneDelegate().AddDynamic(this, &ABSPlayerCharacter::OnUICharacterPane);
-				LocalWidgetSubsystem->GetOnCharacterPaneCloseDelegate().AddDynamic(this, &ABSPlayerCharacter::OnUICharacterPaneClose);
-			}
-		}
-	}
 	
 	if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
 	{
