@@ -9,6 +9,7 @@
 #include "GameFramework/PlayerController.h"
 #include "BSPlayerController.generated.h"
 
+class UBSUnitPlateManagerComponent;
 class UAbilitySystemComponent;
 class UInputAction;
 class UInputMappingContext;
@@ -36,14 +37,15 @@ struct FBSBufferedAbility
 };
 									 
 /**
- * 
+ * Since the pawn can change during different events, we have all the input and buffering setup here directly.
  */                        
 UCLASS(DisplayName="Player Controller", Category="BoneSplit", ClassGroup="BoneSplit")
 class BONESPLIT_API ABSPlayerController : public AClientAuthoritativePlayerController, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
-	
+
 public:
+	
 	explicit ABSPlayerController(const FObjectInitializer& ObjectInitializer);
 	
 	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
@@ -56,7 +58,6 @@ public:
 	
 	virtual void OnRep_PlayerState() override;
 
-	
 protected:
 	
 	UPROPERTY()
@@ -147,11 +148,11 @@ protected:
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
 	UInputAction* SpecialAction;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="UI")
-	TSubclassOf<UUserWidget> HudWidget;
-	
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UAbilitySystemComponent> CachedAbilitySystemComponent;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TObjectPtr<UBSUnitPlateManagerComponent> UnitPlateManagerComponent;
 	
 	UPROPERTY()
 	TArray<FBSBufferedAbility> BufferedAbilities;

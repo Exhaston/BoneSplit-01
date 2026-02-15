@@ -48,6 +48,6 @@ void UBSWDamageNumber::NativeTick(const FGeometry& MyGeometry, const float InDel
 void UBSWDamageNumber::SetLocation()
 {
 	FVector2D ScreenLocation;
-	GetOwningPlayer()->ProjectWorldLocationToScreen(WorldLocation, ScreenLocation, true);
+	GetOwningPlayer()->ProjectWorldLocationToScreen(WorldLocation + FVector::UpVector * 150, ScreenLocation, true);
 	SetPositionInViewport(ScreenLocation + RandomScreenOffset);
 }

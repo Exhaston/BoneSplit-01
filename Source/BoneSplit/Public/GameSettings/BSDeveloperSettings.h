@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Actors/InteractableBases/BSEquipmentDropBase.h"
 #include "Actors/Player/BSSaveGame.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Engine/DeveloperSettings.h"
@@ -76,4 +77,6 @@ public:
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSLoadingScreenWidget> LoadingScreenWidget;
 	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Loot")    
+	TSoftClassPtr<ABSEquipmentDropBase> EquipmentDropClass;
 };

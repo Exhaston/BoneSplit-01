@@ -7,12 +7,15 @@
 #include "AttributeSet.h"
 #include "BSAttributeSet.generated.h"
 
+#pragma region Macros
+
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
 GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName) \
 GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName) \
 GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
+#pragma endregion
 
 UCLASS()
 class BONESPLIT_API UBSAttributeSet : public UAttributeSet
@@ -22,6 +25,8 @@ class BONESPLIT_API UBSAttributeSet : public UAttributeSet
 public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+#pragma region AttributeEvents
 	
 	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
 	
@@ -39,8 +44,11 @@ public:
 		float NewMaxValue) const;
 	
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
+	
+#pragma endregion
 
-
+#pragma region MetaAttributes
+	
 	// =================================================================================================================
 	// META
 	// ================================================================================================================= 
@@ -68,6 +76,10 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	FGameplayAttributeData Knockback;
 	ATTRIBUTE_ACCESSORS(UBSAttributeSet, Knockback)
+	
+#pragma endregion
+	
+#pragma region Attributes
 	
 	// =================================================================================================================
 	// Health
@@ -369,4 +381,6 @@ public:
 	{
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, Bones, OldAttributeData);
 	}
+	
+#pragma endregion
 };

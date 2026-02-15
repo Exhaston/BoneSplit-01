@@ -27,7 +27,8 @@ public class BoneSplit : ModuleRules
 			"AnimGraphRuntime",
 			"ClientAuthoritativeCharacterSystem",
 			"CustomThumbnails",
-			"PhysicsCore"
+			"PhysicsCore",
+			"Chooser"
 		]);
 	}
 }

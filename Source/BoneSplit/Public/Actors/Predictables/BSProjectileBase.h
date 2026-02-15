@@ -11,65 +11,51 @@ class UBSGameplayEffect;
 class UProjectileMovementComponent;
 class USphereComponent;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FBSProjectileAlignment
 {
 	GENERATED_BODY()
-	
+
 	FBSProjectileAlignment() = default;
-	
 	FBSProjectileAlignment(
 		const FTransform& SpawnTransform,
-		const FVector& StartVelocity, 
-		const FTransform& CameraTransform, 
-		float InAlignmentTime);
-	
-	FVector EvaluatePosition(float TimeAlive, const FVector& GravityAcceleration);
-	
-	//Returns true if this projectile was set up correctly with adjustments needed for a player
-	bool GetIsValid() const { return bHasValidData; }
-	
-	bool GetIsAligned() const { return bAligned; }
-	
-	static FVector Slerp(const FVector& a, const FVector& b, const float t)
-	{
-		float omega = FGenericPlatformMath::Acos(FVector::DotProduct(
-				a.GetSafeNormal(), 
-				b.GetSafeNormal()
-				));
-		float sinOmega = FGenericPlatformMath::Sin(omega);
-		FVector termOne = a * (FGenericPlatformMath::Sin(omega * (1.0 - t)) / sinOmega);
-		FVector termTwo = b * (FGenericPlatformMath::Sin(omega * (      t)) / sinOmega);
-		return termOne + termTwo;
-	}
+		const FTransform& CameraTransform);
 
-protected:
+	bool GetIsValid()   const { return bHasValidData; }
+	bool GetIsAligned() const { return bAligned; }
+	float GetAlignmentTime(const float DesiredVelocity) const
+	{
+		const float OffsetDistance = FVector::Dist(StartPos, TargetPos);
+		return OffsetDistance / DesiredVelocity;
+	}
 	
-	UPROPERTY()
-	FVector StartPos;
-	UPROPERTY()
-	FVector StartVel;
-	UPROPERTY()
-	FVector RealStartPos;
-	UPROPERTY()
-	FVector RealStartVel;
 	UPROPERTY()
 	bool bAligned = false;
 	UPROPERTY()
 	bool bHasValidData = false;
+	
 	UPROPERTY()
-	float AlignmentTime = 0;
+	FVector CameraForward = FVector::ForwardVector;
+	UPROPERTY()
+	FVector StartPos = FVector::ZeroVector;
+	UPROPERTY()
+	FVector TargetPos = FVector::ZeroVector;
 };
 
 UCLASS(NotPlaceable, BlueprintType, Blueprintable, Abstract)
-class BONESPLIT_API ABSProjectileBase : public AActor, public IAbilitySystemInterface
+class BONESPLIT_API ABSProjectileBase : public AActor
 {
 	GENERATED_BODY()
 
 public:
 	
-	
 	explicit ABSProjectileBase(const FObjectInitializer& ObjectInitializer);
+	
+	virtual void BeginPlay() override;
+	
+	virtual void PostInitializeComponents() override;
+	
+	virtual void SetCollisionProfiles();
 	
 	static ABSProjectileBase* SpawnProjectile(AActor* InOwnerActor, TSubclassOf<ABSProjectileBase> ProjectileClass, const FTransform& InSpawnTransform, const FTransform& InCameraTransform);
 	
@@ -77,12 +63,14 @@ public:
 	
 	virtual void Tick(float DeltaSeconds) override;
 	
-	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
-	
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const;
 	
 	UPROPERTY()
 	FBSProjectileAlignment ProjectileAlignment;
+	
+	virtual void NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
+	
+	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
 	
 protected:
 	
@@ -91,6 +79,12 @@ protected:
 	
 	UPROPERTY()
 	float TimeAlive = 0;
+	
+	UPROPERTY()
+	bool bAlignComplete = false;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	bool bCanPassThroughStatic = false;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	bool bHitFriendlies = false;

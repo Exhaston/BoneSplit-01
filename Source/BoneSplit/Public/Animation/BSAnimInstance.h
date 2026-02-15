@@ -8,6 +8,7 @@
 #include "BoneSplit/BoneSplit.h"
 #include "BSAnimInstance.generated.h"
 
+class UChooserTable;
 class UAbilitySystemComponent;
 class IAbilitySystemInterface;
 /**
@@ -38,11 +39,6 @@ public:
 	
 	UPROPERTY()
 	ACharacter* CharacterOwner;
-	
-	//Gets a copy of the current gameplay tags the Owning Ability System.
-	//See OnGameplayTagRemoved and OnGameplayTagAdded for callbacks
-	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
-	FGameplayTagContainer& GetGameplayTagContainer() { return OwnedGameplayTags; }
 	
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
 	FGameplayTag GetWeaponTypeTag() const { return WeaponTypeTag; }

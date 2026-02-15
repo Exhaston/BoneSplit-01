@@ -6,12 +6,9 @@
 #include "AbilitySystemComponent.h"
 #include "BSAbilitySystemComponent.generated.h"
 
-
-struct FBSProjectileAlignment;
 class ABSProjectileBase;
-class ABSPredictableActor;
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), DisplayName="BSAbiltiySystemComponent")
 class BONESPLIT_API UBSAbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_BODY()
@@ -19,6 +16,8 @@ class BONESPLIT_API UBSAbilitySystemComponent : public UAbilitySystemComponent
 public:
 	
 	UBSAbilitySystemComponent();
+	
+#pragma region AnimationAdjustments
 	
 	// =================================================================================================================
 	// Overrides for animation speed / blend time scaling
@@ -38,7 +37,26 @@ public:
 	virtual float PlayMontageSimulated(
 		UAnimMontage* Montage, float InPlayRate, FName StartSectionName = NAME_None) override;
 	
+#pragma endregion
+	
+#pragma region Abilities
+	
+	// =================================================================================================================
+	// Ability Helpers
+	// ================================================================================================================= 
+	
 	virtual bool CancelAbilitiesWithTag(FGameplayTag InTag);
+	
+#pragma endregion
+	
+#pragma region Spawning
+	
+	// =================================================================================================================
+	// Spawning Non Replicated Actors for all clients
+	// ================================================================================================================= 
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SpawnActor(AActor* Owner, TSubclassOf<AActor> ActorToSpawn, FTransform SpawnTransform);
 
 	UFUNCTION(Server, Reliable)
 	void Server_SpawnProjectile(AActor* Owner, TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform);
@@ -46,5 +64,10 @@ public:
 private:
 	
 	UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_SpawnActor(AActor* Owner, TSubclassOf<AActor> ActorToSpawn, FTransform SpawnTransform);
+	
+	UFUNCTION(NetMulticast, Reliable)
 	void NetMulticast_SpawnProjectile(AActor* Owner, TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform);
+	
+#pragma endregion
 };

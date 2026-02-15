@@ -2,8 +2,6 @@
 
 
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
-
-#include "Actors/Predictables/BSPredictableActor.h"
 #include "Actors/Predictables/BSProjectileBase.h"
 #include "Components/Inventory/BSEquipment.h"
 
@@ -36,6 +34,12 @@ UBSAbilitySystemComponent::UBSAbilitySystemComponent()
 		}
 	});
 }
+
+#pragma region AnimationAdjustments
+	
+// =================================================================================================================
+// Overrides for animation speed / blend time scaling
+// ================================================================================================================= 
 
 void UBSAbilitySystemComponent::AdjustBlendTimeForMontage(
 	const UAnimInstance* TargetAnimInstance, const UAnimMontage* Montage, const float InRate)
@@ -73,6 +77,14 @@ float UBSAbilitySystemComponent::PlayMontageSimulated(
 	return AnimationLength;
 }
 
+#pragma endregion
+
+#pragma region Abilities
+	
+// =================================================================================================================
+// Ability Helpers
+// ================================================================================================================= 
+
 bool UBSAbilitySystemComponent::CancelAbilitiesWithTag(const FGameplayTag InTag)
 {
 	bool Result = false;
@@ -93,20 +105,47 @@ bool UBSAbilitySystemComponent::CancelAbilitiesWithTag(const FGameplayTag InTag)
 	return Result;
 }
 
+#pragma endregion
+
+#pragma region Spawning
+	
+// =================================================================================================================
+// Spawning Non Replicated Actors for all clients
+// ================================================================================================================= 
+
+void UBSAbilitySystemComponent::Server_SpawnActor_Implementation(AActor* Owner, const TSubclassOf<AActor> ActorToSpawn,
+	const FTransform SpawnTransform)
+{
+	NetMulticast_SpawnActor(Owner, ActorToSpawn, SpawnTransform);
+}
+
+void UBSAbilitySystemComponent::NetMulticast_SpawnActor_Implementation(AActor* Owner, const TSubclassOf<AActor> ActorToSpawn,
+                                                                       const FTransform SpawnTransform)
+{
+	if (AbilityActorInfo.IsValid() && !AbilityActorInfo.Get()->IsLocallyControlled())
+	{
+		APawn* InstigatorPawn = Cast<APawn>(Owner);
+		AActor* SpawnedActor = Owner->GetWorld()->SpawnActorDeferred<AActor>(ActorToSpawn, SpawnTransform, Owner, InstigatorPawn, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+		SpawnedActor->FinishSpawning(SpawnTransform);
+	}
+}
+
 void UBSAbilitySystemComponent::Server_SpawnProjectile_Implementation(AActor* Owner,
-																	  TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform)
+                                                                      const TSubclassOf<ABSProjectileBase> ClassToSpawn, const FTransform SpawnTransform, const FTransform CameraTransform)
 {
 	NetMulticast_SpawnProjectile(Owner, ClassToSpawn, SpawnTransform, CameraTransform);
 }
 
 void UBSAbilitySystemComponent::NetMulticast_SpawnProjectile_Implementation(AActor* Owner,
-	TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform)
+	const TSubclassOf<ABSProjectileBase> ClassToSpawn, const FTransform SpawnTransform, const FTransform CameraTransform)
 {
-	if (!GetAvatarActor()->HasLocalNetOwner())
+	if (AbilityActorInfo.IsValid() && !AbilityActorInfo.Get()->IsLocallyControlled())
 	{
 		ABSProjectileBase::SpawnProjectile(Owner, ClassToSpawn, SpawnTransform, CameraTransform);
 	}
 }
+
+#pragma endregion
 
 
 

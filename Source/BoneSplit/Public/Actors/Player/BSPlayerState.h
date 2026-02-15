@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerState.h"
 #include "BSPlayerState.generated.h"
 
+struct FBSLootSpawnInfo;
 class UBSTalentComponent;
 class UBSAttributeSet;
 struct FBSSaveData;
@@ -27,8 +28,15 @@ public:
 	
 	virtual void BeginPlay() override;
 	
-	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	UFUNCTION(Client, Reliable)
+	void Client_SpawnEquipmentLoot(const FBSLootSpawnInfo& InLootSpawnInfo, const FTransform& SpawnTransform);
+	
+	UFUNCTION(Server, Reliable)
+	void Server_EquipItem(const FBSLootSpawnInfo& InLootSpawnInfo);
+		
+	void Server_GiveLoot(TSubclassOf<UBSEquipmentEffect> Effect, const FTransform& SpawnTransform);
 	
 	//Send the save data to the server to initialize the Asc.
 	UFUNCTION(Server, Reliable)
@@ -106,4 +114,7 @@ protected:
 	
 	UPROPERTY()
 	TObjectPtr<UBSAttributeSet> AttributeSetSubObject;
+	
+	UPROPERTY()
+	TArray<FBSLootSpawnInfo> LootSpawnInfo;
 };

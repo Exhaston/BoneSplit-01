@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Chooser.h"
 #include "KismetAnimationLibrary.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "GameFramework/Character.h"
@@ -48,20 +49,10 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 {
 	if (!bInitialized) return;
 	
-	FRotator TargetRotation;
+	AimRotation = CharacterOwner->GetBaseAimRotation();
 	
-	if (CharacterOwner->GetCharacterMovement()->bUseControllerDesiredRotation)
-	{
-		TargetRotation = CharacterOwner->GetBaseAimRotation() - CharacterOwner->GetActorRotation();
-	}
-	else
-	{
-		TargetRotation = FRotator::ZeroRotator;
-	}
-	
-	TargetRotation.Pitch *= -1;
-	AimRotation = 
-		UKismetMathLibrary::RInterpTo(AimRotation, TargetRotation, DeltaSeconds, LookInterpSpeed);
+	AimRotation.Pitch = FRotator::NormalizeAxis(AimRotation.Pitch);
+	AimRotation.Pitch *= -1;
 	
 	float VelocityLength;
 	const FVector Velocity = CharacterOwner->GetCharacterMovement()->Velocity;

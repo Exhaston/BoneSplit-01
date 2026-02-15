@@ -8,42 +8,23 @@
 #include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/AbilitySystem/EffectBases/BSGameplayEffect.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-
+#include "Statics/BSMathLibrary.h"
 
 FBSProjectileAlignment::FBSProjectileAlignment(
 	const FTransform& SpawnTransform,
-	const FVector& StartVelocity, 
-	const FTransform& CameraTransform, 
-	const float InAlignmentTime)
+	const FTransform& CameraTransform)
 {
-	RealStartPos = SpawnTransform.GetLocation();
-	RealStartVel = StartVelocity;
+
+	const FVector CameraLocation = CameraTransform.GetLocation();
+	CameraForward = CameraTransform.GetUnitAxis(EAxis::X);
+	const FVector SpawnLocation = SpawnTransform.GetLocation();
+	StartPos = SpawnLocation;
 	
-	float StartPosX = CameraTransform.GetLocation().X;
-	float StartPosY = CameraTransform.GetLocation().Y;
-	float StartPosZ = CameraTransform.GetLocation().Z;
+	const float ProjectedDistance = FVector::DotProduct(SpawnLocation - CameraLocation, CameraForward);
+	TargetPos = CameraLocation + CameraForward * ProjectedDistance * 2.5;
 	
-	StartPos = { StartPosX, StartPosY, StartPosZ };
-	
-	StartVel = 
-		FVector::VectorPlaneProject(
-			RealStartVel, 
-			CameraTransform.GetUnitAxis(EAxis::Y)).GetSafeNormal() * RealStartVel.Length();
-	
-	AlignmentTime = InAlignmentTime;
 	bAligned = false;
 	bHasValidData = true;
-}
-
-FVector FBSProjectileAlignment::EvaluatePosition(const float TimeAlive, const FVector& GravityAcceleration)
-{
-	const FVector AlignedPos = StartPos + (StartVel + 0.5f * TimeAlive * GravityAcceleration) * TimeAlive;
-	const FVector UnalignedPos = RealStartPos + (RealStartVel + 0.5f * TimeAlive * GravityAcceleration) * TimeAlive;
-	
-	if (TimeAlive >= AlignmentTime) bAligned = true;
-	
-	const float Alpha = FMath::SmoothStep(0.f, 1.f, TimeAlive / AlignmentTime);
-	return Slerp(UnalignedPos, AlignedPos, Alpha);
 }
 
 ABSProjectileBase::ABSProjectileBase(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -51,11 +32,40 @@ ABSProjectileBase::ABSProjectileBase(const FObjectInitializer& ObjectInitializer
 	PrimaryActorTick.bCanEverTick = true;
 	OverlapComponent = CreateDefaultSubobject<USphereComponent>("OverlapComponent");
 	SetRootComponent(OverlapComponent);
-	OverlapComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	OverlapComponent->SetCollisionObjectType(ECC_Pawn);
+	
 	ProjectileMovementComponent = 
 		CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->SetUpdatedComponent(OverlapComponent);
+}
+
+void ABSProjectileBase::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	if (ProjectileAlignment.GetIsValid())
+	{
+		ProjectileMovementComponent->StopMovementImmediately();
+		ProjectileMovementComponent->SetComponentTickEnabled(false);
+	}
+}
+
+void ABSProjectileBase::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	SetCollisionProfiles();
+}
+
+void ABSProjectileBase::SetCollisionProfiles()
+{
+	OverlapComponent->SetGenerateOverlapEvents(true);
+	OverlapComponent->SetCollisionProfileName(TEXT("Custom"));
+	OverlapComponent->SetCollisionEnabled(ECollisionEnabled::Type::QueryOnly);
+	OverlapComponent->SetCollisionObjectType(ECC_Pawn);
+	OverlapComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+	OverlapComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+	OverlapComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	OverlapComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+	OverlapComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
 ABSProjectileBase* ABSProjectileBase::SpawnProjectile(
@@ -64,6 +74,7 @@ ABSProjectileBase* ABSProjectileBase::SpawnProjectile(
 	const FTransform& InSpawnTransform,
 	const FTransform& InCameraTransform)
 {
+	if (!InOwnerActor) return nullptr;
 	APawn* Instigator = Cast<APawn>(InOwnerActor);
 	
 	ABSProjectileBase* ProjectileInstance = InOwnerActor->GetWorld()->SpawnActorDeferred<ABSProjectileBase>(
@@ -73,20 +84,19 @@ ABSProjectileBase* ABSProjectileBase::SpawnProjectile(
 		Instigator, 
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	
-	ProjectileInstance->ProjectileAlignment = 
-		FBSProjectileAlignment(
-			InSpawnTransform, 
-			InSpawnTransform.TransformVector({1, 0, 0}) * ProjectileInstance->ProjectileMovementComponent->InitialSpeed, 
-			InCameraTransform, 
-			0.35);
+	ProjectileInstance->ProjectileAlignment = FBSProjectileAlignment(
+		InSpawnTransform,
+		InCameraTransform);
 	
 	ProjectileInstance->FinishSpawning(InSpawnTransform);
 	
 	return ProjectileInstance;
 }
 
-ABSProjectileBase* ABSProjectileBase::SpawnProjectile(AActor* InOwnerActor,
-	const TSubclassOf<ABSProjectileBase> ProjectileClass, const FTransform& InSpawnTransform)
+ABSProjectileBase* ABSProjectileBase::SpawnProjectile(
+	AActor* InOwnerActor,
+	const TSubclassOf<ABSProjectileBase> ProjectileClass, 
+	const FTransform& InSpawnTransform)
 {
 	APawn* Instigator = Cast<APawn>(InOwnerActor);
 	
@@ -106,13 +116,48 @@ void ABSProjectileBase::Tick(const float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	
+	if (IsActorBeingDestroyed()) return;
+	
 	TimeAlive += DeltaSeconds;
+	
+	if (!ProjectileAlignment.GetIsValid() || ProjectileAlignment.GetIsAligned()) return;
 
-	if (!IsActorBeingDestroyed() && ProjectileAlignment.GetIsValid() && !ProjectileAlignment.GetIsAligned())
+	const float Alpha = FMath::Clamp(GetGameTimeSinceCreation() / ProjectileAlignment.GetAlignmentTime(ProjectileMovementComponent->InitialSpeed), 0.f, 1.f);
+	const float SmoothedAlpha = FMath::SmoothStep(0.f, 1.f, Alpha);
+	const FVector NewPos = UBSMathLibrary::Slerp(ProjectileAlignment.StartPos, ProjectileAlignment.TargetPos, SmoothedAlpha);
+	SetActorLocation(NewPos, true);
+	
+	if (Alpha >= 1.f)
 	{
-		const FVector newPosition = ProjectileAlignment.EvaluatePosition(TimeAlive, {0,0,ProjectileMovementComponent->GetGravityZ()});
-		ProjectileMovementComponent->Velocity = (newPosition - OverlapComponent->GetComponentLocation()) / DeltaSeconds;
+		ProjectileAlignment.bAligned = true;
+		ProjectileMovementComponent->Velocity =
+			ProjectileAlignment.CameraForward * ProjectileMovementComponent->InitialSpeed;
+		ProjectileMovementComponent->SetComponentTickEnabled(true);
 	}
+}
+
+UAbilitySystemComponent* ABSProjectileBase::GetAbilitySystemComponent() const
+{
+	if (const IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(GetOwner()))
+	{
+		return AbilitySystemInterface->GetAbilitySystemComponent();
+	}
+	return nullptr;
+}
+
+void ABSProjectileBase::NotifyHit(
+	UPrimitiveComponent* MyComp, 
+	AActor* Other,
+	UPrimitiveComponent* OtherComp, 
+	const bool bSelfMoved, 
+	const FVector HitLocation, 
+	const FVector HitNormal,
+	const FVector NormalImpulse, 
+	const FHitResult& Hit)
+{
+	Super::NotifyHit(MyComp, Other, OtherComp, bSelfMoved, HitLocation, HitNormal, NormalImpulse, Hit);
+	if (bCanPassThroughStatic) return;
+	Destroy();
 }
 
 void ABSProjectileBase::NotifyActorBeginOverlap(AActor* OtherActor)
@@ -125,21 +170,10 @@ void ABSProjectileBase::NotifyActorBeginOverlap(AActor* OtherActor)
 	{
 		if (AscInterface->GetAbilitySystemComponent())
 		{
-			bool bHit = false;
+			const bool bMatchingFaction = UBSAbilityLibrary::HasMatchingFaction(
+				GetAbilitySystemComponent(),AscInterface->GetAbilitySystemComponent());
 			
-			bool bMatchingFaction = UBSAbilityLibrary::HasMatchingFaction(GetAbilitySystemComponent(),AscInterface->GetAbilitySystemComponent());
-			
-			if (bHitEnemies && !bMatchingFaction)
-			{
-				bHit = true;
-			}
-			
-			if (bHitFriendlies && bMatchingFaction)
-			{
-				bHit = true;
-			}
-			
-			if (bHit)
+			if (bHitFriendlies && bMatchingFaction || bHitEnemies && !bMatchingFaction)
 			{
 				HitActors.Add(OtherActor);
 				CurrentHits++;
@@ -157,14 +191,5 @@ void ABSProjectileBase::NotifyActorBeginOverlap(AActor* OtherActor)
 			}
 		}
 	}
-}
-
-UAbilitySystemComponent* ABSProjectileBase::GetAbilitySystemComponent() const
-{
-	if (const IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(GetOwner()))
-	{
-		return AbilitySystemInterface->GetAbilitySystemComponent();
-	}
-	return nullptr;
 }
 

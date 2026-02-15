@@ -12,6 +12,7 @@
 #include "BoneSplit/BoneSplit.h"
 #include "Components/TimelineComponent.h"
 #include "Components/InteractionSystem/BSInteractionComponent.h"
+#include "Components/UnitPlateManager/BSUnitPlateManagerComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerState.h"
 #include "GameInstance/BSLoadingScreenSubsystem.h"
@@ -22,7 +23,7 @@
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	
+	UnitPlateManagerComponent = CreateDefaultSubobject<UBSUnitPlateManagerComponent>(TEXT("UnitPlateManagerComponent"));
 }
 
 void ABSPlayerController::PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel)

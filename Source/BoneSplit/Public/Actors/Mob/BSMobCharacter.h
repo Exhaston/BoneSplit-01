@@ -39,6 +39,8 @@ public:
 	
 	virtual void BeginPlay() override;
 	
+	virtual void Tick(float DeltaSeconds) override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	// =================================================================================================================
@@ -126,12 +128,6 @@ protected:
 	
 	UFUNCTION()
 	void OnRep_RandomColor();
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	bool bShowHealthBar = true;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	TObjectPtr<UWidgetComponent> WidgetComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TArray<UAnimMontage*> DeathAnimations;

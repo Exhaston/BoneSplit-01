@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativeCharacter.h"
-#include "GameplayTagContainer.h"
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
@@ -29,7 +28,9 @@ class UBSInventoryComponent;
 class UBSAbilitySystemComponent;
 
 /**
- *
+ * Player Character base with meshes for BSEquipmentEffects and AbilitySystem. Tied to BSPlayerState to function. 
+ * The BSPlayerState keeps important data should this character ever get destroyed or removed, 
+ * and stand for getting save or initialization data.
  */
 UCLASS(DisplayName="Player Character", Blueprintable, BlueprintType, 
 	Category="BoneSplit", ClassGroup="BoneSplit", Abstract)
@@ -37,8 +38,10 @@ class BONESPLIT_API ABSPlayerCharacter : public AClientAuthoritativeCharacter,
 public IBSAbilitySystemInterface
 {
 	GENERATED_BODY()
-
+	
 public:
+
+#pragma region Defaults
 	                                     
 	// =================================================================================================================
 	// Defaults
@@ -48,11 +51,17 @@ public:
 	
 	virtual void BeginPlay() override;
 	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
 	virtual void PossessedBy(AController* NewController) override;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	virtual void OnRep_PlayerState() override;
+	
+#pragma endregion
+	
+#pragma region Camera
 	
 	// =================================================================================================================
 	// Camera
@@ -66,6 +75,10 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	TObjectPtr<UCameraComponent> CameraComponent;
+	
+#pragma endregion
+	
+#pragma region Launching
 	
 	// =================================================================================================================
 	// Launch
@@ -81,6 +94,9 @@ public:
 	
 	virtual void BP_OnLaunched_Implementation(FVector LaunchVelocity) override;
 	
+#pragma endregion
+	
+#pragma region Death
 	// =================================================================================================================
 	// Death
 	// =================================================================================================================
@@ -103,6 +119,10 @@ public:
 	
 	virtual void BP_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage) override;
 	
+#pragma endregion
+	
+#pragma region Combat
+	
 	// =================================================================================================================
 	// Combat
 	// ================================================================================================================= 
@@ -124,10 +144,14 @@ public:
 	
 	virtual FBSOnCombatChangedDelegate& GetOnCombatChangedDelegate() override;
 	
-	// =================================================================================================================
-	// Asc
-	// ================================================================================================================= 
+#pragma endregion
 	
+#pragma region Asc&Interaction
+	
+	// =================================================================================================================
+	// Interactions & ASC
+	// ================================================================================================================= 
+	              
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
 	UFUNCTION(BlueprintPure)
@@ -141,8 +165,20 @@ protected:
 	UPROPERTY(meta=(AllowPrivateAccess=true))
 	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	TObjectPtr<UTextRenderComponent> PlayerNameTextComponent;
+#pragma endregion
+	
+#pragma region Meshes
+	
+	// =================================================================================================================
+	// Meshes
+	// ================================================================================================================= 
+	
+	virtual void SetupMeshes(UAbilitySystemComponent* InAsc);
+	
+	virtual void LoadMeshesFromEquipmentEffect(const UBSEquipmentEffect* EffectMeshComp);
+	
+	UFUNCTION()
+	void OnPlayerColourChanged(FColor NewColor);
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* HeadComponent;
@@ -161,19 +197,24 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* LegsComponent;
 	
-	UFUNCTION()
-	void OnPlayerColourChanged(FColor NewColor);
+#pragma endregion
+	
+#pragma region Initialization&Replication
+	
+	// =================================================================================================================
+	// Initialization And Replication
+	// ================================================================================================================= 
 	
 	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
 	virtual void InitializeCharacter();
 	
-	virtual void SetupMeshes();
-	
-	virtual void LoadMeshesFromEquipmentEffect(const UBSEquipmentEffect* EffectMeshComp);
+	virtual void SetupFloatingName(APlayerState* PS);
 	
 	UFUNCTION()
 	void OnPlayerStateInitComplete();
 	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
+	TObjectPtr<UTextRenderComponent> PlayerNameTextComponent;
 	
-	
+#pragma endregion
 };

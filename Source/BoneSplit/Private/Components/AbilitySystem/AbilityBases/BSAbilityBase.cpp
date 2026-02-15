@@ -82,7 +82,7 @@ void UBSAbilityBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const F
 
 void UBSAbilityBase::SpawnProjectileForPlayer(TSubclassOf<ABSProjectileBase> Projectile, FTransform SpawnTransform)
 {
-	if (!IsLocallyControlled()) return;
+	if (!IsLocallyControlled() || !IsActive()) return;
 	if (const UCameraComponent* CameraComponent = GetAvatarActorFromActorInfo()->GetComponentByClass<UCameraComponent>())
 	{
 		

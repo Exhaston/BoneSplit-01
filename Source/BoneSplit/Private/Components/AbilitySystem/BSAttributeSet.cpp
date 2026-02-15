@@ -44,6 +44,8 @@ void UBSAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION_NOTIFY(UBSAttributeSet, Bones, COND_None, REPNOTIFY_Always);
 }
 
+#pragma region AttributeEvents
+
 void UBSAttributeSet::PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const
 {
 	NewValue = FMath::Clamp<float>(NewValue, GetMinForAttribute(Attribute), GetMaxForAttribute(Attribute));
@@ -113,6 +115,6 @@ void UBSAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallback
 			Killable->Die(Data.EffectSpec.GetEffectContext().GetInstigatorAbilitySystemComponent(), Data.EvaluatedData.Magnitude);
 		}
 	}
-	
-
 }
+
+#pragma endregion

@@ -13,6 +13,7 @@
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Widgets/HUD/BSAttributeBar.h"
+#include "Widgets/HUD/BSFloatingNamePlate.h"
 
 ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) : 
 Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(CharacterMovementComponentName))
@@ -35,11 +36,6 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	GetMesh()->SetReceivesDecals(false);
 	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::Type::QueryOnly);
-	
-	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WorldUIInfo"));
-	WidgetComponent->SetupAttachment(GetMesh());
-	WidgetComponent->SetRelativeLocation({0,0, 100});
-	WidgetComponent->SetDrawSize({100, 20});
 }
 
 void ABSMobCharacter::BeginPlay()
@@ -84,14 +80,11 @@ void ABSMobCharacter::BeginPlay()
 	{
 		MobSubsystem->RegisterMob(this);
 	}
-	
-	if (!IsRunningDedicatedServer())
-	{
-		if (UBSAttributeBar* Bar = Cast<UBSAttributeBar>(WidgetComponent->GetWidget()))
-		{
-			Bar->InitializeAttributeBar(AbilitySystemComponent);
-		}
-	}
+}
+
+void ABSMobCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
 }
 
 void ABSMobCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

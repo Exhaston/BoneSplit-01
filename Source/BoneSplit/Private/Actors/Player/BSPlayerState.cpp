@@ -3,6 +3,7 @@
 
 #include "Actors/Player/BSPlayerState.h"
 
+#include "Actors/InteractableBases/BSEquipmentDropBase.h"
 #include "Actors/Player/BSLocalSaveSubsystem.h"
 #include "Actors/Player/BSSaveGame.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
@@ -31,12 +32,27 @@ ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Su
 	
 	bAlwaysRelevant = true;
 	bReplicates = true;
-	SetNetUpdateFrequency(30);
+	SetNetUpdateFrequency(60);
 }
 
 void ABSPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (HasAuthority())
+	{
+		TArray<AActor*> EquipmentFound;
+		UGameplayStatics::GetAllActorsOfClass(this, ABSEquipmentDropBase::StaticClass(), EquipmentFound);
+		for (const auto FoundEquipment : EquipmentFound)
+		{
+			const ABSEquipmentDropBase* EquipmentDropBase = Cast<ABSEquipmentDropBase>(FoundEquipment);
+			FBSLootSpawnInfo NewLootInfo;
+			NewLootInfo.LootGuid = EquipmentDropBase->LootSpawnInfo.LootGuid;
+			NewLootInfo.EquipmentEffect = EquipmentDropBase->LootSpawnInfo.EquipmentEffect;
+	
+			LootSpawnInfo.AddUnique(NewLootInfo);
+		}
+	}
 	
 	if (GetPlayerController() && GetPlayerController()->IsLocalController())
 	{
@@ -57,6 +73,45 @@ void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABSPlayerState, PlayerColor);
 	DOREPLIFETIME(ABSPlayerState, bInitialized);
+}
+
+void ABSPlayerState::Server_EquipItem_Implementation(const FBSLootSpawnInfo& InLootSpawnInfo)
+{
+	//Find the server instance of the loot on the server and apply that.
+	if (const int32 LootIndex = LootSpawnInfo.Find(InLootSpawnInfo); LootIndex != INDEX_NONE)
+	{
+		GetAbilitySystemComponent()->BP_ApplyGameplayEffectToSelf(
+		LootSpawnInfo[LootIndex].EquipmentEffect, 1, GetAbilitySystemComponent()->MakeEffectContext());
+		
+		//Remove the server instance so it cannot be reused.
+		LootSpawnInfo.RemoveAt(LootIndex);
+	}
+}
+
+void ABSPlayerState::Server_GiveLoot(const TSubclassOf<UBSEquipmentEffect> Effect, const FTransform& SpawnTransform)
+{
+	if (!HasAuthority()) return;
+	ensure(Effect);
+	FBSLootSpawnInfo NewLootInfo;
+	NewLootInfo.LootGuid = FGuid::NewGuid();
+	NewLootInfo.EquipmentEffect = Effect;
+	
+	LootSpawnInfo.AddUnique(NewLootInfo);
+	Client_SpawnEquipmentLoot(NewLootInfo, SpawnTransform);
+}
+
+void ABSPlayerState::Client_SpawnEquipmentLoot_Implementation(const FBSLootSpawnInfo& InLootSpawnInfo, const FTransform& SpawnTransform)
+{
+	ABSEquipmentDropBase* LootDropActor = GetWorld()->SpawnActorDeferred<ABSEquipmentDropBase>(
+		GetDefault<UBSDeveloperSettings>()->EquipmentDropClass.LoadSynchronous(), 
+		SpawnTransform, 
+		this, 
+		GetPawn(), 
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	
+	LootDropActor->InitializeLoot(InLootSpawnInfo);
+	
+	LootDropActor->FinishSpawning(SpawnTransform);
 }
 
 UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const

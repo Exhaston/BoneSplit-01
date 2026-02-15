@@ -249,4 +249,5 @@ namespace BSConsoleVariables
 	extern TAutoConsoleVariable<bool> CVarBSShowDamageNumbers;
 	extern TAutoConsoleVariable<bool> CVarBSShowIncomingDamageNumbers;
 	extern TAutoConsoleVariable<bool> CVarBSShowHealingNumbers;
+	
 }

@@ -32,7 +32,7 @@ Super(ObjectInitializer
 {
 	PrimaryActorTick.bCanEverTick = true;
 	
-	SetNetUpdateFrequency(30);
+	SetNetUpdateFrequency(60);
 	bAlwaysRelevant = true;
 	SetReplicates(true);
 	
@@ -92,12 +92,20 @@ void ABSPlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 }
 
+void ABSPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	BSConsoleVariables::CVarShowPlayerHoverNames->OnChangedDelegate().RemoveAll(this);
+	BSConsoleVariables::CVarBSCameraOffset->OnChangedDelegate().RemoveAll(this);
+	BSConsoleVariables::CVarShowOwnHoverName->OnChangedDelegate().RemoveAll(this);
+	Super::EndPlay(EndPlayReason);
+}
+
 void ABSPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	InitializeCharacter(); //Init for server
-	
 }
+
 void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -125,37 +133,20 @@ void ABSPlayerCharacter::ResetCamera()
 
 void ABSPlayerCharacter::InitializeCharacter()
 {
-	if (!IsRunningDedicatedServer())
-	{
-		if (!IsLocallyControlled())
-		{	
-			PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowPlayerHoverNames->GetBool());
-			BSConsoleVariables::CVarShowPlayerHoverNames->OnChangedDelegate().AddWeakLambda(
-			this, [this](IConsoleVariable* ConsoleVariable)
-			{
-				if (IsValid(this))
-				{
-					PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
-				}
-			});
-		}
-		else
-		{
-			PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowOwnHoverName->GetBool());
-			BSConsoleVariables::CVarShowOwnHoverName->OnChangedDelegate().AddWeakLambda(
-			this, [this](IConsoleVariable* ConsoleVariable)
-			{
-				PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
-			});
-		}
-	}
-	
 	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
 	{
+		SetupFloatingName(PS);
+		
 		AbilitySystemComponent = PS->GetBSAbilitySystem();
-		AbilitySystemComponent.Get()->InitAbilityActorInfo(PS, this);
+		check(AbilitySystemComponent.IsValid());
+		GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
+		
+		if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
+		{
+			AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
+		}
 
-		SetupMeshes();
+		SetupMeshes(AbilitySystemComponent.Get());
 		
 		GetCharacterMovement<UBSPlayerMovementComponent>()->InitializeAsc(AbilitySystemComponent.Get());
 		
@@ -174,26 +165,59 @@ void ABSPlayerCharacter::InitializeCharacter()
 	}
 }
 
+void ABSPlayerCharacter::SetupFloatingName(APlayerState* PS)
+{
+	if (!PS) return;
+	if (!IsRunningDedicatedServer())
+	{
+		PlayerNameTextComponent->SetText(FText::FromString(PS->GetPlayerName()));
+		
+		if (!IsLocallyControlled())
+		{	
+			PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowPlayerHoverNames->GetBool());
+			BSConsoleVariables::CVarShowPlayerHoverNames->OnChangedDelegate().AddWeakLambda(
+			this, [this](IConsoleVariable* ConsoleVariable)
+			{
+				if (IsValid(this))
+				{
+					PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
+				}
+			});
+		}
+		else
+		{
+			PlayerNameTextComponent.Get()->SetHiddenInGame(!BSConsoleVariables::CVarShowOwnHoverName->GetBool());
+			BSConsoleVariables::CVarShowOwnHoverName->OnChangedDelegate().AddWeakLambda(
+			this, [this](IConsoleVariable* ConsoleVariable)
+			{
+				if (IsValid(this))
+				{
+					PlayerNameTextComponent.Get()->SetHiddenInGame(!ConsoleVariable->GetBool());
+				}
+			});
+		}
+	}
+}
 
 
-void ABSPlayerCharacter::SetupMeshes()
+void ABSPlayerCharacter::SetupMeshes(UAbilitySystemComponent* InAsc)
 {
 	//Catch currents
 	TArray<FActiveGameplayEffectHandle> ActiveHandles = 
-		AbilitySystemComponent.Get()->GetActiveEffects(
+		InAsc->GetActiveEffects(
 			FGameplayEffectQuery::MakeQuery_MatchNoEffectTags(FGameplayTagContainer()));
 	
 	for (const auto ActiveEffectHandle : ActiveHandles)
 	{
 		const FActiveGameplayEffect* GameplayEffect = 
-			AbilitySystemComponent.Get()->GetActiveGameplayEffect(ActiveEffectHandle);
+			InAsc->GetActiveGameplayEffect(ActiveEffectHandle);
 		
 		if (!GameplayEffect->Spec.Def.IsA(UBSEquipmentEffect::StaticClass())) continue;
 		LoadMeshesFromEquipmentEffect(Cast<UBSEquipmentEffect>(GameplayEffect->Spec.Def));
 	}
 	                               
 	//Subscribe to any further changes
-	AbilitySystemComponent.Get()->OnActiveGameplayEffectAddedDelegateToSelf.AddWeakLambda(
+	InAsc->OnActiveGameplayEffectAddedDelegateToSelf.AddWeakLambda(
 		this,[this]
 		(UAbilitySystemComponent* Asc, const FGameplayEffectSpec& Spec, FActiveGameplayEffectHandle Handle)
 		{
@@ -231,15 +255,9 @@ void ABSPlayerCharacter::OnPlayerStateInitComplete()
 {
 	const ABSPlayerState* PS = GetPlayerState<ABSPlayerState>();
 	
-	if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
-	{
-		AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
-	}
+
 	
-	if (!IsRunningDedicatedServer() && PS)
-	{
-		PlayerNameTextComponent->SetText(FText::FromString(PS->GetPlayerName()));
-	}
+
 }
 
 bool ABSPlayerCharacter::BP_IsInCombat_Implementation()
