@@ -25,6 +25,7 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 	
 	if (MeshAsset.IsNull())
 	{
+		EmptyOverrideMaterials();
 		SetSkeletalMesh(nullptr); //Clears the mesh
 		return;
 	}
@@ -33,11 +34,11 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 	{
 		if (MeshAsset.Get() == GetSkeletalMeshAsset())
 		{
+			EmptyOverrideMaterials();
 			return; //The same asset. No need to reload
 		}
-		
+		EmptyOverrideMaterials();
 		SetSkeletalMeshAsset(MeshAsset.Get());
-		CleanUpOverrideMaterials();
 		SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		return;
 	}
@@ -53,8 +54,8 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 				UE_LOG(BoneSplit, Warning, TEXT("Failed to async-load skeletal mesh: %s"), *MeshAsset.ToString());
 				return;
 			}
+			EmptyOverrideMaterials();
 			SetSkeletalMeshAsset(MeshAsset.Get());
-			CleanUpOverrideMaterials();
 			SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		})
 	);
