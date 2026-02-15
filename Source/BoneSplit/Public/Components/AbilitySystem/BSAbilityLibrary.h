@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "BSAbilityLibrary.generated.h"
 
@@ -30,6 +31,9 @@ class BONESPLIT_API UBSAbilityLibrary : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 	
 public:
+	
+	UFUNCTION(BlueprintCallable, Category="BoneSplit|Data")
+	static FString ConvertTagToString(FGameplayTag InTag);
 	
 	UFUNCTION(BlueprintCallable, Category="BoneSplit|Abilities")
 	static UAbilitySystemComponent* GetAbilitySystemComponent(AActor* Target);

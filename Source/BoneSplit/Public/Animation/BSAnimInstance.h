@@ -40,6 +40,10 @@ public:
 	UPROPERTY()
 	ACharacter* CharacterOwner;
 	
+	//Always validate before use. Could invalidate under destruction etc.
+	UFUNCTION(BlueprintPure, Category="Bone Split")
+	ACharacter* GetCharacterOwner() const { return CharacterOwner; }
+	
 	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
 	FGameplayTag GetWeaponTypeTag() const { return WeaponTypeTag; }
 	

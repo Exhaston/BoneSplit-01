@@ -20,6 +20,11 @@
 #include "Tasks/AITask_MoveTo.h"
 #include "Components/AbilitySystem/EffectBases/BSGameplayEffect.h"
 
+FString UBSAbilityLibrary::ConvertTagToString(const FGameplayTag InTag)
+{
+	return InTag.ToString();
+}
+
 UAbilitySystemComponent* UBSAbilityLibrary::GetAbilitySystemComponent(AActor* Target)
 {
 	check(Target);
