@@ -27,6 +27,7 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 	
 	if (MeshAsset.IsNull())
 	{
+		OnSkeletalMeshSetDelegate.Broadcast(nullptr);
 		SetSkeletalMesh(nullptr); //Clears the mesh
 		return;
 	}
@@ -35,9 +36,12 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 	{
 		if (MeshAsset.Get() == GetSkeletalMeshAsset())
 		{
+			OnSkeletalMeshSetDelegate.Broadcast(GetSkeletalMeshAsset());
 			return; //The same asset. No need to reload
 		}
+
 		SetSkeletalMeshAsset(MeshAsset.Get());
+		OnSkeletalMeshSetDelegate.Broadcast(MeshAsset.Get());
 		SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		return;
 	}
@@ -54,6 +58,7 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 				return;
 			}
 			SetSkeletalMeshAsset(MeshAsset.Get());
+			OnSkeletalMeshSetDelegate.Broadcast(MeshAsset.Get());
 			SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		})
 	);

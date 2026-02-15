@@ -11,6 +11,9 @@
 /**
  * 
  */
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FBSOnSkeletalMeshSet, USkeletalMesh* NewMest);
+
 UCLASS()
 class BONESPLIT_API UBSEquipmentMeshComponent : public USkeletalMeshComponent
 {
@@ -22,6 +25,8 @@ public:
 	FGameplayTag MeshTag;
 	
 	virtual void SetColor(FColor Color);
+	
+	FBSOnSkeletalMeshSet OnSkeletalMeshSetDelegate;
 	
 	UPROPERTY()
 	FColor CurrentColor = FColor::White;

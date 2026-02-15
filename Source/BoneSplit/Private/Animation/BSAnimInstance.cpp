@@ -27,14 +27,39 @@ void UBSAnimInstance::InitializeAbilitySystemComponent(UAbilitySystemComponent* 
 	CharacterOwner = Cast<ACharacter>(TryGetPawnOwner());
 	if (CharacterOwner)
 	{
+		AbilitySystemComponent = InAbilitySystemComponent;
+		
 		if (const ABSPlayerCharacter* PlayerCharacter = Cast<ABSPlayerCharacter>(CharacterOwner))
 		{
-			HeadMeshComp = PlayerCharacter->HeadComponent;
-			ChestMeshComp = PlayerCharacter->GetMesh();
-			LegsMeshComp = PlayerCharacter->LegsComponent;
-			ArmsMeshCom = PlayerCharacter->ArmsComponent;
+			HeadMeshAsset = PlayerCharacter->HeadComponent->GetSkeletalMeshAsset();
+			PlayerCharacter->HeadComponent->OnSkeletalMeshSetDelegate.AddWeakLambda(
+				this, [this](USkeletalMesh* SkeletalMeshAsset)
+			{
+					HeadMeshAsset = SkeletalMeshAsset;
+					BP_OnEquipmentMeshChanged(BSTags::EquipmentMesh_Head, HeadMeshAsset);
+			});	
+			ChestMeshAsset = PlayerCharacter->GetMesh()->GetSkeletalMeshAsset();
+			Cast<UBSEquipmentMeshComponent>(PlayerCharacter->GetMesh())->OnSkeletalMeshSetDelegate.AddWeakLambda(
+				this, [this](USkeletalMesh* SkeletalMeshAsset)
+			{
+					ChestMeshAsset = SkeletalMeshAsset;
+					BP_OnEquipmentMeshChanged(BSTags::EquipmentMesh_Chest, ChestMeshAsset);
+			});			
+			LegsMeshAsset = PlayerCharacter->LegsComponent->GetSkeletalMeshAsset();
+			PlayerCharacter->LegsComponent->OnSkeletalMeshSetDelegate.AddWeakLambda(
+				this, [this](USkeletalMesh* SkeletalMeshAsset)
+			{
+					LegsMeshAsset = SkeletalMeshAsset;
+					BP_OnEquipmentMeshChanged(BSTags::Equipment_Legs, LegsMeshAsset);
+			}); 	
+			ArmsMeshAsset = PlayerCharacter->ArmsComponent->GetSkeletalMeshAsset();
+			PlayerCharacter->ArmsComponent->OnSkeletalMeshSetDelegate.AddWeakLambda(
+				this, [this](USkeletalMesh* SkeletalMeshAsset)
+			{
+					ArmsMeshAsset = SkeletalMeshAsset;
+					BP_OnEquipmentMeshChanged(BSTags::EquipmentMesh_Arms, ArmsMeshAsset);
+			});
 		}
-		AbilitySystemComponent = InAbilitySystemComponent;
 		
 		InAbilitySystemComponent->RegisterGenericGameplayTagEvent().AddUObject(
 		this, &UBSAnimInstance::NativeOnTagEvent);
@@ -95,6 +120,11 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 	VelocityDirection = FMath::RoundToFloat(TargetDirection / VelocityDirectionStepSize) * VelocityDirectionStepSize;
 	
 	Super::NativeUpdateAnimation(DeltaSeconds);
+}
+
+void UBSAnimInstance::BP_OnEquipmentMeshChanged_Implementation(FGameplayTag MeshTag, USkeletalMesh* NewSkeletalMesh)
+{
+	
 }
 
 UAbilitySystemComponent* UBSAnimInstance::GetAbilitySystemComponent()

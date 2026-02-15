@@ -31,13 +31,16 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	
 	UPROPERTY(BlueprintReadOnly)
-	USkeletalMeshComponent* HeadMeshComp;
+	USkeletalMesh* HeadMeshAsset;
 	UPROPERTY(BlueprintReadOnly)
-	USkeletalMeshComponent* ChestMeshComp;
+	USkeletalMesh* ChestMeshAsset;
 	UPROPERTY(BlueprintReadOnly)
-	USkeletalMeshComponent* LegsMeshComp;
+	USkeletalMesh* LegsMeshAsset;
 	UPROPERTY(BlueprintReadOnly)
-	USkeletalMeshComponent* ArmsMeshCom;
+	USkeletalMesh* ArmsMeshAsset;
+	
+	UFUNCTION(BlueprintNativeEvent, Category="Bone Split", DisplayName="OnEquipmentMeshChanged")
+	void BP_OnEquipmentMeshChanged(FGameplayTag MeshTag, USkeletalMesh* NewSkeletalMesh);
 	
 	//Fetches the current AbilitySystemComponent or caches a new one from the Pawn.
 	UFUNCTION(BlueprintPure)
