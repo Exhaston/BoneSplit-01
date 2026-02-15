@@ -72,10 +72,6 @@ struct FBSSaveData
 	//Current effects, needed for transitions between maps with buffs etc. Clear in hub. 
 	UPROPERTY(SaveGame)
 	TArray<FBSGameplayEffectData> Effects;
-	                                          
-	//Saved tags, this can be all from state to story progression
-	UPROPERTY(SaveGame)      
-	TArray<FGameplayTag> Tags;
 	
 	//Current selected color. This is just an identifier for a color array of available colors.
 	UPROPERTY(SaveGame, BlueprintReadOnly, EditDefaultsOnly)

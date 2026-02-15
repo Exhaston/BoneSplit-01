@@ -27,9 +27,13 @@ void UBSLocalWidgetSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	const UBSDeveloperSettings* DS = GetDefault<UBSDeveloperSettings>();
 	
-	if (!DS->RootWidgetClass.IsNull())
+	if (!DS->GameRootWidgetClass.IsNull())
 	{
-		RootWidgetClass = DS->RootWidgetClass.LoadSynchronous();
+		GameRootWidgetClass = DS->GameRootWidgetClass.LoadSynchronous();
+	}
+	if (!DS->GameRootWidgetClass.IsNull())
+	{
+		MainMenuWidgetRootClass = DS->MainMenuRootWidgetClass.LoadSynchronous();
 	}
 	
 	if (!DS->HudWidgetClass.IsNull())
@@ -55,6 +59,20 @@ void UBSLocalWidgetSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		DamageNumberWidgetClass = DS->DefaultDamageNumberWidgetClass.LoadSynchronous();
 	}
+	
+	if (!DS->UserConfirmContextWidgetClass.IsNull())
+	{
+		UserConfirmWidgetClass = DS->UserConfirmContextWidgetClass.LoadSynchronous();
+	}
+}
+
+void UBSLocalWidgetSubsystem::ClearWidgets()
+{
+	if (RootWidgetInstance)
+	{
+		RootWidgetInstance->RemoveFromParent();
+		RootWidgetInstance = nullptr;
+	}
 }
 
 UBSWToolTipBase* UBSLocalWidgetSubsystem::CreateGenericToolTip(
@@ -65,11 +83,11 @@ UBSWToolTipBase* UBSLocalWidgetSubsystem::CreateGenericToolTip(
 	return ToolTip;
 }
 
-UBSWRoot* UBSLocalWidgetSubsystem::CreatePlayerUI(APlayerController* InPlayerController)
+UBSWRoot* UBSLocalWidgetSubsystem::CreatePlayerUI(APlayerController* InPlayerController, bool bMainMenu)
 {
 	check(InPlayerController);
-	check(RootWidgetClass);
-	RootWidgetInstance = CreateWidget<UBSWRoot>(InPlayerController, RootWidgetClass, "RootWidget");
+	check(GameRootWidgetClass);
+	RootWidgetInstance = CreateWidget<UBSWRoot>(InPlayerController, bMainMenu ? MainMenuWidgetRootClass : GameRootWidgetClass, "RootWidget");
 	RootWidgetInstance->AddToPlayerScreen();
 	return RootWidgetInstance;
 }

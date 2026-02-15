@@ -37,6 +37,7 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 		}
 		
 		SetSkeletalMeshAsset(MeshAsset.Get());
+		CleanUpOverrideMaterials();
 		SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		return;
 	}
@@ -53,6 +54,7 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 				return;
 			}
 			SetSkeletalMeshAsset(MeshAsset.Get());
+			CleanUpOverrideMaterials();
 			SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		})
 	);

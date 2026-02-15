@@ -16,6 +16,7 @@
 #include "Widgets/HUD/BSCharacterPane.h"
 #include "Widgets/Base/BSPauseMenu.h"
 #include "Widgets/Base/BSWToolTipBase.h"
+#include "Widgets/Base/BSWUserConfirmContext.h"
 #include "Widgets/HUD/BSWDamageNumber.h"
 #include "BSDeveloperSettings.generated.h"
 
@@ -57,7 +58,10 @@ public:
 	TArray<FColor> PlayerColors;
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSWRoot> RootWidgetClass;
+	TSoftClassPtr<UBSWRoot> GameRootWidgetClass;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSWRoot> MainMenuRootWidgetClass;
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSWHud> HudWidgetClass;
@@ -76,6 +80,9 @@ public:
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
 	TSoftClassPtr<UBSLoadingScreenWidget> LoadingScreenWidget;
+	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
+	TSoftClassPtr<UBSWUserConfirmContext> UserConfirmContextWidgetClass;
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Loot")    
 	TSoftClassPtr<ABSEquipmentDropBase> EquipmentDropClass;

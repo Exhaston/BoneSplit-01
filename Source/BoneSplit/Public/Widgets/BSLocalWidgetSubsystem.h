@@ -10,6 +10,7 @@
 #include "Widgets/CommonActivatableWidgetContainer.h"
 #include "BSLocalWidgetSubsystem.generated.h"
 
+class UBSWUserConfirmContext;
 class UBSCharacterPane;
 class UBSPauseMenu;
 class UBSWHud;
@@ -33,6 +34,9 @@ public:
 	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
+	//Only called when reloading worlds or cleaning up from.
+	virtual void ClearWidgets();
+	
 	template <class T>
 	T* CreateWidgetFromClass(TSubclassOf<T> WidgetToAdd)
 	{
@@ -43,7 +47,7 @@ public:
 		const FText& Header, const FText& Text, const FText& AltHeader = FText::GetEmpty());
 	
 	//Initializes the player UI Root Widget. This is required to push and remove widgets.
-	virtual UBSWRoot* CreatePlayerUI(APlayerController* InPlayerController);
+	virtual UBSWRoot* CreatePlayerUI(APlayerController* InPlayerController, bool bMainMenu = false);
 	
 	//Adds an activatable widget to the main stack.
 	template <class T>
@@ -77,7 +81,10 @@ public:
 	bool bIsPaused = false;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	TSubclassOf<UBSWRoot> RootWidgetClass;
+	TSubclassOf<UBSWRoot> GameRootWidgetClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSWRoot> MainMenuWidgetRootClass;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TSubclassOf<UBSWHud> HudWidgetClass;
@@ -93,4 +100,7 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TSubclassOf<UBSWDamageNumber> DamageNumberWidgetClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSWUserConfirmContext> UserConfirmWidgetClass;
 };

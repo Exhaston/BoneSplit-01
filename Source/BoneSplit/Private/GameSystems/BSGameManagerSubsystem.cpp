@@ -4,6 +4,11 @@
 #include "GameSystems/BSGameManagerSubsystem.h"
 
 
+UBSGameManagerSubsystem* UBSGameManagerSubsystem::Get(const UObject* WorldContext)
+{
+	return GEngine->GetWorldFromContextObjectChecked(WorldContext)->GetGameInstance()->GetSubsystem<UBSGameManagerSubsystem>();
+}
+
 void UBSGameManagerSubsystem::StartLoadMap(const TSoftObjectPtr<UWorld> InMapAsset, const FString InPlayerSpawnTag)
 {
 	if (!GetGameInstance()) return;

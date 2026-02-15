@@ -97,6 +97,7 @@ void UBSLocalSaveSubsystem::ApplyDefaultData(UAbilitySystemComponent* Asc)
 		Asc->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data);
 	}
 		
+	
 	for (auto NewTag : SG_CDO->DefaultTags)
 	{
 		Asc->AddLooseGameplayTag(
@@ -139,10 +140,12 @@ void UBSLocalSaveSubsystem::PopulateAscFromSaveData(UAbilitySystemComponent* Asc
 		Asc->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
 	
+	/*
 	for (auto NewTag : Data.Tags)
 	{
 		Asc->AddLooseGameplayTag(NewTag, 1, EGameplayTagReplicationState::TagAndCountToAll);
 	}
+	*/
 }
 
 void UBSLocalSaveSubsystem::SetProfileName(FString InProfileName)

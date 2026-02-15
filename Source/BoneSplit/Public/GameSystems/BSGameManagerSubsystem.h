@@ -12,6 +12,7 @@ class BONESPLIT_API UBSGameManagerSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 	
 public:
+	static UBSGameManagerSubsystem* Get(const UObject* WorldContext);
 	
 	virtual void StartLoadMap(TSoftObjectPtr<UWorld> InMapAsset, FString InPlayerSpawnTag);
 	
