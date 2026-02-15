@@ -30,6 +30,15 @@ public:
 	
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	
+	UPROPERTY(BlueprintReadOnly)
+	USkeletalMeshComponent* HeadMeshComp;
+	UPROPERTY(BlueprintReadOnly)
+	USkeletalMeshComponent* ChestMeshComp;
+	UPROPERTY(BlueprintReadOnly)
+	USkeletalMeshComponent* LegsMeshComp;
+	UPROPERTY(BlueprintReadOnly)
+	USkeletalMeshComponent* ArmsMeshCom;
+	
 	//Fetches the current AbilitySystemComponent or caches a new one from the Pawn.
 	UFUNCTION(BlueprintPure)
 	UAbilitySystemComponent* GetAbilitySystemComponent();

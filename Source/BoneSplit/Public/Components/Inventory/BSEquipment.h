@@ -43,6 +43,9 @@ public:
 	
 	virtual TSoftObjectPtr<UTexture2D> GetIcon_Implementation() const override;
 	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="Data", meta=(IgnoreForMemberInitializationTest))  
+	FGuid EquipmentID = FGuid::NewGuid();
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Equipment")
 	FText EquipmentName;
 	

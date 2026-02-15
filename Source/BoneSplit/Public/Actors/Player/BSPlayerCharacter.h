@@ -180,6 +180,8 @@ protected:
 	UFUNCTION()
 	void OnPlayerColourChanged(FColor NewColor);
 	
+public:
+	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* HeadComponent;
 	
@@ -196,6 +198,8 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	UBSEquipmentMeshComponent* LegsComponent;
+	
+protected:
 	
 #pragma endregion
 	

@@ -7,7 +7,10 @@
 #include "AbilitySystemInterface.h"
 #include "Chooser.h"
 #include "KismetAnimationLibrary.h"
+#include "Actors/Player/BSPlayerCharacter.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
+#include "Components/Inventory/BSEquipment.h"
+#include "Components/Inventory/BSEquipmentMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -24,6 +27,13 @@ void UBSAnimInstance::InitializeAbilitySystemComponent(UAbilitySystemComponent* 
 	CharacterOwner = Cast<ACharacter>(TryGetPawnOwner());
 	if (CharacterOwner)
 	{
+		if (const ABSPlayerCharacter* PlayerCharacter = Cast<ABSPlayerCharacter>(CharacterOwner))
+		{
+			HeadMeshComp = PlayerCharacter->HeadComponent;
+			ChestMeshComp = PlayerCharacter->GetMesh();
+			LegsMeshComp = PlayerCharacter->LegsComponent;
+			ArmsMeshCom = PlayerCharacter->ArmsComponent;
+		}
 		AbilitySystemComponent = InAbilitySystemComponent;
 		
 		InAbilitySystemComponent->RegisterGenericGameplayTagEvent().AddUObject(
