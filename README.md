@@ -12,18 +12,18 @@ BoneSplit is a roguelite action game developed in Unreal Engine. Each run takes 
 ✨ Features
 
 🔀 Reliable hand tailored level design with variations, garnering reliable and replayable experiences
-⚔️ Combat System — Fast-paced, skill-based combat with a variety of parts to equip, granting a vast array of abilities
-📈 Progression & Upgrades — Collect items and buffs to build powerful synergies each run
-💀 Permadeath — Death means starting over, but each run makes you stronger with new loadouts and soul abilities
-🎨 Built with Unreal Engine — Leveraging UE5 classic rendering features seen in older titles for optimal framerate and responsiveness.
+⚔️ Combat System, Fast-paced, skill-based combat with a variety of parts to equip, granting a vast array of abilities
+📈 Progression & Upgrades, Collect items and buffs to build powerful synergies each run
+💀 Permadeath, Death means starting over, but each run makes you stronger with new loadouts and soul abilities
+🎨 Built with Unreal Engine, Using UE5 classic rendering features seen in older titles for optimal framerate and responsiveness.
 
 🛠️ Installation & Setup
 Prerequisites
 
 Unreal Engine 5.7 (Epic Launcher Version)
-Visual Studio 2022 (with C++ game development workload) — Windows
-Xcode — macOS
-Git with Git LFS installed - Anchorpoint client for binary syncing
+Visual Studio 2022 (with C++ game development workload) for Windows
+Xcode for macOS
+Git with Git LFS installed and Anchorpoint client for binary syncing
 
 🗺️ Getting Started
 
@@ -47,4 +47,4 @@ Unreal Engine by Epic Games
 License
 Copyright ©️ Electric Jolt, All rights reserved.
 
-Made with ❤️ 💦 🥹
+Made with ❤️
