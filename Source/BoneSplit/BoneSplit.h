@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "NativeGameplayTags.h"
 
-DEFINE_LOG_CATEGORY_STATIC(BoneSplit, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(BoneSplit, All, All);
 
 #define BS_HIT_DEBUG \
 BSConsoleVariables::CVarBSDebugHitDetection.GetValueOnGameThread()
@@ -249,5 +249,7 @@ namespace BSConsoleVariables
 	extern TAutoConsoleVariable<bool> CVarBSShowDamageNumbers;
 	extern TAutoConsoleVariable<bool> CVarBSShowIncomingDamageNumbers;
 	extern TAutoConsoleVariable<bool> CVarBSShowHealingNumbers;
+	
+	extern TAutoConsoleVariable<bool> CVarToggleGear;
 	
 }

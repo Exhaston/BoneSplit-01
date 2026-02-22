@@ -6,7 +6,6 @@
 #include "CommonLazyImage.h"
 #include "Blueprint/UserWidget.h"
 #include "GameSettings/BSDeveloperSettings.h"
-#include "GameState/BSTravelManager.h"
 #include "Widgets/Base/BSLoadingScreenWidget.h"
 
 UBSLoadingScreenSubsystem::UBSLoadingScreenSubsystem()
@@ -19,36 +18,20 @@ void UBSLoadingScreenSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 }
 
-void UBSLoadingScreenSubsystem::StartTravel(const TSubclassOf<UBSMapData> MapData, FString TravelDestTag)
-{
-	const UBSMapData* MapDataCDO = GetDefault<UBSMapData>(MapData);
-	
-	FString TravelDest = MapDataCDO->Map.GetAssetName();
-
-	/*
-	if (!GetWorld()->IsNetMode(NM_ListenServer) && GetPartyMode() != EBSPartyMode::Party_Private)
-	{
-		TravelDest += "?Listen";
-	}
-	*/
-	
-	CurrentTravelTag = TravelDestTag;
-	
-	GetWorld()->ServerTravel(TravelDest);
-}
-
-void UBSLoadingScreenSubsystem::AddLoadingScreen(const UBSMapData* MapData)
+void UBSLoadingScreenSubsystem::AddLoadingScreen(APlayerController* LocalController)
 {
 	check(GEngine);
 	if (IsRunningDedicatedServer()) return;
+	if (!LocalController->IsPrimaryPlayer()) return;
 	const UBSDeveloperSettings* DeveloperSettings = GetDefault<UBSDeveloperSettings>();
 	
-	if (!LoadingScreenWidgetIns.IsValid() && !DeveloperSettings->LoadingScreenWidget.IsNull() && GetLocalPlayer())
+	/*
+	if (!LoadingScreenWidgetIns.IsValid())
 	{
 		if (UGameViewportClient* Viewport = GEngine->GameViewport.Get())
 		{
 			if (UBSLoadingScreenWidget* LoadingWidget = CreateWidget<UBSLoadingScreenWidget>(
-			GetLocalPlayer<ULocalPlayer>()->GetGameInstance(),
+			GetGameInstance(),
 			DeveloperSettings->LoadingScreenWidget.LoadSynchronous()))
 			{
 				LoadingScreenWidgetIns = LoadingWidget->TakeWidget();
@@ -56,10 +39,12 @@ void UBSLoadingScreenSubsystem::AddLoadingScreen(const UBSMapData* MapData)
 			}
 		}
 	}
+	*/
 }
 
-void UBSLoadingScreenSubsystem::RemoveLoadingScreen()
+void UBSLoadingScreenSubsystem::RemoveLoadingScreen(APlayerController* LocalController)
 {
+	if (!LocalController->IsPrimaryPlayer()) return;
 	OnMapLoadEnd.Broadcast();
 	
 	if (LoadingScreenWidgetIns.IsValid())

@@ -6,6 +6,9 @@
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativeCharacter.h"
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
+#include "Components/Inventory/BSEquipment.h"
+#include "Components/Inventory/BSEquipmentMeshComponent.h"
+#include "Components/Inventory/BSInventoryComponent.h"
 #include "BSPlayerCharacter.generated.h"
 
 class UBSInteractionComponent;
@@ -24,8 +27,26 @@ struct FBSSaveData;
 
 class UBSEquipmentMeshComponent;
 class UBSAttributeSet;
-class UBSInventoryComponent;
 class UBSAbilitySystemComponent;
+
+USTRUCT()
+struct FBSEquipmentMeshInfo
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	const UBSEquipmentEffect* SourceEffect;
+	
+	UPROPERTY()
+	TArray<UBSEquipmentMeshComponent*> EquipmentMeshComponents;
+	
+	bool operator == (const FBSEquipmentMeshInfo& Other) const
+	{
+		return SourceEffect == Other.SourceEffect;
+	}
+};
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(FBSOnSkeletalMeshChanged, UBSEquipmentMeshComponent* EquipmentMeshComp, USkeletalMesh* NewAsset);
 
 /**
  * Player Character base with meshes for BSEquipmentEffects and AbilitySystem. Tied to BSPlayerState to function. 
@@ -35,7 +56,7 @@ class UBSAbilitySystemComponent;
 UCLASS(DisplayName="Player Character", Blueprintable, BlueprintType, 
 	Category="BoneSplit", ClassGroup="BoneSplit", Abstract)
 class BONESPLIT_API ABSPlayerCharacter : public AClientAuthoritativeCharacter, 
-public IBSAbilitySystemInterface
+public IBSAbilitySystemInterface, public IBSInventoryInterface
 {
 	GENERATED_BODY()
 	
@@ -154,6 +175,8 @@ public:
 	              
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
+	virtual UBSInventoryComponent* GetInventoryComponent() override;
+	
 	UFUNCTION(BlueprintPure)
 	ABSPlayerState* GetBSPlayerState() const;
 
@@ -173,31 +196,18 @@ protected:
 	// Meshes
 	// ================================================================================================================= 
 	
-	virtual void SetupMeshes(UAbilitySystemComponent* InAsc);
-	
-	virtual void LoadMeshesFromEquipmentEffect(const UBSEquipmentEffect* EffectMeshComp);
-	
 	UFUNCTION()
-	void OnPlayerColourChanged(FColor NewColor);
+	void UpdateMeshColors(FColor NewColor);
 	
 public:
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	UBSEquipmentMeshComponent* HeadComponent;
+	virtual void AddEquipmentMesh(const UBSEquipmentEffect* InSource);
+	virtual void RemoveEquipmentMesh(const UBSEquipmentEffect* InSource);
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	UBSEquipmentMeshComponent* ArmsComponent;                  
+	UPROPERTY()
+	TArray<FBSEquipmentMeshInfo> EquipmentMeshInfos;
 	
-	//Main-hand weapon mesh component. Have a socket in the parent mesh called 'MainHand' and this will snap to it.
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	UBSEquipmentMeshComponent* MainHandComponent;
-	
-	//Off-handed weapon mesh component. Have a socket in the parent mesh called 'OffHand' and this will snap to it.
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	UBSEquipmentMeshComponent* OffHandComponent;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
-	UBSEquipmentMeshComponent* LegsComponent;
+	FBSOnSkeletalMeshChanged OnEquipmentMeshChanged;
 	
 protected:
 	
@@ -212,10 +222,9 @@ protected:
 	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
 	virtual void InitializeCharacter();
 	
-	virtual void SetupFloatingName(APlayerState* PS);
+	virtual void PostPlayerStateInitialize();
 	
-	UFUNCTION()
-	void OnPlayerStateInitComplete();
+	virtual void SetupFloatingName(APlayerState* PS);
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	TObjectPtr<UTextRenderComponent> PlayerNameTextComponent;

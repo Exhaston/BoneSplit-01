@@ -5,20 +5,25 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "BSSaveGame.h"
+#include "Components/Inventory/BSInventoryComponent.h"
 #include "GameFramework/PlayerState.h"
 #include "BSPlayerState.generated.h"
 
-struct FBSLootSpawnInfo;
+class UBSInventoryComponent;
+class ABSPlayerState;
+struct FBSEquipmentDropInfo;
 class UBSTalentComponent;
 class UBSAttributeSet;
 struct FBSSaveData;
 class UBSAbilitySystemComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBSPlayerStateDelegate);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBSOnPlayerColorChanged, FColor, NewColor);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBSOnPlayerColorChangedDep, FColor, NewColor);
 
-UCLASS(DisplayName="Player State", BlueprintType, Blueprintable, Category="BoneSplit")
-class BONESPLIT_API ABSPlayerState : public APlayerState, public IAbilitySystemInterface
+DECLARE_MULTICAST_DELEGATE(FBSOnPlayerState);
+
+UCLASS(DisplayName="Player State", Abstract, BlueprintType, Blueprintable, Category="BoneSplit")
+class BONESPLIT_API ABSPlayerState : public APlayerState, public IAbilitySystemInterface, public IBSInventoryInterface
 {
 	GENERATED_BODY()
 	
@@ -26,25 +31,21 @@ public:
 	
 	explicit ABSPlayerState(const FObjectInitializer& ObjectInitializer);
 	
+	virtual void PostInitializeComponents() override;
+	
 	virtual void BeginPlay() override;
 	
+	virtual void SeamlessTravelTo(APlayerState* NewPlayerState) override;
+	
+	virtual void CopyProperties(APlayerState* PlayerState) override;
+	
+	virtual void OnDeactivated() override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
-	UFUNCTION(Client, Reliable)
-	void Client_SpawnEquipmentLoot(const FBSLootSpawnInfo& InLootSpawnInfo, const FTransform& SpawnTransform);
-	
-	UFUNCTION(Server, Reliable)
-	void Server_EquipItem(const FBSLootSpawnInfo& InLootSpawnInfo);
-		
-	void Server_GiveLoot(TSubclassOf<UBSEquipmentEffect> Effect, const FTransform& SpawnTransform);
 	
 	//Send the save data to the server to initialize the Asc.
 	UFUNCTION(Server, Reliable)
 	void Server_ReceiveSaveData(const FBSSaveData& SaveData);
-	
-	//Sets the player color and triggers OnPlayerColorChanged Delegate for server and clients.
-	UFUNCTION(Server, Reliable)                    
-	void Server_SetColor(const int32& NewColor);
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
@@ -53,12 +54,6 @@ public:
 	
 	//Checks if the server received save data and has set up Asc.
 	bool GetIsInitialized() const;
-	
-	UFUNCTION(BlueprintPure)
-	FColor GetPlayerColor() const;
-	
-	FBSPlayerStateDelegate& GetInitCompleteDelegate()   { return OnInitComplete; }
-	FBSOnPlayerColorChanged& GetOnPlayerColorChanged()  { return OnPlayerColorChangedDelegate; }
 	
 	UBSAbilitySystemComponent* GetBSAbilitySystem() const;
 	
@@ -70,13 +65,18 @@ public:
 	
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
-	virtual void Destroyed() override;
-	
 	UFUNCTION()
 	void OnPlayerPaused();
 	
 	UFUNCTION()
 	void OnPlayerResumed();
+	
+	UPROPERTY(BlueprintAssignable)
+	FBSOnPlayerColorChangedDep OnPlayerColorChangedDelegate;
+	
+	FBSOnPlayerState OnPlayerStateReadyDelegate;
+	
+	virtual UBSInventoryComponent* GetInventoryComponent() override;
 	
 protected:
 	
@@ -94,27 +94,15 @@ protected:
 	UFUNCTION()
 	void OnRep_Initialized() const;
 	
-	UPROPERTY(ReplicatedUsing=OnRep_PlayerColor)
-	int32 PlayerColor = 0;
-	
-	UFUNCTION()
-	void OnRep_PlayerColor() const;
-	
-	UPROPERTY(BlueprintAssignable)
-	FBSPlayerStateDelegate OnInitComplete;
-	
-	UPROPERTY(BlueprintAssignable)
-	FBSOnPlayerColorChanged OnPlayerColorChangedDelegate;
-	
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
 	TObjectPtr<UBSTalentComponent> TalentComponent;
 	
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
 	TObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
-	UPROPERTY()
-	TObjectPtr<UBSAttributeSet> AttributeSetSubObject;
+	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
+	TObjectPtr<UBSInventoryComponent> InventoryComponent;
 	
 	UPROPERTY()
-	TArray<FBSLootSpawnInfo> LootSpawnInfo;
+	TArray<FBSEquipmentDropInfo> LootSpawnInfo;
 };

@@ -28,19 +28,12 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 	void OnAbilitySystemReady(UAbilitySystemComponent* OwnerAbilitySystemComponent);
 	
+	virtual void PreUpdateAnimation(float DeltaSeconds) override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	
-	UPROPERTY(BlueprintReadOnly)
-	USkeletalMesh* HeadMeshAsset;
-	UPROPERTY(BlueprintReadOnly)
-	USkeletalMesh* ChestMeshAsset;
-	UPROPERTY(BlueprintReadOnly)
-	USkeletalMesh* LegsMeshAsset;
-	UPROPERTY(BlueprintReadOnly)
-	USkeletalMesh* ArmsMeshAsset;
-	
-	UFUNCTION(BlueprintNativeEvent, Category="Bone Split", DisplayName="OnEquipmentMeshChanged")
-	void BP_OnEquipmentMeshChanged(FGameplayTag MeshTag, USkeletalMesh* NewSkeletalMesh);
+	virtual void UpdateRotation();
+	virtual void UpdateVelocity(FVector Velocity);
+	virtual void UpdateFalling();
 	
 	//Fetches the current AbilitySystemComponent or caches a new one from the Pawn.
 	UFUNCTION(BlueprintPure)
@@ -56,11 +49,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="Bone Split")
 	ACharacter* GetCharacterOwner() const { return CharacterOwner; }
 	
-	UFUNCTION(BlueprintPure, meta=(BlueprintThreadSafe), Category="Bone Split")
-	FGameplayTag GetWeaponTypeTag() const { return WeaponTypeTag; }
-	
 	UFUNCTION()
-	void NativeOnTagEvent(const FGameplayTag Tag, int32 Count);
+	void NativeOnAnyTagChanged(const FGameplayTag Tag, int32 Count);
+	
+	virtual void OnAnyTagChanged(const FGameplayTag Tag, int32 Count); 
 	                                                                                 
 	UFUNCTION(BlueprintNativeEvent, Category="Bone Split", DisplayName="OnGameplayTagAdded")
 	void BP_OnGameplayTagAdded(const FGameplayTag& Tag, const int32& Count);
@@ -97,18 +89,6 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Bone Split", BlueprintGetter=GetIsFalling)
 	bool IsFalling;
-	
-	//If set to true, will use desired velocity instead of actual velocity. 
-	//If stuck to a wall this will still register the velocity even though the character is standing still.
-	//Turn off to revert to default velocity magnitude.
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bUseDesiredVelocity = true;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	float LookInterpSpeed = 15;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="WeaponType"))
-	FGameplayTag WeaponTypeTag = BSTags::WeaponType_SwordNBoard;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Bone Split", BlueprintGetter=GetAimRotation)
 	FRotator AimRotation;

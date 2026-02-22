@@ -72,9 +72,8 @@ void UBSAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, f
 
 float UBSAttributeSet::GetMaxForAttribute(const FGameplayAttribute& Attribute) const
 {
-	if (Attribute == GetHealthAttribute() && GetMaxHealth() != -1) return GetMaxHealth();
-	
-	if (Attribute == GetManaAttribute() && GetMaxMana() != -1) return GetMaxMana();
+	if (Attribute == GetHealthAttribute() && GetMaxHealth() > 0) return GetMaxHealth();
+	if (Attribute == GetManaAttribute() && GetMaxMana() > 0) return GetMaxMana();
 	if (Attribute == GetSoulChargeAttribute()) return 1;
 	return FLT_MAX;
 }
@@ -89,8 +88,10 @@ float UBSAttributeSet::GetMinForAttribute(const FGameplayAttribute& Attribute)
 void UBSAttributeSet::AdjustAttributeForMaxChange(
 	const FGameplayAttribute& AffectedAttribute, const float OldValue, const float NewMaxValue) const
 {
-	UAbilitySystemComponent* AbilityComp = GetOwningAbilitySystemComponent();
 
+	UAbilitySystemComponent* AbilityComp = GetOwningAbilitySystemComponent();
+	if (AbilityComp->GetNumericAttribute(AffectedAttribute) <= 0) return;
+	if (OldValue <= 0) return;
 	if (const float CurrentMaxValue = OldValue; 
 		!FMath::IsNearlyEqual(CurrentMaxValue, NewMaxValue) && AbilityComp)
 	{

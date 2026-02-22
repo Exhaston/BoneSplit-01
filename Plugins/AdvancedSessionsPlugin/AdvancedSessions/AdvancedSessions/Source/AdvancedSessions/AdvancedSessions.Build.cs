@@ -10,11 +10,24 @@ public class AdvancedSessions : ModuleRules
 
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
-
+        
         PublicDefinitions.Add("WITH_ADVANCED_SESSIONS=1");
-
-       // PrivateIncludePaths.AddRange(new string[] { "AdvancedSessions/Private"/*, "OnlineSubsystemSteam/Private"*/ });
-       // PublicIncludePaths.AddRange(new string[] { "AdvancedSessions/Public" });
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "OnlineSubsystem", "CoreUObject", "OnlineSubsystemUtils", "Networking", "Sockets"/*"Voice", "OnlineSubsystemSteam"*/ });
+        
+       PrivateIncludePaths.AddRange([Path.Combine(ModuleDirectory, "Private")]);
+       PublicIncludePaths.AddRange([Path.Combine(ModuleDirectory, "Public")]);
+       
+       PublicDependencyModuleNames.AddRange([
+	       "Core", 
+	       "CoreUObject", 
+	       "Engine", 
+	       "InputCore", 
+	       "OnlineSubsystem", 
+	       "CoreUObject", 
+	       "OnlineSubsystemUtils", 
+	       "Networking", 
+	       "Sockets", 
+	       "OnlineSubsystemSteam"
+       ]);
+        
     }
 }

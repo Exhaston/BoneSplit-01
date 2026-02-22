@@ -9,11 +9,14 @@
 #include "BoneSplit/BoneSplit.h"
 #include "BSActionButton.generated.h"
 
+class UBSAbilitySystemComponent;
 class UCommonRichTextBlock;
 class UGameplayAbility;
 struct FGameplayAbilitySpec;
 class UAbilitySystemComponent;
 class UCommonLazyImage;
+
+//TODO: NEEDS REWORK. INEFFICIENT LOOPING DURING TICK.
 /**
  * 
  */
@@ -24,20 +27,24 @@ class BONESPLIT_API UBSActionButton : public UCommonUserWidget
 	
 public:
 	
-	virtual void InitializeActionButton(UAbilitySystemComponent* InAbilitySystemComponent);
+	virtual void NativeConstruct() override;
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
-	void Test(UGameplayAbility* AbilityInstance, float& TimeRemaining, float& CooldownDuration);
-	
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const;
-	
 	UMaterialInstanceDynamic* GetButtonMaterial() const;
+
+protected:
 	
-	FGameplayAbilitySpec* GetAbilitySpecForID();
+	virtual bool AttemptSetNewSpec(FGameplayAbilitySpec* Spec);
+	
+	virtual void DisplayFallbackIcon();
+	
+	virtual void ResetActionButton();
+	
+	virtual void TrySetAbilityIcon(const UGameplayAbility* AbilityInstance);
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="Ability"))
-	int32 InputID;
+	FGameplayTag AbilityTag;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FName TextureParamName = FName("IconTexture");
@@ -57,11 +64,12 @@ public:
 	UPROPERTY(meta=(BindWidget))
 	UCommonRichTextBlock* AbilityChargeText;
 	
-protected:
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	UTexture2D* FallbackIcon;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY()
 	FGameplayAbilitySpecHandle CurrentCachedHandle;
-	
-	UPROPERTY(Transient)
-	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 };

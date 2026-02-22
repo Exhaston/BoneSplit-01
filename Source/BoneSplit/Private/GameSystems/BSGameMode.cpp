@@ -9,6 +9,7 @@
 ABSGameMode::ABSGameMode(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	GameSessionClass = AAdvancedGameSession::StaticClass();
+	bUseSeamlessTravel = true;
 }
 
 void ABSGameMode::BP_LoadMap(const TSoftObjectPtr<UWorld> InMap, const FString NextPlayerStartTag) const
@@ -16,7 +17,7 @@ void ABSGameMode::BP_LoadMap(const TSoftObjectPtr<UWorld> InMap, const FString N
 	if (!ensure(!InMap.IsNull())) return;
 	if (UBSGameManagerSubsystem* GameManagerSubsystem = GetGameInstance()->GetSubsystem<UBSGameManagerSubsystem>())
 	{
-		GameManagerSubsystem->StartLoadMap(InMap, NextPlayerStartTag);
+		GameManagerSubsystem->TravelToMap(InMap, NextPlayerStartTag);
 	}
 }
 
@@ -26,6 +27,7 @@ AActor* ABSGameMode::FindPlayerStart_Implementation(AController* Player, const F
 	if (UBSGameManagerSubsystem* GameManagerSubsystem = GetGameInstance()->GetSubsystem<UBSGameManagerSubsystem>())
 	{
 		Dest = GameManagerSubsystem->GetTravelDestinationTag();
+		return Super::FindPlayerStart_Implementation(Player, Dest);
 	}
-	return Super::FindPlayerStart_Implementation(Player, Dest);
+	return Super::FindPlayerStart_Implementation(Player, IncomingName);
 }

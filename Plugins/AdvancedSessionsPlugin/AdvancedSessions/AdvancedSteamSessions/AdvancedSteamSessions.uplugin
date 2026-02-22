@@ -37,6 +37,10 @@
 		{
 			"Name": "SteamShared",
 			"Enabled": true
+		},
+		{
+			"Name": "SteamSockets",
+			"Enabled": true
 		}
 	]
 }

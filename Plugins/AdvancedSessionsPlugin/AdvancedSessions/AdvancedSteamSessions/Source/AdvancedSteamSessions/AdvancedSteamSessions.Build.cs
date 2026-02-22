@@ -10,15 +10,25 @@ public class AdvancedSteamSessions : ModuleRules
 
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
-
-        PublicDefinitions.Add("WITH_ADVANCED_STEAM_SESSIONS=1");
-
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "OnlineSubsystem", "CoreUObject", "OnlineSubsystemUtils", "Networking", "Sockets", "AdvancedSessions"/*"Voice", "OnlineSubsystemSteam"*/ });
-        PrivateDependencyModuleNames.AddRange(new string[] { "OnlineSubsystem", "Sockets", "Networking", "OnlineSubsystemUtils" /*"Voice", "Steamworks","OnlineSubsystemSteam"*/});
+        
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "Core", 
+            "CoreUObject", 
+            "Engine", 
+            "InputCore", 
+            "OnlineSubsystem", 
+            "CoreUObject", 
+            "OnlineSubsystemUtils", 
+            "Networking", 
+            "Sockets",
+            "AdvancedSessions",
+        });
+        PrivateDependencyModuleNames.AddRange(new string[] { "OnlineSubsystem", "Sockets", "Networking", "OnlineSubsystemUtils"});
 
         if ((Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Linux) || (Target.Platform == UnrealTargetPlatform.Mac))
         {
-            PublicDependencyModuleNames.AddRange(new string[] { "SteamShared", "Steamworks", "OnlineSubsystemSteam" });
+            PublicDependencyModuleNames.AddRange(new string[] { "SteamShared", "Steamworks", "OnlineSubsystemSteam", "SteamSockets" });
             AddEngineThirdPartyPrivateStaticDependencies(Target, "Steamworks");
             //PublicIncludePaths.AddRange(new string[] { "../Plugins/Online/OnlineSubsystemSteam/Source/Private" });// This is dumb but it isn't very open
         }

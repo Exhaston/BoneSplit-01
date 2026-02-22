@@ -14,6 +14,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Widgets/HUD/BSAttributeBar.h"
 #include "Widgets/HUD/BSFloatingNamePlate.h"
+#include "Widgets/HUD/FloatingUnitPlates/BSFloatingUnitPlateSubsystem.h"
 
 ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) : 
 Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(CharacterMovementComponentName))
@@ -36,6 +37,9 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	GetMesh()->SetReceivesDecals(false);
 	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::Type::QueryOnly);
+	
+	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComponent"));
+	WidgetComponent->SetupAttachment(GetMesh());
 }
 
 void ABSMobCharacter::BeginPlay()
@@ -79,6 +83,19 @@ void ABSMobCharacter::BeginPlay()
 	if (UBSMobSubsystem* MobSubsystem = GetWorld()->GetSubsystem<UBSMobSubsystem>())
 	{
 		MobSubsystem->RegisterMob(this);
+	}
+	
+	if (!IsRunningDedicatedServer())
+	{
+		if (UBSFloatingNamePlate* FloatingNamePlate = Cast<UBSFloatingNamePlate>(WidgetComponent->GetWidget()))
+		{
+			FloatingNamePlate->InitializeAbilitySystemComponent(AbilitySystemComponent);
+		}
+	
+		if (UBSFloatingUnitPlateSubsystem* FloatingUnitPlateSubsystem = GetWorld()->GetSubsystem<UBSFloatingUnitPlateSubsystem>())
+		{
+			FloatingUnitPlateSubsystem->RegisterFloatingNamePlate(WidgetComponent);
+		}
 	}
 }
 
@@ -201,6 +218,11 @@ bool ABSMobCharacter::IsInCombat()
 
 void ABSMobCharacter::OnCombatChanged(const bool bCombat)
 {
+}
+
+void ABSMobCharacter::OnRep_Ready()
+{
+
 }
 
 void ABSMobCharacter::Launch(const FVector LaunchMagnitude, const bool bAdditive)

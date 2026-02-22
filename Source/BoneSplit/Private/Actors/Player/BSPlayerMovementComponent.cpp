@@ -21,6 +21,8 @@ UBSPlayerMovementComponent::UBSPlayerMovementComponent()
 	bUseFlatBaseForFloorChecks = false;
 	DefaultLandMovementMode = MOVE_Walking;
 	
+	bRunPhysicsWithNoController = true;
+	
 	bUseSeparateBrakingFriction = false;
 	MaxAcceleration = 8192;
 	BrakingDecelerationWalking = 8192;

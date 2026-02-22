@@ -12,16 +12,22 @@
 class UGameplayAbility;
 class UGameplayEffect;
 
-USTRUCT(Blueprintable, BlueprintType, DisplayName="Equipment Mesh Info")
-struct FBSEffectMeshInfo
+USTRUCT(BlueprintType)
+struct FBSMeshBindInfo
 {
 	GENERATED_BODY()
-	                                                                             
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="EquipmentMesh"))
-	FGameplayTag SlotTag;
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	TSoftObjectPtr<USkeletalMesh> MeshAsset;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	FName SocketAttachName = NAME_None;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TSoftObjectPtr<USkeletalMesh> SkeletalMesh;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, AdvancedDisplay)
+	bool bFollowPose = true;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, AdvancedDisplay, meta=(EditCondition="!bFollowPose", EditConditionHides))
+	TSubclassOf<UAnimInstance> AnimBP = nullptr;
 };
 
 UCLASS(Blueprintable, BlueprintType, Abstract, DisplayName="Equipment Defintion", HideCategories=("Duration", "Stacking"), meta=(PrioritizeCategories = "Equipment"))
@@ -34,6 +40,10 @@ public:
 	UBSEquipmentEffect();
 	
 #if WITH_EDITOR
+	
+	virtual void PostLoad() override;
+	
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	
 	virtual bool CanEditChange(const FProperty* InProperty) const override;
 	
@@ -55,10 +65,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(Categories="Equipment"), Category="Equipment")
 	FGameplayTag SlotTag;
 	
-	//Optional info about slots to equip meshes into. 
-	//This doesn't enforce correct slots etc. because of edge cases like offhand or quivers and such.
-	//Remember if defining a weapon set main hand and offhand. If no offhand wanted set to null
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Equipment")
-	TArray<FBSEffectMeshInfo> MeshInfo;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="EquipmentMesh", ForceInlineRow))
+	TArray<FBSMeshBindInfo> EquipmentMeshes;
 };
                                                                         

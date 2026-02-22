@@ -7,39 +7,45 @@
 #include "AbilitySystemInterface.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Actors/Player/BSLocalSaveSubsystem.h"
-#include "Actors/Player/BSPlayerState.h"
+#include "Actors/Player/BSGameplayHud.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/TimelineComponent.h"
 #include "Components/InteractionSystem/BSInteractionComponent.h"
-#include "Components/UnitPlateManager/BSUnitPlateManagerComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerState.h"
 #include "GameInstance/BSLoadingScreenSubsystem.h"
-#include "Widgets/BSLocalWidgetSubsystem.h"
-#include "Widgets/Base/BSPauseMenu.h"
-#include "Widgets/HUD/BSCharacterPane.h"
 
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	UnitPlateManagerComponent = CreateDefaultSubobject<UBSUnitPlateManagerComponent>(TEXT("UnitPlateManagerComponent"));
+	
+}
+
+void ABSPlayerController::SpawnDefaultHUD()
+{
+	Super::SpawnDefaultHUD();
 }
 
 void ABSPlayerController::PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel)
 {
 	if (GetAbilitySystemComponent() && GetGameInstance())
 	{
-		GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>()->SaveAscDataSync(
-			this, GetAbilitySystemComponent());
+		//GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>()->SaveAscDataSync(
+			//this, GetAbilitySystemComponent());
 	}
 	
 	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
 	
-	if (UBSLoadingScreenSubsystem* LoadingScreenSubsystem = GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>(); GetLocalPlayer()->IsPrimaryPlayer())
+	if (UBSLoadingScreenSubsystem* LoadingScreenSubsystem = GetGameInstance()->GetSubsystem<UBSLoadingScreenSubsystem>(); 
+		GetLocalPlayer() && GetLocalPlayer()->IsPrimaryPlayer())
 	{
-		LoadingScreenSubsystem->AddLoadingScreen(nullptr);
+		//LoadingScreenSubsystem->AddLoadingScreen(this);
 	}
+}
+
+void ABSPlayerController::GetSeamlessTravelActorList(bool bToEntry, TArray<class AActor*>& ActorList)
+{
+	Super::GetSeamlessTravelActorList(bToEntry, ActorList);
 }
 
 void ABSPlayerController::SetupInputComponent()
@@ -83,24 +89,13 @@ void ABSPlayerController::SetupInputComponent()
 	EnhancedInputComponent->BindActionValueLambda(PauseAction, ETriggerEvent::Started, 
 	[this](const FInputActionValue& Value)
 	{
-		UBSLocalWidgetSubsystem* LocalWidgetSubsystem = GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-		if (LocalWidgetSubsystem->bIsPaused) return;
-		LocalWidgetSubsystem->AddWidgetToStack<UBSPauseMenu>(LocalWidgetSubsystem->PauseMenuWidgetClass);
+		GetHUD<ABSGameplayHud>()->TogglePauseWidget();
 	});	
 	
 	EnhancedInputComponent->BindActionValueLambda(CharacterPaneAction, ETriggerEvent::Started, 
 	[this](const FInputActionValue& Value)
 	{
-		UBSLocalWidgetSubsystem* LocalWidgetSubsystem = GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-		if (LocalWidgetSubsystem->IsWidgetActive(UBSCharacterPane::StaticClass()))
-		{
-			LocalWidgetSubsystem->RootWidgetInstance->WidgetStack->GetActiveWidget()->DeactivateWidget();
-		}
-		else
-		{
-			LocalWidgetSubsystem->AddWidgetToStack<UBSCharacterPane>(LocalWidgetSubsystem->CharacterPaneWidgetClass);
-		}
-
+		GetHUD<ABSGameplayHud>()->ToggleCharacterPaneWidget();
 	});
 	
 	EnhancedInputComponent->BindActionValueLambda(FreeCamAction, ETriggerEvent::Started, 
@@ -263,7 +258,7 @@ void ABSPlayerController::SetupAsc(APlayerState* InPS)
 		
 		//Technically this isn't required in the controller, as this is done in the player character.
 		//Only a failsafe for edge cases with replication race conditions.
-		CachedAbilitySystemComponent->InitAbilityActorInfo(InPS, InPS->GetPawn());
+		//CachedAbilitySystemComponent->InitAbilityActorInfo(InPS, InPS->GetPawn());
 	}
 }
 

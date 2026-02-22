@@ -1,7 +1,8 @@
 {
 	"FileVersion": 3,
 	"FriendlyName": "Advanced Sessions",
-	"Version": 5.7,
+	"EngineVersion": "5.7.0",
+	"Version": 5,
 	"VersionName": "5.7",
 	"Description": "Adds new blueprint functions to handle more advanced session operations.",
 	"Category": "Advanced Sessions Plugin",
@@ -21,6 +22,14 @@
 		},
 		{
 			"Name": "OnlineSubsystemUtils",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemSteam",
+			"Enabled": true
+		},
+		{
+			"Name": "SteamSockets",
 			"Enabled": true
 		}
 	],

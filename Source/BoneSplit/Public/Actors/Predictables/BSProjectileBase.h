@@ -18,6 +18,7 @@ struct FBSProjectileAlignment
 
 	FBSProjectileAlignment() = default;
 	FBSProjectileAlignment(
+		AActor* Owner,
 		const FTransform& SpawnTransform,
 		const FTransform& CameraTransform);
 

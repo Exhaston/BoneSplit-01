@@ -17,6 +17,8 @@ class BONESPLIT_API UBSWToolTipBase : public UCommonUserWidget
 	GENERATED_BODY()
 	
 public:
+	static UBSWToolTipBase* CreateGenericToolTip(
+	APlayerController* OwningPlayer, const FText& Header, const FText& Text, const FText& AltHeader = FText::GetEmpty());
 	
 	virtual void SetToolTipText(FText Header, FText Text , FText AltHeader = FText::GetEmpty());
 	

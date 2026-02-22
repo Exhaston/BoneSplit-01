@@ -4,12 +4,13 @@
 #include "Actors/Player/BSPlayerState.h"
 
 #include "Actors/InteractableBases/BSEquipmentDropBase.h"
+#include "Actors/Player/BSGameplayHud.h"
 #include "Actors/Player/BSLocalSaveSubsystem.h"
 #include "Actors/Player/BSSaveGame.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
+#include "Components/Inventory/BSInventoryComponent.h"
 #include "Components/TalentSystem/BSTalentComponent.h"
-#include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "GameState/BSGameState.h"
 #include "Net/UnrealNetwork.h"
@@ -20,19 +21,31 @@ ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Su
 	AbilitySystemComponent = CreateDefaultSubobject<UBSAbilitySystemComponent>("AbilitySystemComponent");
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
 	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetOwnerActor(this);
 	
-	AbilitySystemComponent->AddGameplayEventTagContainerDelegate(FGameplayTagContainer(BSTags::GameplayEvent_DamageDealt), 
+	AbilitySystemComponent->AddGameplayEventTagContainerDelegate(
+		FGameplayTagContainer(BSTags::GameplayEvent_DamageDealt), 
+		
 	FGameplayEventTagMulticastDelegate::FDelegate::CreateUObject(this, &ABSPlayerState::OnDamageOther));
-	
-	AttributeSetSubObject = CreateDefaultSubobject<UBSAttributeSet>(TEXT("AttributeSet"));
-	AbilitySystemComponent->AddAttributeSetSubobject(AttributeSetSubObject.Get());
 	
 	TalentComponent = CreateDefaultSubobject<UBSTalentComponent>("TalentComponent");
 	TalentComponent->SetAbilitySystemComponent(AbilitySystemComponent.Get());
 	
+	InventoryComponent = CreateDefaultSubobject<UBSInventoryComponent>("InventoryComponent");
+	InventoryComponent->SetAbilitySystem(AbilitySystemComponent.Get());
+	
 	bAlwaysRelevant = true;
 	bReplicates = true;
 	SetNetUpdateFrequency(60);
+}
+
+void ABSPlayerState::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->AddSet<UBSAttributeSet>();
+	}
 }
 
 void ABSPlayerState::BeginPlay()
@@ -46,7 +59,7 @@ void ABSPlayerState::BeginPlay()
 		for (const auto FoundEquipment : EquipmentFound)
 		{
 			const ABSEquipmentDropBase* EquipmentDropBase = Cast<ABSEquipmentDropBase>(FoundEquipment);
-			FBSLootSpawnInfo NewLootInfo;
+			FBSEquipmentDropInfo NewLootInfo;
 			NewLootInfo.LootGuid = EquipmentDropBase->LootSpawnInfo.LootGuid;
 			NewLootInfo.EquipmentEffect = EquipmentDropBase->LootSpawnInfo.EquipmentEffect;
 	
@@ -54,12 +67,103 @@ void ABSPlayerState::BeginPlay()
 		}
 	}
 	
-	if (GetPlayerController() && GetPlayerController()->IsLocalController())
+	if (GetIsInitialized())
 	{
+		UE_LOG(BoneSplit, Log, TEXT("Skipping save load - already initialized via travel"));
+		return;
+	}
+	
+	if (GetPlayerController() && GetPlayerController()->IsLocalController() && GetPlayerController()->IsPrimaryPlayer())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Loading save"));
 		UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
 		SaveSubsystem->GetOnAsyncLoadCompleteDelegate().AddDynamic(this, &ABSPlayerState::OnSaveLoaded);
 		SaveSubsystem->LoadGameAsync(GetPlayerController());
 	}
+}
+
+void ABSPlayerState::SeamlessTravelTo(APlayerState* NewPlayerState)
+{
+	Super::SeamlessTravelTo(NewPlayerState);
+}
+
+void ABSPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+	
+	ABSPlayerState* NewPS = Cast<ABSPlayerState>(PlayerState);
+	if (!NewPS) return;
+	
+	UAbilitySystemComponent* NewAsc = NewPS->GetAbilitySystemComponent();
+	UAbilitySystemComponent* OldAsc = GetAbilitySystemComponent();
+	
+	TArray<FGameplayAttribute> Attributes;
+	GetAbilitySystemComponent()->GetAllAttributes(Attributes);
+	for (auto& Attribute : Attributes)
+	{
+		NewAsc->SetNumericAttributeBase(Attribute, OldAsc->GetNumericAttributeBase(Attribute));
+	}
+	
+	TArray<FGameplayTagContainer> SpecTags;
+	
+	TArray<FGameplayEffectSpec> SpecCopies;
+
+	TArray<FActiveGameplayEffectHandle> ActiveGEHandles = OldAsc->GetActiveEffects(
+		FGameplayEffectQuery::MakeQuery_MatchNoEffectTags({}));
+
+	for (const auto& ActiveGEHandle : ActiveGEHandles)
+	{
+		if (!ActiveGEHandle.IsValid()) continue;
+		
+		const FActiveGameplayEffect* ActiveGE = OldAsc->GetActiveGameplayEffect(ActiveGEHandle);
+		if (!ActiveGE) continue;
+		
+		const FGameplayEffectContextHandle Context = NewAsc->MakeEffectContext();
+
+		FGameplayEffectSpecHandle SpecHandle = NewPS->GetAbilitySystemComponent()->MakeOutgoingSpec(
+			ActiveGE->Spec.Def->GetClass(),
+			1,
+			Context
+		);
+		
+		FGameplayTagContainer SpecCopyTags;
+		ActiveGE->Spec.GetAllGrantedTags(SpecCopyTags);
+		SpecTags.Add(SpecCopyTags);
+		SpecHandle.Data->SetStackCount(ActiveGE->Spec.GetStackCount());
+		SpecHandle.Data->SetDuration(ActiveGE->GetTimeRemaining(OldAsc->GetWorld()->GetTimeSeconds()), 
+			true);
+		NewPS->GetAbilitySystemComponent()->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+	}
+	
+	TArray<FGameplayTag> ActualTags;
+
+	for (auto& Tag : GetAbilitySystemComponent()->GetOwnedGameplayTags().GetGameplayTagArray())
+	{
+		for (int i = 0; i < GetAbilitySystemComponent()->GetTagCount(Tag); ++i)
+		{
+			ActualTags.Add(Tag);
+		}
+	}
+
+	for (auto& SpecTagContainer : SpecTags)
+	{
+		for (auto SpecTag : SpecTagContainer.GetGameplayTagArray())
+		{
+			ActualTags.RemoveSingle(SpecTag);
+		}
+	}
+
+	for (auto& ActualTag : ActualTags)
+	{
+		NewPS->GetAbilitySystemComponent()->AddLooseGameplayTag(ActualTag, 1, EGameplayTagReplicationState::TagAndCountToAll);
+	}
+	
+	NewPS->bInitialized = true;
+}
+
+void ABSPlayerState::OnDeactivated()
+{
+	Super::OnDeactivated();
 }
 
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
@@ -71,47 +175,7 @@ void ABSPlayerState::OnSaveLoaded(UBSSaveGame* SaveGame)
 void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ABSPlayerState, PlayerColor);
 	DOREPLIFETIME(ABSPlayerState, bInitialized);
-}
-
-void ABSPlayerState::Server_EquipItem_Implementation(const FBSLootSpawnInfo& InLootSpawnInfo)
-{
-	//Find the server instance of the loot on the server and apply that.
-	if (const int32 LootIndex = LootSpawnInfo.Find(InLootSpawnInfo); LootIndex != INDEX_NONE)
-	{
-		GetAbilitySystemComponent()->BP_ApplyGameplayEffectToSelf(
-		LootSpawnInfo[LootIndex].EquipmentEffect, 1, GetAbilitySystemComponent()->MakeEffectContext());
-		
-		//Remove the server instance so it cannot be reused.
-		LootSpawnInfo.RemoveAt(LootIndex);
-	}
-}
-
-void ABSPlayerState::Server_GiveLoot(const TSubclassOf<UBSEquipmentEffect> Effect, const FTransform& SpawnTransform)
-{
-	if (!HasAuthority()) return;
-	ensure(Effect);
-	FBSLootSpawnInfo NewLootInfo;
-	NewLootInfo.LootGuid = FGuid::NewGuid();
-	NewLootInfo.EquipmentEffect = Effect;
-	
-	LootSpawnInfo.AddUnique(NewLootInfo);
-	Client_SpawnEquipmentLoot(NewLootInfo, SpawnTransform);
-}
-
-void ABSPlayerState::Client_SpawnEquipmentLoot_Implementation(const FBSLootSpawnInfo& InLootSpawnInfo, const FTransform& SpawnTransform)
-{
-	ABSEquipmentDropBase* LootDropActor = GetWorld()->SpawnActorDeferred<ABSEquipmentDropBase>(
-		GetDefault<UBSDeveloperSettings>()->EquipmentDropClass.LoadSynchronous(), 
-		SpawnTransform, 
-		this, 
-		GetPawn(), 
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
-	
-	LootDropActor->InitializeLoot(InLootSpawnInfo);
-	
-	LootDropActor->FinishSpawning(SpawnTransform);
 }
 
 UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const
@@ -129,9 +193,9 @@ void ABSPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
-void ABSPlayerState::Destroyed()
+UBSInventoryComponent* ABSPlayerState::GetInventoryComponent()
 {
-	Super::Destroyed();
+	return InventoryComponent.Get();
 }
 
 void ABSPlayerState::OnDamageOther(FGameplayTag EventTag, const FGameplayEventData* Payload)
@@ -144,13 +208,9 @@ void ABSPlayerState::OnDamageOther(FGameplayTag EventTag, const FGameplayEventDa
 
 void ABSPlayerState::Client_SpawnDamageNumber_Implementation(const FGameplayEventData Payload)
 {
-	if (const APlayerController* PC = GetPlayerController())
+	if (const APlayerController* PC = GetPlayerController(); PC && PC->GetLocalPlayer())
 	{
-		if (PC->GetLocalPlayer())
-		{
-			UBSLocalWidgetSubsystem* WidgetSubsystem = PC->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-			WidgetSubsystem->SpawnDamageNumber(Payload);
-		}
+		PC->GetHUD<ABSGameplayHud>()->SpawnDamageNumber(Payload);
 	}
 }
 
@@ -186,24 +246,7 @@ void ABSPlayerState::OnRep_Initialized() const
 {
 	if (bInitialized)
 	{
-		if (OnInitComplete.IsBound())
-		{
-			OnInitComplete.Broadcast();
-		}
-		
-		//UI
-		if (HasLocalNetOwner() && !IsRunningDedicatedServer())
-		{
-			UBSLocalWidgetSubsystem* WidgetSubsystem = 
-				GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-			
-			WidgetSubsystem->CreatePlayerUI(GetPlayerController());
-			
-			UBSLoadingScreenSubsystem* LoadingScreenSubsystem = 
-				GetPlayerController()->GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>();
-			
-			LoadingScreenSubsystem->RemoveLoadingScreen();
-		}
+		OnPlayerStateReadyDelegate.Broadcast();
 	}
 }
 
@@ -217,28 +260,6 @@ void ABSPlayerState::Server_ReceiveSaveData_Implementation(const FBSSaveData& Sa
 	
 	bInitialized = true;
 	OnRep_Initialized();
-}
-
-void ABSPlayerState::Server_SetColor_Implementation(const int32& NewColor)
-{
-	PlayerColor = NewColor;
-	OnRep_PlayerColor();
-}
-
-FColor ABSPlayerState::GetPlayerColor() const
-{
-	const UBSDeveloperSettings* DeveloperSettings = GetDefault<UBSDeveloperSettings>();
-	if (DeveloperSettings->PlayerColors.IsEmpty()) return FColor::White;
-	const int32 Index = FMath::Clamp(PlayerColor, 0, DeveloperSettings->PlayerColors.Num() - 1);
-	return DeveloperSettings->PlayerColors[Index];
-}
-
-void ABSPlayerState::OnRep_PlayerColor() const
-{
-	if (OnPlayerColorChangedDelegate.IsBound())
-	{
-		OnPlayerColorChangedDelegate.Broadcast(GetPlayerColor());
-	}
 }
 
 UAbilitySystemComponent* ABSPlayerState::GetAbilitySystemComponent() const

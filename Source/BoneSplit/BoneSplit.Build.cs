@@ -28,7 +28,12 @@ public class BoneSplit : ModuleRules
 			"ClientAuthoritativeCharacterSystem",
 			"CustomThumbnails",
 			"PhysicsCore",
-			"Chooser"
+			"Chooser", 
+			"AdvancedSessions",
+			"AdvancedSteamSessions",
+			"OnlineSubsystemUtils",
+			"Networking",
+			"OnlineSubsystem"
 		]);
 	}
 }

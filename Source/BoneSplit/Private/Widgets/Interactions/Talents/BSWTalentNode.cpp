@@ -37,12 +37,8 @@ void UBSWTalentNode::NativeConstruct()
 		
 		if (const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>())
 		{
-			if (UBSLocalWidgetSubsystem* WidgetSubsystem = UBSLocalWidgetSubsystem::GetWidgetSubsystem(this))
-			{
-				UBSWToolTipBase* ToolTip = WidgetSubsystem->CreateGenericToolTip(
-					TalentCDO->TalentName, TalentCDO->Description, FText::FromString("Talent"));
-				SetToolTip(ToolTip);
-			}
+			UBSWToolTipBase* ToolTip = UBSWToolTipBase::CreateGenericToolTip(GetOwningPlayer(),TalentCDO->TalentName, TalentCDO->Description, FText::FromString("Talent"));
+			SetToolTip(ToolTip);
 			
 			UpdateTalentWidget();
 			PS->GetAbilitySystemComponent()->OnActiveGameplayEffectAddedDelegateToSelf.AddWeakLambda(this, [this, PS]

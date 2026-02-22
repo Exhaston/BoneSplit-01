@@ -20,9 +20,6 @@ public:
 	
 	virtual void NativeConstruct() override;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	TSoftObjectPtr<UWorld> HubLevel;
-	
 	UPROPERTY(meta=(BindWidgetOptional))
 	UBSWButtonBase* ReconnectButton;
 	

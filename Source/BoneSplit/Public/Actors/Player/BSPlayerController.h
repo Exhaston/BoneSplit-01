@@ -9,7 +9,6 @@
 #include "GameFramework/PlayerController.h"
 #include "BSPlayerController.generated.h"
 
-class UBSUnitPlateManagerComponent;
 class UAbilitySystemComponent;
 class UInputAction;
 class UInputMappingContext;
@@ -48,7 +47,11 @@ public:
 	
 	explicit ABSPlayerController(const FObjectInitializer& ObjectInitializer);
 	
+	virtual void SpawnDefaultHUD() override;
+	
 	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
+	
+	virtual void GetSeamlessTravelActorList(bool bToEntry, TArray<class AActor*>& ActorList) override;
 	
 	virtual void SetupInputComponent() override;
 	
@@ -150,9 +153,6 @@ protected:
 	
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UAbilitySystemComponent> CachedAbilitySystemComponent;
-	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	TObjectPtr<UBSUnitPlateManagerComponent> UnitPlateManagerComponent;
 	
 	UPROPERTY()
 	TArray<FBSBufferedAbility> BufferedAbilities;

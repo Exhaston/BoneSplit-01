@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "BSMenuController.generated.h"
 
+class UBSWMainMenuRoot;
 /**
  * 
  */
@@ -19,4 +20,8 @@ public:
 	virtual void BeginPlay() override;
 	
 	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
+	
+protected:
+	
+
 };

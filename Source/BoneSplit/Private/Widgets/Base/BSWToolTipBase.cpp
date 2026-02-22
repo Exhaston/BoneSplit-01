@@ -5,6 +5,16 @@
 
 #include "CommonLazyImage.h"
 #include "CommonRichTextBlock.h"
+#include "Widgets/BSLocalWidgetSubsystem.h"
+
+UBSWToolTipBase* UBSWToolTipBase::CreateGenericToolTip(APlayerController* OwningPlayer, const FText& Header,
+                                                       const FText& Text, const FText& AltHeader)
+{
+	const UBSLocalWidgetSubsystem* LocalWidgetSubsystem = OwningPlayer->GetGameInstance()->GetSubsystem<UBSLocalWidgetSubsystem>();
+	UBSWToolTipBase* ToolTip = CreateWidget<UBSWToolTipBase>(OwningPlayer, nullptr);
+	ToolTip->SetToolTipText(Header, Text, AltHeader);
+	return ToolTip;
+}
 
 void UBSWToolTipBase::SetToolTipText(const FText Header, const FText Text, const FText AltHeader)
 {

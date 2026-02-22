@@ -17,7 +17,9 @@
 #include "Widgets/Base/BSPauseMenu.h"
 #include "Widgets/Base/BSWToolTipBase.h"
 #include "Widgets/Base/BSWUserConfirmContext.h"
+#include "Widgets/HUD/BSFloatingNamePlate.h"
 #include "Widgets/HUD/BSWDamageNumber.h"
+#include "Widgets/MainMenu/BSWServerBrowser.h"
 #include "BSDeveloperSettings.generated.h"
 
 /**
@@ -55,35 +57,19 @@ public:
 		TArray{ BSTags::Talent_Jump.GetTag().RequestDirectParent() });
 	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Player")
-	TArray<FColor> PlayerColors;
+	TArray<FColor> PlayerColors;                           
 	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSWRoot> GameRootWidgetClass;
+	//Widget Classes that can be loaded and loaded instead of native cpp one. 
+	UPROPERTY(Config, EditDefaultsOnly, Category="Classes", meta=(Categories="WidgetClasses"))
+	TMap<FGameplayTag, TSoftClassPtr<UUserWidget>> WidgetOverrideClasses;
 	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSWRoot> MainMenuRootWidgetClass;
+	//Included Actors that can be loaded and loaded instead of native cpp one. 
+	UPROPERTY(Config, EditDefaultsOnly, Category="Classes", meta=(Categories="WidgetClasses"))
+	TMap<FGameplayTag, TSoftClassPtr<AActor>> ActorOverrideClasses;
 	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSWHud> HudWidgetClass;
+	UPROPERTY(Config, BlueprintReadOnly, EditDefaultsOnly, Category="Levels")
+	TSoftObjectPtr<UWorld> HubLevel;
 	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSCharacterPane> CharacterPaneWidgetClass;
-	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSPauseMenu> PauseMenuWidgetClass;
-	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSWToolTipBase> DefaultTooltipWidgetClass;
-	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSWDamageNumber> DefaultDamageNumberWidgetClass;
-	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSLoadingScreenWidget> LoadingScreenWidget;
-	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Widgets")
-	TSoftClassPtr<UBSWUserConfirmContext> UserConfirmContextWidgetClass;
-	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Loot")    
-	TSoftClassPtr<ABSEquipmentDropBase> EquipmentDropClass;
+	UPROPERTY(Config, BlueprintReadOnly, EditDefaultsOnly, Category="Levels")
+	TSoftObjectPtr<UWorld> MainMenuLevel;
 };

@@ -5,15 +5,9 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
-#include "Chooser.h"
 #include "KismetAnimationLibrary.h"
-#include "Actors/Player/BSPlayerCharacter.h"
-#include "Components/AbilitySystem/BSAttributeSet.h"
-#include "Components/Inventory/BSEquipment.h"
-#include "Components/Inventory/BSEquipmentMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/KismetMathLibrary.h"
 
 void UBSAnimInstance::NativeInitializeAnimation()
 {
@@ -29,46 +23,14 @@ void UBSAnimInstance::InitializeAbilitySystemComponent(UAbilitySystemComponent* 
 	{
 		AbilitySystemComponent = InAbilitySystemComponent;
 		
-		if (const ABSPlayerCharacter* PlayerCharacter = Cast<ABSPlayerCharacter>(CharacterOwner))
-		{
-			HeadMeshAsset = PlayerCharacter->HeadComponent->GetSkeletalMeshAsset();
-			PlayerCharacter->HeadComponent->OnSkeletalMeshSetDelegate.AddWeakLambda(
-				this, [this](USkeletalMesh* SkeletalMeshAsset)
-			{
-					HeadMeshAsset = SkeletalMeshAsset;
-					BP_OnEquipmentMeshChanged(BSTags::EquipmentMesh_Head, HeadMeshAsset);
-			});	
-			ChestMeshAsset = PlayerCharacter->GetMesh()->GetSkeletalMeshAsset();
-			Cast<UBSEquipmentMeshComponent>(PlayerCharacter->GetMesh())->OnSkeletalMeshSetDelegate.AddWeakLambda(
-				this, [this](USkeletalMesh* SkeletalMeshAsset)
-			{
-					ChestMeshAsset = SkeletalMeshAsset;
-					BP_OnEquipmentMeshChanged(BSTags::EquipmentMesh_Chest, ChestMeshAsset);
-			});			
-			LegsMeshAsset = PlayerCharacter->LegsComponent->GetSkeletalMeshAsset();
-			PlayerCharacter->LegsComponent->OnSkeletalMeshSetDelegate.AddWeakLambda(
-				this, [this](USkeletalMesh* SkeletalMeshAsset)
-			{
-					LegsMeshAsset = SkeletalMeshAsset;
-					BP_OnEquipmentMeshChanged(BSTags::Equipment_Legs, LegsMeshAsset);
-			}); 	
-			ArmsMeshAsset = PlayerCharacter->ArmsComponent->GetSkeletalMeshAsset();
-			PlayerCharacter->ArmsComponent->OnSkeletalMeshSetDelegate.AddWeakLambda(
-				this, [this](USkeletalMesh* SkeletalMeshAsset)
-			{
-					ArmsMeshAsset = SkeletalMeshAsset;
-					BP_OnEquipmentMeshChanged(BSTags::EquipmentMesh_Arms, ArmsMeshAsset);
-			});
-		}
-		
 		InAbilitySystemComponent->RegisterGenericGameplayTagEvent().AddUObject(
-		this, &UBSAnimInstance::NativeOnTagEvent);
+		this, &UBSAnimInstance::NativeOnAnyTagChanged);
 		
 		OwnedGameplayTags.AppendTags(AbilitySystemComponent->GetOwnedGameplayTags());
 
 		for (const auto OwnedTag : OwnedGameplayTags)
 		{
-			NativeOnTagEvent(OwnedTag, AbilitySystemComponent->GetGameplayTagCount(OwnedTag));
+			NativeOnAnyTagChanged(OwnedTag, AbilitySystemComponent->GetGameplayTagCount(OwnedTag));
 		}
 	
 		bInitialized = true;
@@ -78,33 +40,39 @@ void UBSAnimInstance::InitializeAbilitySystemComponent(UAbilitySystemComponent* 
 
 void UBSAnimInstance::OnAbilitySystemReady_Implementation(UAbilitySystemComponent* OwnerAbilitySystemComponent)
 {
+	
+}
+
+void UBSAnimInstance::PreUpdateAnimation(const float DeltaSeconds)
+{
+	Super::PreUpdateAnimation(DeltaSeconds);
+	if (!bInitialized || !CharacterOwner) return;
+	UpdateRotation();
+	UpdateFalling();
+	UpdateVelocity(CharacterOwner->GetVelocity());
 }
 
 void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 {
-	if (!bInitialized) return;
-	
+	if (bInitialized && CharacterOwner)
+	{
+		Super::NativeUpdateAnimation(DeltaSeconds);
+	}
+}
+
+void UBSAnimInstance::UpdateRotation()
+{
 	AimRotation = CharacterOwner->GetBaseAimRotation();
 	
 	AimRotation.Pitch = FRotator::NormalizeAxis(AimRotation.Pitch);
 	AimRotation.Pitch *= -1;
-	
-	float VelocityLength;
-	const FVector Velocity = CharacterOwner->GetCharacterMovement()->Velocity;
+}
+
+void UBSAnimInstance::UpdateVelocity(const FVector Velocity)
+{
 	GravityVelocity = Velocity.Z;
-	
-	if (CharacterOwner->IsLocallyControlled() && CharacterOwner->IsPlayerControlled())
-	{
-		float CurrentAccel = CharacterOwner->GetCharacterMovement()->GetCurrentAcceleration().Size();
-		CurrentAccel = FMath::Clamp(CurrentAccel, 0.f, CharacterOwner->GetCharacterMovement()->GetMaxSpeed());
-		VelocityLength = CurrentAccel;
-	}
-	else
-	{
-		FVector VelocityXY = Velocity;
-		VelocityXY.Z = 0;
-		VelocityLength = VelocityXY.Size();
-	}
+
+	const float VelocityLength = FVector(Velocity.X, Velocity.Y, 0).Length();
 	
 	if (const float BaseWalkSpeed = CharacterOwner->GetCharacterMovement()->MaxWalkSpeed; 
 		!FMath::IsNearlyZero(BaseWalkSpeed))
@@ -112,19 +80,15 @@ void UBSAnimInstance::NativeUpdateAnimation(const float DeltaSeconds)
 		VelocityPercentage = (VelocityLength / BaseWalkSpeed) * 100.f;
 	}
 	
-	IsFalling = CharacterOwner->GetCharacterMovement()->IsFalling();
-	
 	const float TargetDirection = 
-		UKismetAnimationLibrary::CalculateDirection(CharacterOwner->GetVelocity(), CharacterOwner->GetActorRotation());
+	UKismetAnimationLibrary::CalculateDirection(Velocity, CharacterOwner->GetActorRotation());
 	
 	VelocityDirection = FMath::RoundToFloat(TargetDirection / VelocityDirectionStepSize) * VelocityDirectionStepSize;
-	
-	Super::NativeUpdateAnimation(DeltaSeconds);
 }
 
-void UBSAnimInstance::BP_OnEquipmentMeshChanged_Implementation(FGameplayTag MeshTag, USkeletalMesh* NewSkeletalMesh)
+void UBSAnimInstance::UpdateFalling()
 {
-	
+	IsFalling = CharacterOwner->GetCharacterMovement()->IsFalling();
 }
 
 UAbilitySystemComponent* UBSAnimInstance::GetAbilitySystemComponent()
@@ -138,14 +102,11 @@ UAbilitySystemComponent* UBSAnimInstance::GetAbilitySystemComponent()
 	return nullptr;
 }
 
-void UBSAnimInstance::NativeOnTagEvent(const FGameplayTag Tag, int32 Count)
+void UBSAnimInstance::NativeOnAnyTagChanged(const FGameplayTag Tag, int32 Count)
 {
-	const FGameplayTag ChangedTag = Tag;
+	OnAnyTagChanged(Tag, Count);
 	
-	if (Tag.MatchesTag(BSTags::WeaponType) && Count > 0)
-	{
-		WeaponTypeTag = ChangedTag;
-	}
+	const FGameplayTag ChangedTag = Tag;
 	
 	if (Count != 0)
 	{
@@ -162,6 +123,11 @@ void UBSAnimInstance::NativeOnTagEvent(const FGameplayTag Tag, int32 Count)
 	}
 	
 	BP_OnGameplayTagChanged(ChangedTag, Count);
+}
+
+void UBSAnimInstance::OnAnyTagChanged(const FGameplayTag Tag, int32 Count)
+{
+	
 }
 
 void UBSAnimInstance::BP_OnGameplayTagRemoved_Implementation(const FGameplayTag& Tag, const int32& Count)

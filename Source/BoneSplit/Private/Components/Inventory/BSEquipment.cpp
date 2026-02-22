@@ -17,6 +17,7 @@ UBSEquipmentEffect::UBSEquipmentEffect()
 	StackLimitCount = 1;
 }
 
+
 TSoftObjectPtr<UTexture2D> UBSEquipmentEffect::GetIcon_Implementation() const
 {
 	return Icon;
@@ -25,6 +26,27 @@ TSoftObjectPtr<UTexture2D> UBSEquipmentEffect::GetIcon_Implementation() const
 #if WITH_EDITOR
 
 #include "Misc/DataValidation.h"
+
+void UBSEquipmentEffect::PostLoad()
+{
+	Super::PostLoad();
+	
+	if (SlotTag.IsValid())
+	{
+		CachedAssetTags.AddTag(SlotTag);
+	}
+}
+
+void UBSEquipmentEffect::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+	
+	if (SlotTag.IsValid())
+	{
+		CachedAssetTags.AddTag(SlotTag);
+	}
+
+}
 
 bool UBSEquipmentEffect::CanEditChange(const FProperty* InProperty) const
 {
@@ -58,47 +80,7 @@ EDataValidationResult UBSEquipmentEffect::IsDataValid(FDataValidationContext& Co
 	{
 		Context.AddError(FText::FromString("No valid slot tag defined"));
 	}
-	if (SlotTag.MatchesTagExact(BSTags::Equipment_Head))
-	{
-		if (!MeshInfo.ContainsByPredicate([this](const FBSEffectMeshInfo& MeshInfo)
-		{
-			return MeshInfo.SlotTag.MatchesTagExact(BSTags::EquipmentMesh_Head);
-		}))
-		{
-			Context.AddWarning(FText::FromString("Head Slot expects Mesh, none found!"));
-		}
-	}
-	if (SlotTag.MatchesTagExact(BSTags::Equipment_Chest))
-	{
-		if (!MeshInfo.ContainsByPredicate([this](const FBSEffectMeshInfo& MeshInfo)
-		{
-			return MeshInfo.SlotTag.MatchesTagExact(BSTags::EquipmentMesh_Chest);
-		}))
-		{
-			Context.AddWarning(FText::FromString("Chest Slot expects Mesh, none found!"));
-		}
-	}
-	if (SlotTag.MatchesTagExact(BSTags::Equipment_Legs))
-	{
-		if (!MeshInfo.ContainsByPredicate([this](const FBSEffectMeshInfo& MeshInfo)
-		{
-			return MeshInfo.SlotTag.MatchesTagExact(BSTags::EquipmentMesh_Legs);
-		}))
-		{
-			Context.AddWarning(FText::FromString("Legs Slot expects Mesh, none found!"));
-		}
-	}
-	if (SlotTag.MatchesTagExact(BSTags::Equipment_Arms))
-	{
-		if (!MeshInfo.ContainsByPredicate([this](const FBSEffectMeshInfo& MeshInfo)
-		{
-			return MeshInfo.SlotTag.MatchesTagExact(BSTags::EquipmentMesh_MainHand) 
-			|| MeshInfo.SlotTag.MatchesTagExact(BSTags::EquipmentMesh_Offhand);
-		}))
-		{
-			Context.AddWarning(FText::FromString("Weapon Slot expects a mesh asset in either MainHand or Offhand"));
-		}
-	}
+	
 	return Super::IsDataValid(Context);
 }
 

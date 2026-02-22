@@ -3,141 +3,67 @@
 
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
+#include "Actors/Player/BSPlayerState.h"
 #include "GameSettings/BSDeveloperSettings.h"
+#include "GameplayAbilities/Public/AbilitySystemComponent.h"
 
-UBSLocalWidgetSubsystem* UBSLocalWidgetSubsystem::GetWidgetSubsystem(const UUserWidget* Context)
+#define BS_LOAD_WIDGET_SYNC(Pointer, InSoftClass) \
+if (!InSoftClass.IsNull())                     \
+{ Pointer = InSoftClass.LoadSynchronous(); }
+
+UBSLocalWidgetSubsystem::UBSLocalWidgetSubsystem()
 {
-	return Context->GetOwningLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
+
 }
 
-UBSLocalWidgetSubsystem* UBSLocalWidgetSubsystem::GetWidgetSubsystem(const APlayerController* Context)
+UBSLocalWidgetSubsystem* UBSLocalWidgetSubsystem::GetWidgetSubsystem(const UObject* Context)
 {
-	check(Context->GetLocalPlayer());
-	return Context->GetLocalPlayer()->GetSubsystem<UBSLocalWidgetSubsystem>();
-}
-
-UBSLocalWidgetSubsystem* UBSLocalWidgetSubsystem::GetWidgetSubsystem(const ULocalPlayer* Context)
-{
-	return Context->GetSubsystem<UBSLocalWidgetSubsystem>();
+	const UWorld* World = GEngine->GetWorldFromContextObjectChecked(Context);
+	return World->GetGameInstance()->GetSubsystem<UBSLocalWidgetSubsystem>();
 }
 
 void UBSLocalWidgetSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	const UBSDeveloperSettings* DS = GetDefault<UBSDeveloperSettings>();
-	
-	if (!DS->GameRootWidgetClass.IsNull())
+	const UBSDeveloperSettings* DS =
+		GetDefault<UBSDeveloperSettings>();
+
+	for (auto& OverrideClass : DS->WidgetOverrideClasses)
 	{
-		GameRootWidgetClass = DS->GameRootWidgetClass.LoadSynchronous();
-	}
-	if (!DS->GameRootWidgetClass.IsNull())
-	{
-		MainMenuWidgetRootClass = DS->MainMenuRootWidgetClass.LoadSynchronous();
-	}
-	
-	if (!DS->HudWidgetClass.IsNull())
-	{
-		HudWidgetClass = DS->HudWidgetClass.LoadSynchronous();
-	}
-	
-	if (!DS->PauseMenuWidgetClass.IsNull())
-	{
-		PauseMenuWidgetClass = DS->PauseMenuWidgetClass.LoadSynchronous();
-	}
-	
-	if (!DS->CharacterPaneWidgetClass.IsNull())
-	{
-		CharacterPaneWidgetClass = DS->CharacterPaneWidgetClass.LoadSynchronous();
-	}
-	
-	if (!DS->DefaultTooltipWidgetClass.IsNull())
-	{
-		DefaultToolTipWidgetClass = DS->DefaultTooltipWidgetClass.LoadSynchronous();
-	}
-	if (!DS->DefaultDamageNumberWidgetClass.IsNull())
-	{
-		DamageNumberWidgetClass = DS->DefaultDamageNumberWidgetClass.LoadSynchronous();
-	}
-	
-	if (!DS->UserConfirmContextWidgetClass.IsNull())
-	{
-		UserConfirmWidgetClass = DS->UserConfirmContextWidgetClass.LoadSynchronous();
+		if (!OverrideClass.Key.IsValid()) continue;
+		if (OverrideClass.Value.IsNull()) continue;
+		if (UClass* LoadedClass = OverrideClass.Value.LoadSynchronous())
+		{
+			WidgetClassOverrides.Add({OverrideClass.Key, LoadedClass} );
+		}
 	}
 }
 
-void UBSLocalWidgetSubsystem::ClearWidgets()
+void UBSLocalWidgetSubsystem::GetOrSetAbilitySystem(const UUserWidget* WidgetInstance, TWeakObjectPtr<UAbilitySystemComponent>& PointerToSet)
 {
-	if (RootWidgetInstance)
+	if (const IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(WidgetInstance->GetOwningPlayerState()))
 	{
-		RootWidgetInstance->RemoveFromParent();
-		RootWidgetInstance = nullptr;
+		PointerToSet = AbilitySystemInterface->GetAbilitySystemComponent();
 	}
 }
 
-UBSWToolTipBase* UBSLocalWidgetSubsystem::CreateGenericToolTip(
-	const FText& Header, const FText& Text, const FText& AltHeader)
-{
-	UBSWToolTipBase* ToolTip = CreateWidgetFromClass(DefaultToolTipWidgetClass);
-	ToolTip->SetToolTipText(Header, Text, AltHeader);
-	return ToolTip;
-}
-
-UBSWRoot* UBSLocalWidgetSubsystem::CreatePlayerUI(APlayerController* InPlayerController, bool bMainMenu)
-{
-	check(InPlayerController);
-	check(GameRootWidgetClass);
-	RootWidgetInstance = CreateWidget<UBSWRoot>(InPlayerController, bMainMenu ? MainMenuWidgetRootClass : GameRootWidgetClass, "RootWidget");
-	RootWidgetInstance->AddToPlayerScreen();
-	return RootWidgetInstance;
-}
-
-void UBSLocalWidgetSubsystem::SpawnDamageNumber(const FGameplayEventData EventData)
-{
-	//TODO; This will be called A LOT. Maybe cache some values here to reduce load.
-	if (!GetRootWidgetInstance()) return;
-	if (!GetRootWidgetInstance()->GetOwningPlayerPawn()) return;
-	
-	bool bBlocked = false;
-	
-	if (GetRootWidgetInstance()->GetOwningPlayerPawn() == EventData.Target)
-	{
-		if (!BSConsoleVariables::CVarBSShowIncomingDamageNumbers.GetValueOnGameThread()) bBlocked = true;
-	}
-	else
-	{
-		if (!BSConsoleVariables::CVarBSShowDamageNumbers.GetValueOnGameThread()) bBlocked = true;
-	}
-	
-	if (bBlocked) return;
-	
-	UBSWDamageNumber* NewDamageNumber = CreateWidgetFromClass<UBSWDamageNumber>(DamageNumberWidgetClass);
-	NewDamageNumber->InitializeDamageNumber(EventData);
-	NewDamageNumber->AddToPlayerScreen();
-}
-
-bool UBSLocalWidgetSubsystem::IsWidgetActive(TSubclassOf<UCommonActivatableWidget> WidgetClass)
+bool UBSLocalWidgetSubsystem::IsWidgetActive(UCommonActivatableWidgetStack* StackToCheck, TSubclassOf<UCommonActivatableWidget> WidgetClass)
 {
 	check(WidgetClass);
-	check(RootWidgetInstance);
-	return RootWidgetInstance->WidgetStack->GetWidgetList().ContainsByPredicate(
+	return StackToCheck->GetWidgetList().ContainsByPredicate(
 	[WidgetClass](const UCommonActivatableWidget* Widget)
 	{
 		return Widget->IsA(WidgetClass);
 	}); 
 }
 
-void UBSLocalWidgetSubsystem::RemoveWidgetFromStack(const TSubclassOf<UCommonActivatableWidget> WidgetInstance) const
+void UBSLocalWidgetSubsystem::RemoveWidgetFromStack(UCommonActivatableWidgetStack* StackToCheck, const TSubclassOf<UCommonActivatableWidget> WidgetInstance)
 {
-	check(RootWidgetInstance);
-	for (const auto Widget : RootWidgetInstance->WidgetStack->GetWidgetList())
+	check(StackToCheck);
+	for (const auto Widget : StackToCheck->GetWidgetList())
 	{
 		if (Widget->IsA(WidgetInstance)) Widget->DeactivateWidget();
 		break;
 	}
-}
-
-UBSWRoot* UBSLocalWidgetSubsystem::GetRootWidgetInstance()
-{
-	return RootWidgetInstance;
 }

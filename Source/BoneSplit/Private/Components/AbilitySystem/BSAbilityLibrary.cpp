@@ -74,7 +74,7 @@ bool UBSAbilityLibrary::CanSeeTargetLocation(UWorld* World, const FVector Origin
 		HitResult, 
 		OriginLocation,
 		TargetLocation, 
-		ECC_Visibility);
+		ECC_Camera);
 }
 
 TArray<AActor*> UBSAbilityLibrary::GetActorsInRadius(AActor* InOriginActor, const float Radius)

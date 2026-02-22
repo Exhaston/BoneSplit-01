@@ -33,5 +33,7 @@ public:
 	
 	virtual void LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset);
 	
+	virtual void SetSkeletalMesh(USkeletalMesh* NewMesh, bool bReinitPose = true) override;
+	
 	TSharedPtr<FStreamableHandle> StreamingHandle;
 };

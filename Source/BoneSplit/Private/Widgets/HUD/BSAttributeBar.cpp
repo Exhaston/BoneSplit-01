@@ -7,23 +7,38 @@
 #include "BoneSplit/BoneSplit.h"
 #include "Components/Image.h"
 
-//TODO: Was set up quite quickly. Need a thorough cleanup for readability.
-
 void UBSAttributeBar::NativePreConstruct()
 {
 	Super::NativePreConstruct();
-	if (GetBarMaterial())
+	
+	if (GetBarMaterial()) GetBarMaterial()->SetVectorParameterValue(HealthBarColorParamName, Color);
+	
+	if (IsDesignTime()) //Mainly for editor preview. If we have a valid asc just use that instead.
 	{
-		GetBarMaterial()->SetVectorParameterValue("Color", Color);
+		if (GetBarMaterial())
+		{
+			GetBarMaterial()->SetScalarParameterValue(HealthBarPercentParamName, 0.5);
+			GetBarMaterial()->SetScalarParameterValue(HealthBarOldPercentParamName, 0.75);
+		}
+		
+		if (HealthBarPercentText)
+		{
+			HealthBarPercentText->SetText(FText::FromString("50%"));
+		}
+	
+		if (HealthBarPercentText)
+		{
+			HealthBarText->SetText(FText::FromString("50/100"));
+		}
 	}
 }
 
 void UBSAttributeBar::NativeConstruct()
 {
 	Super::NativeConstruct();
-	
-	bool bShouldDisplayNumbers = BSConsoleVariables::CVarBSBarsShowNumbers.GetValueOnGameThread();
-	bool bShouldDisplayPercent = BSConsoleVariables::CVarBSBarsShowPercentages.GetValueOnGameThread();
+
+	const bool bShouldDisplayNumbers = BSConsoleVariables::CVarBSBarsShowNumbers.GetValueOnGameThread();
+	const bool bShouldDisplayPercent = BSConsoleVariables::CVarBSBarsShowPercentages.GetValueOnGameThread();
 	
 	HealthBarText->SetVisibility(bShouldDisplayNumbers ? 
 		ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
@@ -44,13 +59,17 @@ void UBSAttributeBar::NativeConstruct()
 		HealthBarPercentText->SetVisibility(Variable->GetBool() ? 
 		ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	});
-	
-	
-	
-	if (GetBarMaterial())
+}
+
+void UBSAttributeBar::RemoveFromParent()
+{
+	if (UAbilitySystemComponent* Asc = AbilitySystemComponent.IsValid() ? AbilitySystemComponent.Get() : nullptr; Asc)
 	{
-		GetBarMaterial()->SetVectorParameterValue("Color", Color);
+		Asc->GetGameplayAttributeValueChangeDelegate(CurrentAttribute).RemoveAll(this);
+		Asc->GetGameplayAttributeValueChangeDelegate(MaxAttribute).RemoveAll(this);
 	}
+
+	Super::RemoveFromParent();
 }
 
 UMaterialInstanceDynamic* UBSAttributeBar::GetBarMaterial()
@@ -62,10 +81,16 @@ UMaterialInstanceDynamic* UBSAttributeBar::GetBarMaterial()
 	return nullptr;
 }
 
-void UBSAttributeBar::InitializeAttributeBar(UAbilitySystemComponent* Asc)
+void UBSAttributeBar::SetAttributeOwner(UAbilitySystemComponent* Asc)
 {
-	check(Asc);
 	AbilitySystemComponent = Asc;
+	
+	if (!AbilitySystemComponent.IsValid())
+	{
+		const FString DebugString = GetName() + ": SetAttributeOwner, Ability system was null";
+		UE_LOG(BoneSplit, Warning, TEXT("%s"), *DebugString);
+		return;
+	}
 	
 	SetAttributeValues(
 		AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute), 
@@ -73,11 +98,12 @@ void UBSAttributeBar::InitializeAttributeBar(UAbilitySystemComponent* Asc)
 	
 	//Init so smooth delta bar doesn't move on init
 	SmoothNormalizedPercent = NormalizedPercent; 
-	GetBarMaterial()->SetScalarParameterValue("Previous", SmoothNormalizedPercent);
+	GetBarMaterial()->SetScalarParameterValue(HealthBarOldPercentParamName, SmoothNormalizedPercent);
 	
 	AbilitySystemComponent.Get()->GetGameplayAttributeValueChangeDelegate(CurrentAttribute).AddWeakLambda(
 	this, [this](const FOnAttributeChangeData& Data)
 	{
+		if (!IsValid(this)) return;
 		SetAttributeValues(
 			AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute), 
 			AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute));
@@ -86,6 +112,7 @@ void UBSAttributeBar::InitializeAttributeBar(UAbilitySystemComponent* Asc)
 	AbilitySystemComponent.Get()->GetGameplayAttributeValueChangeDelegate(MaxAttribute).AddWeakLambda(
 	this, [this](const FOnAttributeChangeData& Data)
 	{
+		if (!IsValid(this)) return;
 		SetAttributeValues(
 			AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute), 
 			AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute));
@@ -96,7 +123,7 @@ void UBSAttributeBar::NativeTick(const FGeometry& MyGeometry, const float InDelt
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	
-	if (IsValid(this))
+	if (AbilitySystemComponent.IsValid())
 	{
 		SmoothOldToCurrent(InDeltaTime);
 	}
@@ -104,14 +131,15 @@ void UBSAttributeBar::NativeTick(const FGeometry& MyGeometry, const float InDelt
 
 void UBSAttributeBar::SmoothOldToCurrent(const float DeltaTime)
 {
-	if (NormalizedPercent == SmoothNormalizedPercent) return;
-	if (GetBarMaterial() && 
+	if (FMath::IsNearlyEqual(NormalizedPercent, SmoothNormalizedPercent)) return; 
+	
+	if (GetBarMaterial() &&                   
 		AbilitySystemComponent.IsValid() && 
 		CurrentAttribute.IsValid() && 
 		MaxAttribute.IsValid())
 	{
 		SmoothNormalizedPercent = FMath::FInterpTo(SmoothNormalizedPercent, NormalizedPercent, DeltaTime, InterpSpeed);
-		GetBarMaterial()->SetScalarParameterValue("Previous", SmoothNormalizedPercent);
+		GetBarMaterial()->SetScalarParameterValue(HealthBarOldPercentParamName, SmoothNormalizedPercent);
 	}
 }
 
@@ -139,6 +167,6 @@ void UBSAttributeBar::SetBarProgress(const float InNormalizedPercent)
 {
 	if (GetBarMaterial())
 	{
-		GetBarMaterial()->SetScalarParameterValue("Current", InNormalizedPercent);
+		GetBarMaterial()->SetScalarParameterValue(HealthBarPercentParamName, InNormalizedPercent);
 	}
 }

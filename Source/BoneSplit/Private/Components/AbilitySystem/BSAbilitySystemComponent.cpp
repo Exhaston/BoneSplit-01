@@ -10,29 +10,14 @@ UBSAbilitySystemComponent::UBSAbilitySystemComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	
-	//ensure that equipment is replaced.
-	OnGameplayEffectAppliedDelegateToSelf.AddWeakLambda(this, [this]
-		(UAbilitySystemComponent* Asc, const FGameplayEffectSpec& NewEffectSpec, FActiveGameplayEffectHandle NewHandle)
-	{
-		if (!NewEffectSpec.Def.IsA(UBSEquipmentEffect::StaticClass())) return;
-		
-		if (const UBSEquipmentEffect* NewActiveDef = Cast<UBSEquipmentEffect>(NewEffectSpec.Def))
-		{
-			TArray<FActiveGameplayEffectHandle> ActiveHandles = GetActiveEffects(
-				FGameplayEffectQuery::MakeQuery_MatchNoEffectTags(FGameplayTagContainer()));
 
-			for (const auto& ActiveHandle : ActiveHandles)
-			{
-				const FActiveGameplayEffect* ActiveGameplayEffect = GetActiveGameplayEffect(ActiveHandle);
-				if (const UBSEquipmentEffect* ActiveEffectDef = Cast<UBSEquipmentEffect>(ActiveGameplayEffect->Spec.Def); 
-					ActiveEffectDef && ActiveEffectDef != NewActiveDef && ActiveEffectDef->SlotTag.MatchesTagExact(NewActiveDef->SlotTag))
-				{
-					RemoveActiveGameplayEffect(ActiveHandle);
-					break;
-				}
-			}
-		}
-	});
+}
+
+void UBSAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor)
+{
+	Super::InitAbilityActorInfo(InOwnerActor, InAvatarActor);
+	
+	OnReplicated.Broadcast();
 }
 
 #pragma region AnimationAdjustments
@@ -75,6 +60,31 @@ float UBSAbilitySystemComponent::PlayMontageSimulated(
 	
 	AdjustBlendTimeForMontage(AbilityActorInfo->GetAnimInstance(), Montage, InPlayRate);
 	return AnimationLength;
+}
+
+void UBSAbilitySystemComponent::OnGiveAbility(FGameplayAbilitySpec& AbilitySpec)
+{
+	Super::OnGiveAbility(AbilitySpec);
+	GrantedAbilities.Add(AbilitySpec.Handle);
+	OnAbilityGrantedDelegate.Broadcast(AbilitySpec);
+}
+
+void UBSAbilitySystemComponent::NotifyAbilitiesTo(FBSOnAbilityGranted::FDelegate&& Callback)
+{
+	for (const FGameplayAbilitySpecHandle& Handle : GrantedAbilities)
+	{
+		if (FGameplayAbilitySpec* Spec = FindAbilitySpecFromHandle(Handle))
+		{
+			Callback.Execute(*Spec);
+		}
+	}
+	OnAbilityGrantedDelegate.Add(MoveTemp(Callback));
+}
+
+void UBSAbilitySystemComponent::OnRemoveAbility(FGameplayAbilitySpec& AbilitySpec)
+{
+	Super::OnRemoveAbility(AbilitySpec);
+	GrantedAbilities.Remove(AbilitySpec.Handle);
 }
 
 #pragma endregion

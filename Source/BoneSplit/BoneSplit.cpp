@@ -255,4 +255,10 @@ namespace BSConsoleVariables
 	true,
 	TEXT("true = Default"),
 	ECVF_Default);
+	
+	TAutoConsoleVariable<bool> CVarToggleGear(
+	TEXT("BS.Debug.ToggleGear"),
+	true,
+	TEXT("true = Default"),
+	ECVF_Default);
 }

@@ -23,8 +23,11 @@ void UBSInteractionComponent::TickComponent(const float DeltaTime, const ELevelT
 	if (!IsValid(this)) return;
 	if (!GetOwner()) return;
 	if (GetOwner()->IsPendingKillPending()) return;
+	if (!GetOwner()->HasLocalNetOwner()) return;
 	
 	const UWorld* World = GetOwner()->GetWorld();
+	
+
 	
 	//Add all interactions in radius
 	
@@ -44,6 +47,7 @@ void UBSInteractionComponent::TickComponent(const float DeltaTime, const ELevelT
 	{
 		if (OverlapResult.GetActor() && OverlapResult.GetActor()->Implements<UBSInteractableInterface>())
 		{
+
 			const float Distance = FVector::DistSquared(
 			GetOwner()->GetActorLocation(), OverlapResult.GetActor()->GetActorLocation());
 			

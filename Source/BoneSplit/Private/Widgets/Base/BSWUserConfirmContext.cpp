@@ -3,6 +3,7 @@
 
 #include "Widgets/Base/BSWUserConfirmContext.h"
 
+#include "CommonRichTextBlock.h"
 #include "Widgets/Base/BSWButtonBase.h"
 
 void UBSWUserConfirmContext::NativeConstruct()
@@ -24,4 +25,8 @@ void UBSWUserConfirmContext::NativeConstruct()
 void UBSWUserConfirmContext::InitializeUserConfirmWidget(FText InContextText, FText InConfirmText, FText InCancelText,
 	bool bRemoveOnConfirm)
 {
+	bRemoveOnUserConfirm = bRemoveOnConfirm;
+	ContextText->SetText(InContextText);
+	ConfirmButton->ButtonText = InConfirmText;
+	CancelButton->ButtonText = InCancelText;
 }

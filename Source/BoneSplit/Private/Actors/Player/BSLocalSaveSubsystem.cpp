@@ -96,6 +96,17 @@ void UBSLocalSaveSubsystem::ApplyDefaultData(UAbilitySystemComponent* Asc)
 
 		Asc->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data);
 	}
+
+	for (auto& DefaultEquipmentEffect : SG_CDO->DefaultEquipment)
+	{
+		FGameplayEffectSpecHandle EffectSpec = Asc->MakeOutgoingSpec(
+		DefaultEquipmentEffect, 1, Asc->MakeEffectContext());
+		
+		const UBSEquipmentEffect* EquipmentEffectCDO = GetDefault<UBSEquipmentEffect>(DefaultEquipmentEffect);
+		//EffectSpec.Data->AddDynamicAssetTag(EquipmentEffectCDO->SlotTag);
+
+		Asc->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data);
+	}
 		
 	
 	for (auto NewTag : SG_CDO->DefaultTags)
@@ -223,6 +234,7 @@ void UBSLocalSaveSubsystem::LoadGameAsync(const APlayerController* PlayerControl
 	if (SaveGameInstance)
 	{
 		OnAsyncLoadComplete.Broadcast(SaveGameInstance);
+		return;
 	}
 	if (UGameplayStatics::DoesSaveGameExist(CurrentProfile, PlayerController->GetLocalPlayer()->GetPlatformUserIndex()))
 	{

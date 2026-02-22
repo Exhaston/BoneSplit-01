@@ -11,8 +11,18 @@ class UCommonTextBlock;
 class UBSAttributeSet;
 struct FGameplayAttribute;
 class UImage;
+
 /**
+ * @brief Attribute bar that utilizes an ability 
+ * system to visualize the current values of attributes related to their max value.
+ *
+ * These can live on components and HUD alike. Widget components' widgets are still the viewing player.
+ * Therefore, we need to set owner of the attribute manually during initialization or construction.
+ *
+ * @note Will not function if ability system is not set manually. 
+ * Marked as abstract and expects a widget designed in blueprint with a material.
  * 
+ * @see SetAttributeOwner
  */
 UCLASS(Abstract, Blueprintable, BlueprintType)
 class BONESPLIT_API UBSAttributeBar : public UCommonUserWidget
@@ -25,15 +35,21 @@ public:
 	
 	virtual void NativeConstruct() override;
 	
-	virtual UMaterialInstanceDynamic* GetBarMaterial();
+	virtual void RemoveFromParent() override;
 	
-	virtual void InitializeAttributeBar(UAbilitySystemComponent* Asc);
+	//Initializes this attribute bar with the owner. Binds delegates when attribute values changes on the asc.
+	virtual void SetAttributeOwner(UAbilitySystemComponent* Asc);
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
+protected:
+	
+	virtual UMaterialInstanceDynamic* GetBarMaterial();
+	
+	virtual void SetAttributeValues(float InCurrentValue, float InMaxValue);
 	
 	void SmoothOldToCurrent(float DeltaTime);
 	
-	virtual void SetAttributeValues(float InCurrentValue, float InMaxValue);
 	virtual void SetTextElements(int32 InCurrentValue, int32 InMaxValue, float InNormalizedPercent);
 	virtual void SetBarProgress(float InNormalizedPercent);
 	
@@ -65,6 +81,18 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(BindWidget=true))
 	UImage* HealthBarImage;
+	
+	//Expected name of the current normalized percentage 0 - 1 within the material, will be set when the bar updates.
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName HealthBarColorParamName = "Color";
+	
+	//Expected name of the current normalized percentage 0 - 1 within the material, will be set when the bar updates.
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName HealthBarPercentParamName = "Current";
+	
+	//Expected name of the Old normalized percentage 0 - 1 within the material, will be set when the bar updates.
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName HealthBarOldPercentParamName = "Previous";
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(BindWidget=true))
 	UCommonTextBlock* HealthBarText;

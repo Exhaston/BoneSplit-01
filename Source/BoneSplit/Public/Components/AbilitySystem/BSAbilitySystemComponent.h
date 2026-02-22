@@ -8,6 +8,8 @@
 
 class ABSProjectileBase;
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FBSOnAbilityGranted, FGameplayAbilitySpec& AbilitySpec);
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), DisplayName="BSAbiltiySystemComponent")
 class BONESPLIT_API UBSAbilitySystemComponent : public UAbilitySystemComponent
 {
@@ -16,6 +18,10 @@ class BONESPLIT_API UBSAbilitySystemComponent : public UAbilitySystemComponent
 public:
 	
 	UBSAbilitySystemComponent();
+	
+	virtual void InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor) override;
+	
+	FSimpleMulticastDelegate OnReplicated;
 	
 #pragma region AnimationAdjustments
 	
@@ -44,6 +50,15 @@ public:
 	// =================================================================================================================
 	// Ability Helpers
 	// ================================================================================================================= 
+	
+	FBSOnAbilityGranted OnAbilityGrantedDelegate;
+	
+	virtual void OnGiveAbility(FGameplayAbilitySpec& AbilitySpec) override;
+	void NotifyAbilitiesTo(FBSOnAbilityGranted::FDelegate&& Callback);
+	virtual void OnRemoveAbility(FGameplayAbilitySpec& AbilitySpec) override;
+	
+	UPROPERTY()
+	TArray<FGameplayAbilitySpecHandle> GrantedAbilities;
 	
 	virtual bool CancelAbilitiesWithTag(FGameplayTag InTag);
 	

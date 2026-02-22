@@ -18,34 +18,23 @@ void UBSEquipmentMeshComponent::SetColor(const FColor InColor)
 
 void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset)
 {
-	CleanUpOverrideMaterials();
-	EmptyOverrideMaterials();
 	if (StreamingHandle.IsValid() && StreamingHandle.Get()->IsLoadingInProgress()) 
 	{
 		StreamingHandle.Get()->CancelHandle(); //Already loading another mesh, cancel to load new
 	}
-	
+
 	if (MeshAsset.IsNull())
 	{
-		OnSkeletalMeshSetDelegate.Broadcast(nullptr);
 		SetSkeletalMesh(nullptr); //Clears the mesh
 		return;
 	}
-	                                            
+
 	if (MeshAsset.IsValid()) //Already loaded, set directly
 	{
-		if (MeshAsset.Get() == GetSkeletalMeshAsset())
-		{
-			OnSkeletalMeshSetDelegate.Broadcast(GetSkeletalMeshAsset());
-			return; //The same asset. No need to reload
-		}
-
 		SetSkeletalMeshAsset(MeshAsset.Get());
-		OnSkeletalMeshSetDelegate.Broadcast(MeshAsset.Get());
-		SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		return;
 	}
-	
+
 	FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
 
 	StreamingHandle = Streamable.RequestAsyncLoad(
@@ -58,8 +47,19 @@ void UBSEquipmentMeshComponent::LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMes
 				return;
 			}
 			SetSkeletalMeshAsset(MeshAsset.Get());
-			OnSkeletalMeshSetDelegate.Broadcast(MeshAsset.Get());
-			SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
 		})
 	);
+}
+
+void UBSEquipmentMeshComponent::SetSkeletalMesh(USkeletalMesh* NewMesh, bool bReinitPose)
+{
+	Super::SetSkeletalMesh(NewMesh, bReinitPose);
+	
+#if WITH_EDITOR
+	CleanUpOverrideMaterials();
+#endif
+	EmptyOverrideMaterials();
+	
+	SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
+	OnSkeletalMeshSetDelegate.Broadcast(NewMesh);
 }

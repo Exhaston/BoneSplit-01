@@ -35,6 +35,8 @@ UBSMobMovementComponent::UBSMobMovementComponent()
 	DefaultLandMovementMode = MOVE_NavWalking;
 	bAllowPhysicsRotationDuringAnimRootMotion = false;
 	RotationRate = {0,450, 0};
+	
+	bRunPhysicsWithNoController = true;
 }
 
 void UBSMobMovementComponent::InitializeAsc(UAbilitySystemComponent* InAbilitySystemComponent)

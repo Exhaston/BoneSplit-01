@@ -7,31 +7,73 @@
 #include "CommonLazyImage.h"
 #include "CommonRichTextBlock.h"
 #include "IconThumbnailInterface.h"
+#include "Actors/Player/BSPlayerState.h"
+#include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 
-void UBSActionButton::InitializeActionButton(UAbilitySystemComponent* InAbilitySystemComponent)
+void UBSActionButton::NativeConstruct()
 {
-	check(InAbilitySystemComponent);
-	
-	AbilitySystemComponent = InAbilitySystemComponent;
-	
-	if (AbilityIcon->GetDynamicMaterial())
+	Super::NativeConstruct();
+	const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>();
+	if (!PS)
 	{
-		AbilityIcon->GetDynamicMaterial()->SetScalarParameterValue("Percent", 1);
+		const FString MissingAscInfo = "No Owning Player State found. " + GetName();
+		UE_LOG(BoneSplit, Warning, TEXT("%s"), *MissingAscInfo);
+		return;
 	}
+	AbilitySystemComponent = PS->GetBSAbilitySystem();
+	if (!AbilitySystemComponent.IsValid())
+	{
+		const FString MissingAscInfo = "No Ability System found from owning player state. " + GetName();
+		UE_LOG(BoneSplit, Warning, TEXT("%s"), *MissingAscInfo);
+		return;
+	}
+	
+	TArray<FGameplayAbilitySpecHandle> CurrentSpecHandles;
+	AbilitySystemComponent->FindAllAbilitiesWithTags(CurrentSpecHandles, FGameplayTagContainer(AbilityTag));
+
+	for (const auto& SpecHandle : CurrentSpecHandles)
+	{
+
+		AttemptSetNewSpec(AbilitySystemComponent->FindAbilitySpecFromHandle(SpecHandle));
+	}
+	
+	AbilitySystemComponent->NotifyAbilitiesTo(FBSOnAbilityGranted::FDelegate::CreateWeakLambda(
+	this, [this](FGameplayAbilitySpec& Spec)
+	{
+		AttemptSetNewSpec(&Spec);
+	}));
+}
+
+bool UBSActionButton::AttemptSetNewSpec(FGameplayAbilitySpec* Spec)
+{
+	if (!Spec || !Spec->Ability || !Spec->Ability->GetAssetTags().HasTagExact(AbilityTag)) return false;
+	
+	CurrentCachedHandle = Spec->Handle;
+	
+	ResetActionButton();
+	
+	const UGameplayAbility* AbilityInstance = 
+		Spec->GetPrimaryInstance();
+	
+	TrySetAbilityIcon(AbilityInstance);
+	
+	return true;
 }
 
 void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	
-	if (!IsValid(this)) return;
-	if (!GetButtonMaterial()) return;
-	if (!GetAbilitySystemComponent()) return;
+	if (!GetButtonMaterial() || !AbilitySystemComponent.IsValid()) return;
 	
-	const FGameplayAbilitySpec* Spec = GetAbilitySpecForID();
-	if (!Spec) return;
-	UGameplayAbility* AbilityInstance = Spec->GetPrimaryInstance();
-	if (!AbilityInstance) return;
+	const FGameplayAbilitySpec* Spec = AbilitySystemComponent->FindAbilitySpecFromHandle(CurrentCachedHandle);
+	if (!Spec)
+	{
+		DisplayFallbackIcon();
+		return;
+	}
+	
+	const UGameplayAbility* AbilityInstance = Spec->GetPrimaryInstance();
 			
 	GetButtonMaterial()->SetScalarParameterValue(PressedParamName, Spec->InputPressed ? 1 : 0);
 				
@@ -40,14 +82,14 @@ void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	
 	AbilityInstance->GetCooldownTimeRemainingAndDuration(
 		Spec->Handle,
-		GetAbilitySystemComponent()->AbilityActorInfo.Get(),
+		AbilitySystemComponent.Get()->AbilityActorInfo.Get(),
 		TimeRemaining,
 		Duration
 	);
 	
 	if (AbilityInstance->GetCooldownGameplayEffect() && AbilityInstance->GetCooldownGameplayEffect()->StackLimitCount > 1)
 	{
-		const int32 CurrentStacks = GetAbilitySystemComponent()->GetGameplayEffectCount(AbilityInstance->GetCooldownGameplayEffect()->GetClass(), nullptr);
+		const int32 CurrentStacks = AbilitySystemComponent.Get()->GetGameplayEffectCount(AbilityInstance->GetCooldownGameplayEffect()->GetClass(), nullptr);
 		const int32 MaxStacks = AbilityInstance->GetCooldownGameplayEffect()->StackLimitCount;
 		
 		AbilityChargeText->SetText(FText::FromString(FString::FromInt(MaxStacks - CurrentStacks)));
@@ -62,78 +104,38 @@ void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 			
 	GetButtonMaterial()->SetScalarParameterValue(CanActivateParam, bCanAfford ? 1 : 0);
 				
-	AbilityIcon->GetDynamicMaterial()->SetScalarParameterValue(
-		PercentParamName, Duration > 0 ? 1 - TimeRemaining / Duration : 1);
+	GetButtonMaterial()->SetScalarParameterValue(PercentParamName, Duration > 0 ? 1 - TimeRemaining / Duration : 1);
 }
-
-void UBSActionButton::Test(UGameplayAbility* AbilityInstance, float& TimeRemaining, float& CooldownDuration)
-{
-	
-	TimeRemaining = 0.f;
-	CooldownDuration = 0.f;
-	
-	const FGameplayTagContainer* CooldownTags = AbilityInstance->GetCooldownTags();
-	if (CooldownTags && CooldownTags->Num() > 0)
-	{
-		if (GetAbilitySystemComponent())
-		{
-			FGameplayEffectQuery const Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(*CooldownTags);
-			TArray<TPair<float, float>> DurationAndTimeRemaining = GetAbilitySystemComponent()->GetActiveEffectsTimeRemainingAndDuration(Query);
-			if (DurationAndTimeRemaining.Num() > 0)
-			{
-				int32 BestIdx = 0;
-				float ShortestTime = DurationAndTimeRemaining[0].Key;
-				for (int32 Idx = 1; Idx < DurationAndTimeRemaining.Num(); ++Idx)
-				{
-					if (DurationAndTimeRemaining[Idx].Key < ShortestTime)
-					{
-						ShortestTime = DurationAndTimeRemaining[Idx].Key;
-						BestIdx = Idx;
-					}
-				}
-
-				TimeRemaining = DurationAndTimeRemaining[BestIdx].Key;
-				CooldownDuration = DurationAndTimeRemaining[BestIdx].Value;
-			}
-		}
-	}
-}
-
-UAbilitySystemComponent* UBSActionButton::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent.IsValid() ? AbilitySystemComponent.Get() : nullptr;
-}
-
 UMaterialInstanceDynamic* UBSActionButton::GetButtonMaterial() const
 {
 	return AbilityIcon->GetDynamicMaterial();
 }
 
-FGameplayAbilitySpec* UBSActionButton::GetAbilitySpecForID()
+void UBSActionButton::DisplayFallbackIcon()
 {
-	FGameplayAbilitySpec* CurrentSpec = AbilitySystemComponent.Get()->FindAbilitySpecFromHandle(CurrentCachedHandle);
-	
-	if (!CurrentSpec)
+	GetButtonMaterial()->SetTextureParameterValue(TextureParamName, FallbackIcon);
+	AbilityChargeText->SetVisibility(ESlateVisibility::Hidden);
+	GetButtonMaterial()->SetScalarParameterValue(CanActivateParam, 1);
+	GetButtonMaterial()->SetScalarParameterValue(PercentParamName, 1);
+}
+
+void UBSActionButton::ResetActionButton()
+{
+	if (GetButtonMaterial())
 	{
-		CurrentSpec = AbilitySystemComponent.Get()->FindAbilitySpecFromInputID(InputID);
-		if (!CurrentSpec) return nullptr;
-		CurrentCachedHandle = CurrentSpec->Handle;
-		
-		//Also update the icon when the spec changed.
-		
-		if (const UGameplayAbility* AbilityInstance = CurrentSpec->GetPrimaryInstance(); 
-			AbilityInstance && AbilityInstance->Implements<UIconThumbnailInterface>())
+		GetButtonMaterial()->SetScalarParameterValue("Percent", 1);
+	}
+}
+
+void UBSActionButton::TrySetAbilityIcon(const UGameplayAbility* AbilityInstance)
+{
+	if (GetButtonMaterial() && AbilityInstance && AbilityInstance->Implements<UIconThumbnailInterface>())
+	{
+		if (const TSoftObjectPtr<UTexture2D> SoftIcon = IIconThumbnailInterface::Execute_GetIcon(AbilityInstance); 
+			!SoftIcon.IsNull())
 		{
-			if (!IIconThumbnailInterface::Execute_GetIcon(AbilityInstance).IsNull())
-			{
-				if (UTexture2D* LoadedIcon = 
-					IIconThumbnailInterface::Execute_GetIcon(AbilityInstance).LoadSynchronous())
-				{
-					AbilityIcon->GetDynamicMaterial()->SetTextureParameterValue(TextureParamName, LoadedIcon);
-				}
-			}
+			GetButtonMaterial()->SetTextureParameterValue(TextureParamName, 
+				IIconThumbnailInterface::Execute_GetIcon(AbilityInstance).LoadSynchronous());
 		}
 	}
-	
-	return CurrentSpec;
 }

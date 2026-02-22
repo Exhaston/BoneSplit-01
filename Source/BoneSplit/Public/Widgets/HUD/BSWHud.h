@@ -13,7 +13,7 @@ class UBSAttributeBar;
  * 
  */
 UCLASS(Abstract, BlueprintType, Blueprintable)
-class BONESPLIT_API UBSWHud : public UCommonActivatableWidget, public IAbilitySystemInterface
+class BONESPLIT_API UBSWHud : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
 	
@@ -22,12 +22,7 @@ public:
 	virtual void NativePreConstruct() override;
 	
 	virtual void NativeConstruct() override;
-	
-	virtual void InitializeHud(UAbilitySystemComponent* InAbilitySystemComponent);
-	
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
-	
+
 protected:
 	
 	UPROPERTY(meta=(BindWidgetOptional))
@@ -54,7 +49,7 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBSActionButton> ActionButton5;
 	
-	UPROPERTY(Transient)
+	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
 };

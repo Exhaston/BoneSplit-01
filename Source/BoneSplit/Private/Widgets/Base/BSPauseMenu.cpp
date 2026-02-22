@@ -6,6 +6,7 @@
 #include "CommonButtonBase.h"
 #include "Actors/Player/BSLocalSaveSubsystem.h"
 #include "Actors/Player/BSPlayerState.h"
+#include "GameSystems/BSGameManagerSubsystem.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
@@ -24,11 +25,7 @@ void UBSPauseMenu::NativeConstruct()
 		{
 			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
 			SaveSubsystem->SaveAscDataSync(GetOwningPlayer(), PS->GetAbilitySystemComponent());
-			UKismetSystemLibrary::QuitGame(
-				PS, 
-				PS->GetPlayerController(), 
-				EQuitPreference::Quit, 
-				false);
+			UBSGameManagerSubsystem::Get(GetOwningPlayer())->QuitToMenu();
 		}
 	});
 	

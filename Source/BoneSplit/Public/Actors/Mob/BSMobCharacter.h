@@ -43,6 +43,12 @@ public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	UPROPERTY(ReplicatedUsing=OnRep_Ready)
+	bool bReady = false;
+	
+	UFUNCTION()
+	void OnRep_Ready();
+	
 	// =================================================================================================================
 	// Launching
 	// =================================================================================================================
@@ -157,6 +163,9 @@ protected:
 	
 	UPROPERTY()
 	TObjectPtr<UBSAttributeSet> AttributeSet;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
+	UWidgetComponent* WidgetComponent;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="BS|Initialization")
 	UBSAbilitySystemComponent* AbilitySystemComponent;

@@ -60,10 +60,12 @@
 		},
 		{
 			"Name": "AdvancedSessions",
+			"Type": "Runtime",
 			"Enabled": true
 		},
 		{
 			"Name": "AdvancedSteamSessions",
+			"Type": "Runtime",
 			"Enabled": true
 		},
 		{
@@ -73,6 +75,10 @@
 				"Editor"
 			],
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/ff8d9256121a4e6191ed9c266f3011f9"
+		},
+		{
+			"Name": "SteamSockets",
+			"Enabled": true
 		}
 	]
 }

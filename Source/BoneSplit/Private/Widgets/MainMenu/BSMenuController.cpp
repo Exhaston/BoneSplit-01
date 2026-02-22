@@ -4,22 +4,22 @@
 #include "Widgets/MainMenu/BSMenuController.h"
 
 #include "GameInstance/BSLoadingScreenSubsystem.h"
-#include "Widgets/BSLocalWidgetSubsystem.h"
+#include "Widgets/MainMenu/BSMainMenuHud.h"
 
 void ABSMenuController::BeginPlay()
 {
 	Super::BeginPlay();
-	if (IsLocalController())
-	{
-		UBSLocalWidgetSubsystem::GetWidgetSubsystem(this)->CreatePlayerUI(this, true);
-	}
+	GetHUD<ABSMainMenuHud>()->NotifyReady();
 }
 
-void ABSMenuController::PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel)
+void ABSMenuController::PreClientTravel(const FString& PendingURL, const ETravelType TravelType, const bool bIsSeamlessTravel)
 {
 	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
-	if (UBSLoadingScreenSubsystem* LoadingScreenSubsystem = GetLocalPlayer()->GetSubsystem<UBSLoadingScreenSubsystem>(); GetLocalPlayer()->IsPrimaryPlayer())
+	
+	/*
+	if (UBSLoadingScreenSubsystem* LoadingScreenSubsystem = GetGameInstance()->GetSubsystem<UBSLoadingScreenSubsystem>(); GetLocalPlayer() && GetLocalPlayer()->IsPrimaryPlayer())
 	{
-		LoadingScreenSubsystem->AddLoadingScreen(nullptr);
+		LoadingScreenSubsystem->AddLoadingScreen(this);
 	}
+	*/
 }

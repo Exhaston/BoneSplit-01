@@ -101,6 +101,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Initialization Data")
 	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
 	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Initialization Data")
+	TArray<TSubclassOf<UBSEquipmentEffect>> DefaultEquipment;
+	
 	//Just here for testing purposes. Will be deprecated when equipment is fully implemented
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Initialization Data")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;

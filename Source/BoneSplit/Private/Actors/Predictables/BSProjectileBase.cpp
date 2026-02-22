@@ -11,6 +11,7 @@
 #include "Statics/BSMathLibrary.h"
 
 FBSProjectileAlignment::FBSProjectileAlignment(
+	AActor* Owner,
 	const FTransform& SpawnTransform,
 	const FTransform& CameraTransform)
 {
@@ -21,7 +22,30 @@ FBSProjectileAlignment::FBSProjectileAlignment(
 	StartPos = SpawnLocation;
 	
 	const float ProjectedDistance = FVector::DotProduct(SpawnLocation - CameraLocation, CameraForward);
-	TargetPos = CameraLocation + CameraForward * ProjectedDistance * 2.5;
+	
+	FVector StartPoint = CameraLocation + CameraForward * ProjectedDistance;
+	
+	FCollisionObjectQueryParams CollisionObjectQueryParams; 
+	CollisionObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	CollisionObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	
+	FCollisionQueryParams CollisionQueryParams;
+	CollisionQueryParams.AddIgnoredActor(Owner);
+
+	const FVector TraceEnd = StartPoint + CameraForward * 2000;
+	if (FHitResult Hit; Owner->GetWorld()->LineTraceSingleByObjectType(
+		Hit, 
+		StartPoint, 
+		TraceEnd, 
+		CollisionObjectQueryParams, 
+		CollisionQueryParams))
+	{
+		TargetPos = Hit.ImpactPoint;
+	}
+	else
+	{
+		TargetPos = TraceEnd;
+	}
 	
 	bAligned = false;
 	bHasValidData = true;
@@ -85,6 +109,7 @@ ABSProjectileBase* ABSProjectileBase::SpawnProjectile(
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	
 	ProjectileInstance->ProjectileAlignment = FBSProjectileAlignment(
+		InOwnerActor,
 		InSpawnTransform,
 		InCameraTransform);
 	
@@ -123,15 +148,17 @@ void ABSProjectileBase::Tick(const float DeltaSeconds)
 	if (!ProjectileAlignment.GetIsValid() || ProjectileAlignment.GetIsAligned()) return;
 
 	const float Alpha = FMath::Clamp(GetGameTimeSinceCreation() / ProjectileAlignment.GetAlignmentTime(ProjectileMovementComponent->InitialSpeed), 0.f, 1.f);
-	const float SmoothedAlpha = FMath::SmoothStep(0.f, 1.f, Alpha);
-	const FVector NewPos = UBSMathLibrary::Slerp(ProjectileAlignment.StartPos, ProjectileAlignment.TargetPos, SmoothedAlpha);
+	const FVector NewPos = FMath::Lerp(ProjectileAlignment.StartPos, ProjectileAlignment.TargetPos, Alpha);
+	
 	SetActorLocation(NewPos, true);
 	
 	if (Alpha >= 1.f)
 	{
 		ProjectileAlignment.bAligned = true;
+		
 		ProjectileMovementComponent->Velocity =
 			ProjectileAlignment.CameraForward * ProjectileMovementComponent->InitialSpeed;
+		
 		ProjectileMovementComponent->SetComponentTickEnabled(true);
 	}
 }

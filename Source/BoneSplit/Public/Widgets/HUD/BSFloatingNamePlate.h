@@ -20,12 +20,7 @@ public:
 	
 	virtual void InitializeAbilitySystemComponent(UAbilitySystemComponent* InAsc);
 	
-	virtual void SetLocation();
-	
 protected:
-	
-	UPROPERTY()
-	UAbilitySystemComponent* AbilitySystemComponent;
 	
 	UPROPERTY(meta=(BindWidget))
 	UBSAttributeBar* HealthBarWidget;
