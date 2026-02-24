@@ -59,6 +59,9 @@ public:
 	virtual void SpawnProjectileForPlayer(TSubclassOf<ABSProjectileBase> Projectile, FTransform SpawnTransform);
 	
 	UFUNCTION(BlueprintCallable)
+	virtual void SpawnProjectileForMob(TSubclassOf<ABSProjectileBase> Projectile, FTransform SpawnTransform, int32 NumProjectiles = 1, float ConeAngle = 15, bool bScaleWithMultiHit = true);
+	
+	UFUNCTION(BlueprintCallable)
 	void GetTargetRotationForProjectile(const FVector& ProjectileOrigin, FVector& BaseAimDirection, FVector& OutProjectileBaseAimPoint, FVector& OutCameraBaseAimPoint) const;
 	
 protected:

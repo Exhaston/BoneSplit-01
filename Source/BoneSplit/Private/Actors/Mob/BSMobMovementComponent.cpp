@@ -39,6 +39,25 @@ UBSMobMovementComponent::UBSMobMovementComponent()
 	bRunPhysicsWithNoController = true;
 }
 
+FRotator UBSMobMovementComponent::ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime,
+	FRotator& DeltaRotation) const
+{
+	if (Velocity.SizeSquared() < UE_KINDA_SMALL_NUMBER)
+	{
+		// AI path following request can orient us in that direction (it's effectively an acceleration)
+		if (bHasRequestedVelocity && Velocity.SizeSquared() > UE_KINDA_SMALL_NUMBER)
+		{
+			return Velocity.GetSafeNormal().Rotation();
+		}
+
+		// Don't change rotation if there is no acceleration.
+		return CurrentRotation;
+	}
+
+	// Rotate toward direction of acceleration.
+	return Velocity.GetSafeNormal().Rotation();
+}
+
 void UBSMobMovementComponent::InitializeAsc(UAbilitySystemComponent* InAbilitySystemComponent)
 {
 	// =================================================================================================================
@@ -60,6 +79,20 @@ float UBSMobMovementComponent::GetMaxSpeed() const
 	if (!CanMove()) return 0;
 	//1 is default if no Asc has been found. Otherwise, it will be the GetSpeedAttribute().
 	return Super::GetMaxSpeed() * CachedSpeedMod;
+}
+
+void UBSMobMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	bOrientRotationToMovement = Velocity.SizeSquared() > UE_KINDA_SMALL_NUMBER && !IsFalling();
+	bUseControllerDesiredRotation = !bOrientRotationToMovement && !IsFalling();
+}
+
+void UBSMobMovementComponent::PhysNavWalking(float deltaTime, int32 Iterations)
+{
+	Super::PhysNavWalking(deltaTime, Iterations);
 }
 
 bool UBSMobMovementComponent::CanMove() const

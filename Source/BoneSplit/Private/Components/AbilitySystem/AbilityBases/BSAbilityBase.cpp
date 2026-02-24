@@ -86,18 +86,29 @@ void UBSAbilityBase::SpawnProjectileForPlayer(TSubclassOf<ABSProjectileBase> Pro
 	if (const UCameraComponent* CameraComponent = GetAvatarActorFromActorInfo()->GetComponentByClass<UCameraComponent>())
 	{
 		
+		/*
 		GetBSAbilitySystemComponent()->Server_SpawnProjectile(
 			GetAvatarActorFromActorInfo(),
 			Projectile,                           
 			SpawnTransform, 
 			CameraComponent->GetComponentTransform());
 		
-		ABSProjectileBase::SpawnProjectile(
+		ABSProjectileBase::SpawnProjectileCameraAdjusted(
 			GetAvatarActorFromActorInfo(), 
 			Projectile,
 			SpawnTransform, 
 			CameraComponent->GetComponentTransform());
+			*/
 	}
+}
+
+void UBSAbilityBase::SpawnProjectileForMob(const TSubclassOf<ABSProjectileBase> Projectile, const FTransform SpawnTransform, const int32 NumProjectiles, float ConeAngle, const bool bScaleWithMultiHit)
+{
+	if (GetBSAbilitySystemComponent()->IsOwnerActorAuthoritative() && NumProjectiles > 0 && Projectile)
+	{
+		GetBSAbilitySystemComponent()->NetMulticast_SpawnProjectileForMob(GetAvatarActorFromActorInfo(), Projectile, SpawnTransform, NumProjectiles, ConeAngle, bScaleWithMultiHit);
+	}
+
 }
 
 void UBSAbilityBase::GetTargetRotationForProjectile(const FVector& ProjectileOrigin, FVector& BaseAimDirection, FVector& OutProjectileBaseAimPoint, FVector& OutCameraBaseAimPoint) const

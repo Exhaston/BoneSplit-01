@@ -56,6 +56,8 @@ class BONESPLIT_API ABSMobSpawner : public AActor
 public:
 	
 	explicit ABSMobSpawner(const FObjectInitializer& ObjectInitializer);
+	
+	virtual void TickMobSpawner();
 };
 
 UENUM(BlueprintType)

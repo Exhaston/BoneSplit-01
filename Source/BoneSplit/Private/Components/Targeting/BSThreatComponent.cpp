@@ -3,10 +3,19 @@
 
 #include "Components/Targeting/BSThreatComponent.h"
 
+#include "AIController.h"
+#include "Components/Targeting/BSThreatInterface.h"
+
 
 UBSThreatComponent::UBSThreatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+}
+
+UBSThreatComponent* UBSThreatComponent::GetThreatComponent(AActor* InActor)
+{
+	if (IBSThreatInterface* ThreatInterface = Cast<IBSThreatInterface>(InActor)) return ThreatInterface->GetThreatComponent();
+	return nullptr;
 }
 
 bool UBSThreatComponent::IsInCombat() const
@@ -62,6 +71,15 @@ void UBSThreatComponent::ValidateMap()
 AActor* UBSThreatComponent::GetHighestThreatActor()
 {
 	return HighestThreatActor;
+}
+
+AActor* UBSThreatComponent::GetRandomThreatActor()
+{
+	if (ThreatMap.IsEmpty()) return nullptr;
+	TArray<TWeakObjectPtr<AActor>> ThreatArray;
+	ThreatMap.GenerateKeyArray(ThreatArray);
+	const TWeakObjectPtr<AActor> RandomActor = ThreatArray[FMath::RandRange(0, ThreatArray.Num() - 1)];
+	return RandomActor.IsValid() ? RandomActor.Get() : nullptr;
 }
 
 AActor* UBSThreatComponent::GetLowestThreatActor()
@@ -136,6 +154,14 @@ void UBSThreatComponent::UpdateThreat()
 		if (HighestThreatActor)
 		{
 			CurrentThreat = ThreatMap[HighestThreatActor];
+			
+			if (APawn* OwnerPawn = GetOwner<APawn>())
+			{
+				if (AAIController* AIController = OwnerPawn->GetController<AAIController>())
+				{
+					AIController->SetFocus(HighestThreatActor, EAIFocusPriority::Gameplay);
+				}
+			}
 		}
 		OnMaxThreatChanged.Broadcast(HighestThreatActor, CurrentThreat);
 	}

@@ -46,6 +46,14 @@ void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 	{
 		AActor* FoundActor = OverlapResult.GetActor();
 		if (!FoundActor) continue;
+		
+		if (FoundActors.ContainsByPredicate([this, FoundActor](TWeakObjectPtr<AActor> TestActor)
+		{
+			return TestActor == FoundActor;
+		}))
+		{
+			continue;
+		}
 			
 		if (bCheckVisibility)
 		{
@@ -66,6 +74,7 @@ void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 			
 		if (!MatchingFaction)
 		{
+			FoundActors.Add(FoundActor);
 			OnTargetFoundDelegate.Broadcast(FoundActor);
 		}
 	}
@@ -93,6 +102,6 @@ void UBSAggroComponent::TickComponent(
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	
 	if (IsBeingDestroyed()) return;
-	CheckAggroSphere();
+	CheckAggroSphere(true);
 }
 

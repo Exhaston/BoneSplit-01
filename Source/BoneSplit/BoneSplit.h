@@ -63,6 +63,7 @@ namespace BSTags
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_Knockback);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_DamageTaken);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_Block);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_DamageDealt);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_HealingTaken);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_HealingDealt);

@@ -92,49 +92,48 @@ void ABSProjectileBase::SetCollisionProfiles()
 	OverlapComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 }
 
-ABSProjectileBase* ABSProjectileBase::SpawnProjectile(
-	AActor* InOwnerActor,
-	const TSubclassOf<ABSProjectileBase> ProjectileClass,
+TArray<ABSProjectileBase*> ABSProjectileBase::SpawnProjectiles(
+	AActor* InOwnerActor, 
+	const TSubclassOf<ABSProjectileBase> 
+	ProjectileClass, 
 	const FTransform& InSpawnTransform,
-	const FTransform& InCameraTransform)
+	const int32 NumProjectiles,
+	const float SpreadDegrees)
 {
-	if (!InOwnerActor) return nullptr;
-	APawn* Instigator = Cast<APawn>(InOwnerActor);
+	TArray<ABSProjectileBase*> Projectiles;
 	
-	ABSProjectileBase* ProjectileInstance = InOwnerActor->GetWorld()->SpawnActorDeferred<ABSProjectileBase>(
-		ProjectileClass, 
-		InSpawnTransform, 
-		InOwnerActor, 
-		Instigator, 
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
-	
-	ProjectileInstance->ProjectileAlignment = FBSProjectileAlignment(
-		InOwnerActor,
-		InSpawnTransform,
-		InCameraTransform);
-	
-	ProjectileInstance->FinishSpawning(InSpawnTransform);
-	
-	return ProjectileInstance;
-}
+	UWorld* World = InOwnerActor->GetWorld();
+	if (NumProjectiles <= 0 || !InOwnerActor || !World) return Projectiles;
 
-ABSProjectileBase* ABSProjectileBase::SpawnProjectile(
-	AActor* InOwnerActor,
-	const TSubclassOf<ABSProjectileBase> ProjectileClass, 
-	const FTransform& InSpawnTransform)
-{
-	APawn* Instigator = Cast<APawn>(InOwnerActor);
+	APawn* NewInstigator = Cast<APawn>(InOwnerActor);
 	
-	ABSProjectileBase* ProjectileInstance = InOwnerActor->GetWorld()->SpawnActorDeferred<ABSProjectileBase>(
+	FTransform NewProjectileTransform = InSpawnTransform;
+	const FRotator BaseRotation = NewProjectileTransform.GetRotation().Rotator();
+	const float MaxSpreadAngle = SpreadDegrees;
+	const int32 TotalProjectiles = NumProjectiles;
+
+	const float AngleStep = TotalProjectiles > 1 ? MaxSpreadAngle * 2.0f / (TotalProjectiles - 1) : 0.0f;
+
+	for (int32 i = 0; i < TotalProjectiles; i++)
+	{
+		const float YawOffset = TotalProjectiles > 1 ? -MaxSpreadAngle + AngleStep * i : 0.0f;
+    	
+		//if (FMath::IsNearlyZero(YawOffset)) continue;
+    	
+		FRotator SpawnRotation = BaseRotation;
+		SpawnRotation.Yaw += YawOffset;
+		NewProjectileTransform.SetRotation(SpawnRotation.Quaternion());
+    	
+		ABSProjectileBase* ProjectileInstance = World->SpawnActorDeferred<ABSProjectileBase>(
 		ProjectileClass, 
-		InSpawnTransform, 
+		NewProjectileTransform, 
 		InOwnerActor, 
-		Instigator, 
+		NewInstigator, 
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	
-	ProjectileInstance->FinishSpawning(InSpawnTransform);
-	
-	return ProjectileInstance;
+		ProjectileInstance->FinishSpawning(NewProjectileTransform);
+	}
+	return Projectiles;
 }
 
 void ABSProjectileBase::Tick(const float DeltaSeconds)

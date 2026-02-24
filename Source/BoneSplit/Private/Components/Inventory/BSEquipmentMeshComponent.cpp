@@ -10,6 +10,21 @@
 
 static FName ColorParamName = FName("Color");
 
+UBSEquipmentMeshComponent::UBSEquipmentMeshComponent()
+{
+	SetReceivesDecals(false);
+}
+
+void UBSEquipmentMeshComponent::InitializeEquipmentMesh(const FGameplayTag InMeshTag,
+                                                        const TSoftObjectPtr<USkeletalMesh> InMeshAsset, 
+                                                        const FColor InColor)
+{
+	SetCollisionProfileName("CharacterMesh");
+	MeshTag = InMeshTag;
+	SetColor(InColor);
+	LazyLoadSkeletalMesh(InMeshAsset);
+}
+
 void UBSEquipmentMeshComponent::SetColor(const FColor InColor)
 {
 	CurrentColor = InColor;
@@ -61,5 +76,5 @@ void UBSEquipmentMeshComponent::SetSkeletalMesh(USkeletalMesh* NewMesh, bool bRe
 	EmptyOverrideMaterials();
 	
 	SetVectorParameterValueOnMaterials(ColorParamName, FVector(CurrentColor));
-	OnSkeletalMeshSetDelegate.Broadcast(NewMesh);
+	OnSkeletalMeshSetDelegate.Broadcast(GetMeshTag(), NewMesh);
 }

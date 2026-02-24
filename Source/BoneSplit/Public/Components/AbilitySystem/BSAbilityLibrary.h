@@ -31,6 +31,8 @@ class BONESPLIT_API UBSAbilityLibrary : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 	
 public:
+	UFUNCTION(BlueprintCallable, Category="BoneSplit")
+	static FVector GetRandomPointInHalfRadius2D(const FVector& Origin, const FVector& ForwardDirection, float Radius);
 	
 	UFUNCTION(BlueprintCallable, Category="BoneSplit|Data")
 	static FString ConvertTagToString(FGameplayTag InTag);

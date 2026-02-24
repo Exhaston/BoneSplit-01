@@ -75,6 +75,9 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SpawnProjectile(AActor* Owner, TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_SpawnProjectileForMob(AActor* Owner, TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, int32 NumProjectiles = 1, float ConeAngle = 15, bool bScaleWithMultiHit = true);
 
 private:
 	

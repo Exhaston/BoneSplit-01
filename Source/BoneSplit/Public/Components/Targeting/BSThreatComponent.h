@@ -18,6 +18,9 @@ class BONESPLIT_API UBSThreatComponent : public UActorComponent
 public:
 	
 	UBSThreatComponent();
+
+	UFUNCTION(BlueprintCallable)
+	static UBSThreatComponent* GetThreatComponent(AActor* InActor);
 	
 	UPROPERTY()
 	FBSOnCombat OnCombatChanged;
@@ -41,6 +44,8 @@ public:
 	
 	//May return null
 	virtual AActor* GetHighestThreatActor();
+	
+	virtual AActor* GetRandomThreatActor();
 	
 	//May return null
 	virtual AActor* GetLowestThreatActor();

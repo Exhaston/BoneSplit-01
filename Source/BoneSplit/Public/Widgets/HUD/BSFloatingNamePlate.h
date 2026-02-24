@@ -20,7 +20,12 @@ public:
 	
 	virtual void InitializeAbilitySystemComponent(UAbilitySystemComponent* InAsc);
 	
+	virtual void StartDeathAnimation();
+	
 protected:
+	
+	UPROPERTY(meta=(BindWidgetAnim), Transient)
+	UWidgetAnimation* DeathAnimation;
 	
 	UPROPERTY(meta=(BindWidget))
 	UBSAttributeBar* HealthBarWidget;

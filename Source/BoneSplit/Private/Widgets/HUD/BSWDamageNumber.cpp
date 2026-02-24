@@ -7,6 +7,7 @@
 
 void UBSWDamageNumber::InitializeDamageNumber(FGameplayEventData EventData)
 {
+	if (!EventData.Target) return;
 	WorldLocation = EventData.Target->GetActorLocation();
 	RandomScreenOffset = {FMath::RandRange(-100.f, 100.f), 0};
 	SetLocation();

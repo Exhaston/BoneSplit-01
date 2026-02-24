@@ -13,6 +13,10 @@ ABSMobSpawner::ABSMobSpawner(const FObjectInitializer& ObjectInitializer) : Supe
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent")));
 }
 
+void ABSMobSpawner::TickMobSpawner()
+{
+}
+
 UBSMobManager::UBSMobManager()
 {
 }

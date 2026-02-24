@@ -13,6 +13,7 @@ namespace BSTags
 
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_Knockback, "GameplayEvent.Knockback");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_DamageTaken, "GameplayEvent.DamageTaken");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_Block, "GameplayEvent.Block");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_DamageDealt, "GameplayEvent.DamageDealt");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_HealingTaken, "GameplayEvent.HealingTaken");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_HealingDealt, "GameplayEvent.HealingDealt");

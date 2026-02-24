@@ -103,7 +103,7 @@ void UBSAttributeBar::SetAttributeOwner(UAbilitySystemComponent* Asc)
 	AbilitySystemComponent.Get()->GetGameplayAttributeValueChangeDelegate(CurrentAttribute).AddWeakLambda(
 	this, [this](const FOnAttributeChangeData& Data)
 	{
-		if (!IsValid(this)) return;
+		if (!IsValid(this) || !AbilitySystemComponent.IsValid()) return;
 		SetAttributeValues(
 			AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute), 
 			AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute));
@@ -112,7 +112,7 @@ void UBSAttributeBar::SetAttributeOwner(UAbilitySystemComponent* Asc)
 	AbilitySystemComponent.Get()->GetGameplayAttributeValueChangeDelegate(MaxAttribute).AddWeakLambda(
 	this, [this](const FOnAttributeChangeData& Data)
 	{
-		if (!IsValid(this)) return;
+		if (!IsValid(this) || !AbilitySystemComponent.IsValid()) return;
 		SetAttributeValues(
 			AbilitySystemComponent.Get()->GetNumericAttribute(CurrentAttribute), 
 			AbilitySystemComponent.Get()->GetNumericAttribute(MaxAttribute));

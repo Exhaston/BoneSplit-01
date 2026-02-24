@@ -55,7 +55,7 @@ void ABSGameplayHud::SpawnWidgets()
 void ABSGameplayHud::SpawnDamageNumber(const FGameplayEventData EventData)
 {
 	//TODO; This will be called A LOT. Maybe cache some values here to reduce load.
-	if (!GetOwningPawn()) return;
+	if (!GetOwningPawn() || !EventData.Target) return;
 	
 	bool bBlocked = false;
 	

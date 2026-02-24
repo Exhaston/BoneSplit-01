@@ -141,6 +141,18 @@ void ABSPlayerCharacter::InitializeCharacter()
 		check(AbilitySystemComponent.IsValid());
 		GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 		
+		if (HasAuthority())
+		{	
+			AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(BSTags::GameplayEvent_Block).AddWeakLambda(
+			this,[this](const FGameplayEventData* Payload)
+			{
+				if (Payload)
+				{
+					OnDamageBlocked();
+				}
+			});
+		}
+		
 		if (PS->GetIsInitialized())
 		{
 			PostPlayerStateInitialize();
@@ -152,6 +164,14 @@ void ABSPlayerCharacter::InitializeCharacter()
 				PostPlayerStateInitialize();
 			});
 		}
+	}
+}
+
+void ABSPlayerCharacter::OnDamageBlocked_Implementation()
+{
+	if (BlockMontage)
+	{
+		PlayAnimMontage(BlockMontage, 1);
 	}
 }
 
@@ -353,22 +373,21 @@ void ABSPlayerCharacter::UpdateMeshColors(const FColor NewColor)
 
 void ABSPlayerCharacter::AddEquipmentMesh(const UBSEquipmentEffect* InSource)
 {
-	FBSEquipmentMeshInfo NewInfo;
-	NewInfo.SourceEffect = InSource;
+	FBSEquipmentMeshInfo NewInfo = FBSEquipmentMeshInfo(InSource);
+	
 	for (auto EquipmentMesh : InSource->EquipmentMeshes)
 	{
 		UBSEquipmentMeshComponent* NewMeshComp = NewObject<UBSEquipmentMeshComponent>(this, UBSEquipmentMeshComponent::StaticClass());
 		if (!NewMeshComp) return;
 		
-		NewMeshComp->OnSkeletalMeshSetDelegate.AddWeakLambda(this, [this, NewMeshComp](USkeletalMesh* SkeletalMesh)
+		NewMeshComp->GetOnSkeletalMeshSet().AddWeakLambda(this, [this]
+			(FGameplayTag MeshTag, USkeletalMesh* NewMesh)
 		{
-			if (NewMeshComp)
-			{
-				OnEquipmentMeshChanged.Broadcast(NewMeshComp, SkeletalMesh);
-			}
+			OnSkeletalMeshSet.Broadcast(MeshTag, NewMesh);
 		});
 		
-		NewMeshComp->LazyLoadSkeletalMesh(EquipmentMesh.SkeletalMesh);
+		NewMeshComp->InitializeEquipmentMesh(
+			InSource->SlotTag, EquipmentMesh.SkeletalMesh, GetInventoryComponent()->GetPlayerColor());
 		
 		if (EquipmentMesh.bFollowPose)
 		{
@@ -379,11 +398,6 @@ void ABSPlayerCharacter::AddEquipmentMesh(const UBSEquipmentEffect* InSource)
 			NewMeshComp->SetAnimationMode(EAnimationMode::Type::AnimationBlueprint);
 			NewMeshComp->SetAnimInstanceClass(EquipmentMesh.AnimBP);
 		}
-		
-		NewMeshComp->SetReceivesDecals(false);
-		NewMeshComp->SetCollisionProfileName("CharacterMesh");
-		
-		NewMeshComp->SetColor(GetInventoryComponent()->GetPlayerColor());
 		
 		NewMeshComp->RegisterComponent();
 		
@@ -407,6 +421,7 @@ void ABSPlayerCharacter::RemoveEquipmentMesh(const UBSEquipmentEffect* InSource)
 		{
 			for (const auto EquipmentMeshComponent : It->EquipmentMeshComponents)
 			{
+				OnSkeletalMeshRemoved.Broadcast(EquipmentMeshComponent->GetMeshTag(), EquipmentMeshComponent->GetSkeletalMeshAsset());
 				EquipmentMeshComponent->DestroyComponent();	
 			}
 			It.RemoveCurrent();

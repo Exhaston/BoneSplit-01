@@ -34,8 +34,15 @@ struct FBSEquipmentMeshInfo
 {
 	GENERATED_BODY()
 	
+	FBSEquipmentMeshInfo() = default;
+
+	explicit FBSEquipmentMeshInfo(const UBSEquipmentEffect* InSourceEffect)
+	{
+		SourceEffect = InSourceEffect;
+	}
+	
 	UPROPERTY()
-	const UBSEquipmentEffect* SourceEffect;
+	const UBSEquipmentEffect* SourceEffect = nullptr;
 	
 	UPROPERTY()
 	TArray<UBSEquipmentMeshComponent*> EquipmentMeshComponents;
@@ -46,8 +53,7 @@ struct FBSEquipmentMeshInfo
 	}
 };
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FBSOnSkeletalMeshChanged, UBSEquipmentMeshComponent* EquipmentMeshComp, USkeletalMesh* NewAsset);
-
+DECLARE_MULTICAST_DELEGATE_TwoParams(FBSOnSkeletalMesh, FGameplayTag SlotTag, USkeletalMesh* NewSkeletalMesh);
 /**
  * Player Character base with meshes for BSEquipmentEffects and AbilitySystem. Tied to BSPlayerState to function. 
  * The BSPlayerState keeps important data should this character ever get destroyed or removed, 
@@ -207,7 +213,8 @@ public:
 	UPROPERTY()
 	TArray<FBSEquipmentMeshInfo> EquipmentMeshInfos;
 	
-	FBSOnSkeletalMeshChanged OnEquipmentMeshChanged;
+	FBSOnSkeletalMeshSet OnSkeletalMeshSet;
+	FBSOnSkeletalMeshSet OnSkeletalMeshRemoved;
 	
 protected:
 	
@@ -221,6 +228,12 @@ protected:
 	
 	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
 	virtual void InitializeCharacter();
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UAnimMontage* BlockMontage;
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void OnDamageBlocked();
 	
 	virtual void PostPlayerStateInitialize();
 	

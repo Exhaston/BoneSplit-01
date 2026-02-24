@@ -6,13 +6,17 @@
 #include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "IconThumbnailInterface.h"
+#include "Animation/BSAnimInstance.h"
+#include "Rigs/RigHierarchyDefines.h"
 #include "UObject/Object.h"
 #include "BSEquipment.generated.h"
 
 class UGameplayAbility;
 class UGameplayEffect;
 
-USTRUCT(BlueprintType)
+
+
+USTRUCT(BlueprintType, Blueprintable)
 struct FBSMeshBindInfo
 {
 	GENERATED_BODY()
@@ -28,6 +32,11 @@ struct FBSMeshBindInfo
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, AdvancedDisplay, meta=(EditCondition="!bFollowPose", EditConditionHides))
 	TSubclassOf<UAnimInstance> AnimBP = nullptr;
+	
+	bool operator==(const FBSMeshBindInfo& B)
+	{
+		 return SkeletalMesh == B.SkeletalMesh;
+	}
 };
 
 UCLASS(Blueprintable, BlueprintType, Abstract, DisplayName="Equipment Defintion", HideCategories=("Duration", "Stacking"), meta=(PrioritizeCategories = "Equipment"))
@@ -65,7 +74,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(Categories="Equipment"), Category="Equipment")
 	FGameplayTag SlotTag;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="EquipmentMesh", ForceInlineRow))
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="EquipmentMesh"))
 	TArray<FBSMeshBindInfo> EquipmentMeshes;
 };
                                                                         

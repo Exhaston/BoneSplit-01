@@ -13,20 +13,15 @@ void UBSPlayerAnimInstance::InitializeAbilitySystemComponent(UAbilitySystemCompo
 	{
 		Super::InitializeAbilitySystemComponent(InAbilitySystemComponent);	
 		
-		PlayerCharacterOwner->OnEquipmentMeshChanged.AddWeakLambda(this, [this]
-			(UBSEquipmentMeshComponent* EquipmentMeshComponent, USkeletalMesh* SkeletalMeshAsset)
+		PlayerCharacterOwner->OnSkeletalMeshSet.AddWeakLambda(this, [this]
+			(FGameplayTag MeshTag, USkeletalMesh* SkelMesh)
 		{
+			if (MeshTag.MatchesTagExact(BSTags::Equipment_Head)) HeadMeshAsset = SkelMesh;
+			if (MeshTag.MatchesTagExact(BSTags::Equipment_Chest)) ChestMeshAsset = SkelMesh;
+			if (MeshTag.MatchesTagExact(BSTags::Equipment_Legs)) LegsMeshAsset = SkelMesh;
+			if (MeshTag.MatchesTagExact(BSTags::Equipment_Arms)) ArmsMeshAsset = SkelMesh;
 			
-			if (EquipmentMeshComponent->MeshTag.MatchesTagExact(BSTags::EquipmentMesh_Head)) 
-				HeadMeshAsset = SkeletalMeshAsset;
-			if (EquipmentMeshComponent->MeshTag.MatchesTagExact(BSTags::EquipmentMesh_Chest)) 
-				ChestMeshAsset = SkeletalMeshAsset;
-			if (EquipmentMeshComponent->MeshTag.MatchesTagExact(BSTags::EquipmentMesh_Arms)) 
-				ArmsMeshAsset = SkeletalMeshAsset;
-			if (EquipmentMeshComponent->MeshTag.MatchesTagExact(BSTags::EquipmentMesh_Legs)) 
-				LegsMeshAsset = SkeletalMeshAsset;
-			
-			BP_OnEquipmentMeshChanged(EquipmentMeshComponent->MeshTag, SkeletalMeshAsset);
+			BP_OnEquipmentChanged();
 		});
 	}
 }
@@ -70,13 +65,11 @@ void UBSPlayerAnimInstance::OnAnyTagChanged(const FGameplayTag Tag, const int32 
 	}
 }
 
-void UBSPlayerAnimInstance::BP_OnWeaponTagChanged_Implementation(FGameplayTag NewWeaponTypeTag,
-                                                                 FGameplayTag OldWeaponTypeTag)
+void UBSPlayerAnimInstance::BP_OnEquipmentChanged_Implementation()
 {
 }
 
-void UBSPlayerAnimInstance::BP_OnEquipmentMeshChanged_Implementation(FGameplayTag MeshTag,
-                                                                     USkeletalMesh* NewSkeletalMesh)
+void UBSPlayerAnimInstance::BP_OnWeaponTagChanged_Implementation(FGameplayTag NewWeaponTypeTag,
+                                                                 FGameplayTag OldWeaponTypeTag)
 {
-	
 }

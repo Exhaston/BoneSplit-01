@@ -8,10 +8,14 @@
 #include "GameplayTagContainer.h"
 #include "Components/AbilitySystem/BSAbilityLibrary.h"
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
+#include "Components/Targeting/BSThreatComponent.h"
 #include "Components/Targeting/BSThreatInterface.h"
 #include "GameFramework/Character.h"
 #include "BSMobCharacter.generated.h"
 
+class UBSAggroComponent;
+class UPlayMontageCallbackProxy;
+class UAITask_MoveTo;
 class UWidgetComponent;
 class UBSFiniteState;
 class UBSFiniteStateComponent;
@@ -41,13 +45,43 @@ public:
 	
 	virtual void Tick(float DeltaSeconds) override;
 	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
-	UPROPERTY(ReplicatedUsing=OnRep_Ready)
-	bool bReady = false;
+	UFUNCTION()
+	void OnTargetFound(AActor* InActor);
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	float FollowDistance = 250;
+	
+	UFUNCTION(BlueprintPure)
+	bool GetIsInRangeForAttack() { return FVector::Dist(GetActorLocation(), GetThreatComponent()->GetHighestThreatActor()->GetActorLocation()) <= FollowDistance * 1.25; }
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	bool bInRange = false;
+	
+	UPROPERTY()
+	float AbilityCheckTimeInterval = 0.5;
+	
+	UPROPERTY()
+	float ElapsedAbilityCheckTime = 0;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TMap<TSubclassOf<UGameplayAbility>, float> AbilityWeightMap;
+	
+
 	
 	UFUNCTION()
-	void OnRep_Ready();
+	void OnThreatTargetUpdate(AActor* NewTarget, float NewThreat);
+	
+	virtual void MoveToTarget();
+	
+	UPROPERTY()
+	UAITask_MoveTo* CurrentMoveTask;
+	
+	UFUNCTION(BlueprintNativeEvent)
+	void BP_OnNewTarget(AActor* NewTarget);
 	
 	// =================================================================================================================
 	// Launching
@@ -74,16 +108,16 @@ public:
 	virtual void Die(UAbilitySystemComponent* SourceAsc, float Damage) override;
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnDeath(UAbilitySystemComponent* SourceAsc, float Damage, UAnimMontage* Montage);
+	void CommitDeath(UAnimMontage* Montage);
 	
 	UPROPERTY()
-	FTimerHandle DeathTimerHandle;
+	UAnimMontage* ActiveDeathMontage;
 	
-	UPROPERTY(ReplicatedUsing=OnRep_Death)
-	bool bIsDead = false;
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnDeath(UAbilitySystemComponent* SourceAsc, float Damage, UAnimMontage* Montage);
 	
 	UFUNCTION()
-	void OnRep_Death();
+	void OnDeathMontageEnded(UAnimMontage* Montage, bool bFinished);
 	
 	virtual void BP_OnDeath_Implementation(UAbilitySystemComponent* SourceAsc, float Damage) override;
 	
@@ -169,4 +203,7 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="BS|Initialization")
 	UBSAbilitySystemComponent* AbilitySystemComponent;
+	
+	UPROPERTY()
+	UBSAggroComponent* AggroComponent;
 };

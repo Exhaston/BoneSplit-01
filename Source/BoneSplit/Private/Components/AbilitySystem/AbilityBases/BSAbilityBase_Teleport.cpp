@@ -14,7 +14,6 @@ void UBSAbilityBase_Teleport::ActivateAbility(const FGameplayAbilitySpecHandle H
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	
-	CurrentTargetActor = GetTarget();
 	
 	if (!CurrentTargetActor.IsValid())
 	{

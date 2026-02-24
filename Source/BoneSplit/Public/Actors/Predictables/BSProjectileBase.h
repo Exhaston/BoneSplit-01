@@ -58,9 +58,12 @@ public:
 	
 	virtual void SetCollisionProfiles();
 	
-	static ABSProjectileBase* SpawnProjectile(AActor* InOwnerActor, TSubclassOf<ABSProjectileBase> ProjectileClass, const FTransform& InSpawnTransform, const FTransform& InCameraTransform);
-	
-	static ABSProjectileBase* SpawnProjectile(AActor* InOwnerActor, TSubclassOf<ABSProjectileBase> ProjectileClass, const FTransform& InSpawnTransform);
+	static TArray<ABSProjectileBase*> SpawnProjectiles(
+		AActor* InOwnerActor, 
+		TSubclassOf<ABSProjectileBase> ProjectileClass, 
+		const FTransform& InSpawnTransform, 
+		int32 NumProjectiles = 0, 
+		float SpreadDegrees = 15);
 	
 	virtual void Tick(float DeltaSeconds) override;
 	

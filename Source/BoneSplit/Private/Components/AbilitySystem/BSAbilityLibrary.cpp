@@ -20,6 +20,29 @@
 #include "Tasks/AITask_MoveTo.h"
 #include "Components/AbilitySystem/EffectBases/BSGameplayEffect.h"
 
+FVector UBSAbilityLibrary::GetRandomPointInHalfRadius2D(
+	const FVector& Origin,
+	const FVector& ForwardDirection,
+	float Radius)
+{
+	// Normalize direction
+	FVector Forward = ForwardDirection.GetSafeNormal2D();
+
+	// Get right vector (perpendicular)
+	FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
+
+	// Random angle between -90° and +90°
+	float Angle = FMath::RandRange(-PI / 2.f, PI / 2.f);
+
+	// Random distance (sqrt for uniform distribution)
+	float Distance = Radius * FMath::Sqrt(FMath::FRand());
+
+	// Direction within half circle
+	FVector Dir = Forward * FMath::Cos(Angle) + Right * FMath::Sin(Angle);
+
+	return Origin + Dir * Distance;
+}
+
 FString UBSAbilityLibrary::ConvertTagToString(const FGameplayTag InTag)
 {
 	return InTag.ToString();
@@ -735,9 +758,9 @@ TSubclassOf<UGameplayAbility> UBSAbilityLibrary::GetAbilityByWeight(UAbilitySyst
 	
 	for (const auto& Pair : Map)
 	{
-		Asc->GiveAbility(Pair.Key);
-		if (Pair.Value > 0 && CanActivateAbility(Asc, Pair.Key))
+		if (CanActivateAbility(Asc, Pair.Key))
 		{
+			Asc->GiveAbility(Pair.Key);
 			Valid.Add(Pair);
 			TotalWeight += Pair.Value;
 		}

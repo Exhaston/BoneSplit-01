@@ -2,17 +2,58 @@
 
 
 #include "Actors/Mob/BSMobSubsystem.h"
-
-#include "AbilitySystemInterface.h"
-#include "Actors/Mob/BSGenericMobInterface.h"
-#include "BoneSplit/BoneSplit.h"
-#include "Components/AbilitySystem/BSAbilityLibrary.h"
+#include "Actors/Mob/BSMobCharacter.h"
+#include "Actors/Mob/BSMobSpawner.h"
 #include "Components/Targeting/BSThreatComponent.h"
-#include "Components/Targeting/BSThreatInterface.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerState.h"
+
+UBSMobSubsystem* UBSMobSubsystem::Get(const UObject* WorldContext)
+{
+	const UWorld* CurrentWorld = GEngine->GetWorldFromContextObjectChecked(WorldContext);
+	return CurrentWorld->GetSubsystem<UBSMobSubsystem>();
+}
+
+void UBSMobSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+}
+
+void UBSMobSubsystem::Tick(const float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	if (!GetWorld() || GetWorld()->bIsTearingDown) return;
+	
+	//Server only logic for mobs here
+	if (GetWorld()->GetNetMode() != NM_DedicatedServer && GetWorld()->GetNetMode() != NM_ListenServer) return;
+	
+	CurrentSpawnTime += DeltaTime;
+	
+	if (CurrentSpawnTime >= SpawnerTickRate)
+	{
+		for (const auto MobSpawner : CurrentMobSpawners)
+		{
+			MobSpawner->TickMobSpawner();
+		}
+		CurrentSpawnTime = 0;
+	}
+}
 
 bool UBSMobSubsystem::IsTickable() const
 {
 	return true;
+}
+
+bool UBSMobSubsystem::ShouldCreateSubsystem(UObject* Outer) const
+{
+	if (!Super::ShouldCreateSubsystem(Outer))
+	{
+		return false;
+	}
+
+	const UWorld* World = Cast<UWorld>(Outer);
+	return World && World->IsGameWorld();
 }
 
 TStatId UBSMobSubsystem::GetStatId() const
@@ -20,111 +61,49 @@ TStatId UBSMobSubsystem::GetStatId() const
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UBSMobSubsystem, STATGROUP_Tickables);
 }
 
-void UBSMobSubsystem::RegisterMob(const TScriptInterface<IBSGenericMobInterface> MobInterface)
+void UBSMobSubsystem::DeclareMob(ABSMobCharacter* MobCharacter, bool bAutoAssignTarget)
 {
-	if (IsValid(MobInterface.GetObject()))
+	if (!MobCharacters.Contains(MobCharacter))
 	{
-		Mobs.AddUnique(MobInterface);
+		if (bAutoAssignTarget)
+		{
+			MobCharacter->GetThreatComponent()->AddThreat(GetPlayerFromArrayDeterministic(), 1);
+		}
+		MobCharacters.Add(MobCharacter);
+		OnMobSpawnDelegate.Broadcast(MobCharacter);
 	}
 }
 
-void UBSMobSubsystem::UnRegisterMob(const TScriptInterface<IBSGenericMobInterface> MobInterface)
+void UBSMobSubsystem::UndeclareMob(ABSMobCharacter* MobCharacter)
 {
-	Mobs.Remove(MobInterface);
+	MobCharacters.Remove(MobCharacter);
 }
 
-void UBSMobSubsystem::TickMobs(const float DeltaTime)
+void UBSMobSubsystem::RegisterSpawner(ABSMobSpawner* Spawner)
 {
-	Mobs.RemoveAll([](const TScriptInterface<IBSGenericMobInterface>& Mob)
-	{
-		return !IsValid(Mob.GetObject());
-	});
-	
-	TickCombat(DeltaTime);
+	CurrentMobSpawners.Add(Spawner);
 }
 
-void UBSMobSubsystem::TickCombat(const float DeltaTime)
+void UBSMobSubsystem::UnregisterSpawner(ABSMobSpawner* Spawner)
 {
-	for (auto& Mob : Mobs)
+	CurrentMobSpawners.Remove(Spawner);
+}
+
+TArray<ABSMobCharacter*> UBSMobSubsystem::GetMobCharacters()
+{
+	return MobCharacters;
+}
+
+AActor* UBSMobSubsystem::GetPlayerFromArrayDeterministic()
+{
+	TArray<AActor*> PlayerPawns;
+	
+	for (const auto PlayerState : GetWorld()->GetGameState()->PlayerArray)
 	{
-		if (IBSGenericMobInterface::Execute_BP_IsInCombat(Mob.GetObject()))
-		{
-			Mob.GetInterface()->NativeOnCombatTick(true, DeltaTime);
-			IBSGenericMobInterface::Execute_BP_OnCombatTick(Mob.GetObject(), true, DeltaTime);
-			continue;
-		}
-		
-		AActor* PassiveMobActor = Cast<AActor>(Mob.GetObject());
-		check(PassiveMobActor);
-		
-		const float AggroRange = IBSGenericMobInterface::Execute_BP_GetAggroRange(Mob.GetObject());
-		if (AggroRange <= 0) continue;
-		
-		const IAbilitySystemInterface* MobAscInterface = Cast<IAbilitySystemInterface>(PassiveMobActor);
-		check(MobAscInterface);
-		
-		IBSThreatInterface* ThreatInterface = Cast<IBSThreatInterface>(PassiveMobActor);
-		check(ThreatInterface);
-		
-		TArray<AActor*> OverlappedActors = UBSAbilityLibrary::GetActorsInRadiusDep(
-		PassiveMobActor, AggroRange, false);
-	
-#if WITH_EDITOR
-	
-		if (BSConsoleVariables::CVarBSDebugAggroSpheres.GetValueOnGameThread())
-		{
-			DrawDebugSphere(GetWorld(), 
-				PassiveMobActor->GetActorLocation(), 
-				AggroRange, 
-				16,
-				FColor::Yellow, 
-				false, 
-				DeltaTime);
-		}
-	
-#endif
-	
-		for (const auto FoundActor : OverlappedActors)
-		{
-			if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(FoundActor))
-			{
-				if (UAbilitySystemComponent* OtherAsc = AscInterface->GetAbilitySystemComponent(); OtherAsc && 
-					!UBSAbilityLibrary::HasNoMatchingFaction(MobAscInterface->GetAbilitySystemComponent(), OtherAsc)) 
-					continue;
-			
-				if (!ThreatInterface->GetThreatComponent()->GetThreatMap().Contains(FoundActor))
-				{
-					if (UBSAbilityLibrary::CheckTargetVisibility(
-						this, PassiveMobActor->GetActorLocation(), FoundActor))
-					{
-						ThreatInterface->GetThreatComponent()->AddThreat(FoundActor, 1);
-						AddMobToCombat(Mob);
-					}
-				}
-			}
-		}
+		if (PlayerState->GetPawn()) PlayerPawns.Add(PlayerState->GetPawn());
 	}
-}
-
-void UBSMobSubsystem::AddMobToCombat(const TScriptInterface<IBSGenericMobInterface> MobInterface)
-{
-	MobInterface.GetInterface()->NativeOnCombatBegin();
-	IBSGenericMobInterface::Execute_BP_OnCombatBegin(MobInterface.GetObject());
-}
-
-void UBSMobSubsystem::Tick(const float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 	
-	if (!GetWorld()) return;
-	
-	if (GetWorld()->IsNetMode(NM_Client)) return;
-	
-	CurrentTickTime += DeltaTime;
-
-	while (CurrentTickTime >= MobTickRate)
-	{
-		TickMobs(MobTickRate);
-		CurrentTickTime -= MobTickRate;
-	}
+	AActor* Target = PlayerPawns[FMath::Clamp(CurrentPlayerIt, 0, PlayerPawns.Num() - 1)];
+	CurrentPlayerIt >= PlayerPawns.Num() - 1 ? CurrentPlayerIt = 0 : CurrentPlayerIt++;
+	return Target;
 }

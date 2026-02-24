@@ -3,6 +3,7 @@
 
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Actors/Predictables/BSProjectileBase.h"
+#include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/Inventory/BSEquipment.h"
 
 
@@ -115,6 +116,11 @@ bool UBSAbilitySystemComponent::CancelAbilitiesWithTag(const FGameplayTag InTag)
 	return Result;
 }
 
+void UBSAbilitySystemComponent::NetMulticast_SpawnProjectileForMob_Implementation(AActor* Owner, const TSubclassOf<ABSProjectileBase> ClassToSpawn, const FTransform SpawnTransform, const int32 NumProjectiles, float ConeAngle, const bool bScaleWithMultiHit)
+{
+	ABSProjectileBase::SpawnProjectiles(Owner, ClassToSpawn, SpawnTransform, NumProjectiles + (bScaleWithMultiHit ? GetNumericAttribute(UBSAttributeSet::GetMultiHitAttribute()) : 0), ConeAngle);
+}
+
 #pragma endregion
 
 #pragma region Spawning
@@ -151,7 +157,7 @@ void UBSAbilitySystemComponent::NetMulticast_SpawnProjectile_Implementation(AAct
 {
 	if (AbilityActorInfo.IsValid() && !AbilityActorInfo.Get()->IsLocallyControlled())
 	{
-		ABSProjectileBase::SpawnProjectile(Owner, ClassToSpawn, SpawnTransform, CameraTransform);
+		//ABSProjectileBase::SpawnProjectileCameraAdjusted(Owner, ClassToSpawn, SpawnTransform, CameraTransform);
 	}
 }
 

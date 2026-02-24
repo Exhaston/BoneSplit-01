@@ -12,7 +12,9 @@
  * 
  */
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FBSOnSkeletalMeshSet, USkeletalMesh* NewMest);
+class UBSEquipmentMeshComponent;
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(FBSOnSkeletalMeshSet, FGameplayTag MeshTag, USkeletalMesh* NewMesh);
 
 UCLASS()
 class BONESPLIT_API UBSEquipmentMeshComponent : public USkeletalMeshComponent
@@ -21,17 +23,27 @@ class BONESPLIT_API UBSEquipmentMeshComponent : public USkeletalMeshComponent
 	
 public:
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true, Categories="EquipmentMesh"))
-	FGameplayTag MeshTag;
+	UBSEquipmentMeshComponent();
+	
+	virtual void InitializeEquipmentMesh(FGameplayTag InMeshTag, TSoftObjectPtr<USkeletalMesh> InMeshAsset, FColor InColor);
 	
 	virtual void SetColor(FColor Color);
+	
+	virtual void LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset);
+	
+	FGameplayTag GetMeshTag() const { return MeshTag; }
+	
+	FBSOnSkeletalMeshSet& GetOnSkeletalMeshSet() { return OnSkeletalMeshSetDelegate; }
+	
+protected:
+	
+	UPROPERTY()
+	FGameplayTag MeshTag;
 	
 	FBSOnSkeletalMeshSet OnSkeletalMeshSetDelegate;
 	
 	UPROPERTY()
 	FColor CurrentColor = FColor::White;
-	
-	virtual void LazyLoadSkeletalMesh(TSoftObjectPtr<USkeletalMesh> MeshAsset);
 	
 	virtual void SetSkeletalMesh(USkeletalMesh* NewMesh, bool bReinitPose = true) override;
 	

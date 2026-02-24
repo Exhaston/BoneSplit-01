@@ -33,7 +33,9 @@ public class BoneSplit : ModuleRules
 			"AdvancedSteamSessions",
 			"OnlineSubsystemUtils",
 			"Networking",
-			"OnlineSubsystem"
+			"OnlineSubsystem",
+			"ControlRig",
+			"RigVM"
 		]);
 	}
 }

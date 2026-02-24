@@ -6,7 +6,11 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "BSMobSubsystem.generated.h"
 
+class ABSMobSpawner;
+class ABSMobCharacter;
 class IBSGenericMobInterface;
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FBSOnMobSpawn, ABSMobCharacter* MobCharacter);
 /**
  * 
  */
@@ -17,34 +21,45 @@ class BONESPLIT_API UBSMobSubsystem : public UTickableWorldSubsystem
 	
 public:
 	
-	virtual bool IsTickable() const override;
+	static UBSMobSubsystem* Get(const UObject* WorldContext);
 	
-	virtual TStatId GetStatId() const override;
-	
-	//Registers the mob for combat tracking and ticking. Call Unregister when the mob dies or gets destroyed
-	virtual void RegisterMob(TScriptInterface<IBSGenericMobInterface> MobInterface);
-	
-	virtual void UnRegisterMob(TScriptInterface<IBSGenericMobInterface> MobInterface);
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
 	virtual void Tick(float DeltaTime) override;
 	
-	UPROPERTY()
-	float MobTickRate = 1;
+	virtual bool IsTickable() const override;
+	
+	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
+	
+	virtual TStatId GetStatId() const override;
+	
+	virtual void DeclareMob(ABSMobCharacter* MobCharacter, bool bAutoAssignTarget = false);
+	virtual void UndeclareMob(ABSMobCharacter* MobCharacter);
+	
+	virtual void RegisterSpawner(ABSMobSpawner* Spawner);
+	virtual void UnregisterSpawner(ABSMobSpawner* Spawner);
+	
+	TArray<ABSMobCharacter*> GetMobCharacters();
+	
+	FBSOnMobSpawn& GetOnMobSpawnDelegate() { return OnMobSpawnDelegate; }
+	
+	AActor* GetPlayerFromArrayDeterministic();
+	
+protected:
+	
+	float SpawnerTickRate = 2;
 	
 	UPROPERTY()
-	float CurrentTickTime = 0;
+	float CurrentSpawnTime = 0;
 	
 	UPROPERTY()
-	int32 MaxAttackers = 3;
-
-private:
+	int32 CurrentPlayerIt = 0;
 	
-	virtual void TickMobs(float DeltaTime);
-	
-	virtual void TickCombat(float DeltaTime);
-	
-	virtual void AddMobToCombat(TScriptInterface<IBSGenericMobInterface> MobInterface);
+	FBSOnMobSpawn OnMobSpawnDelegate;
 	
 	UPROPERTY()
-	TArray<TScriptInterface<IBSGenericMobInterface>> Mobs;
+	TArray<ABSMobCharacter*> MobCharacters;
+	
+	UPROPERTY()
+	TArray<ABSMobSpawner*> CurrentMobSpawners;
 };

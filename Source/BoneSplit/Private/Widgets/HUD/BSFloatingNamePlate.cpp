@@ -11,3 +11,11 @@ void UBSFloatingNamePlate::InitializeAbilitySystemComponent(UAbilitySystemCompon
 {
 	HealthBarWidget->SetAttributeOwner(InAsc);
 }
+
+void UBSFloatingNamePlate::StartDeathAnimation()
+{
+	if (DeathAnimation)
+	{
+		PlayAnimation(DeathAnimation);
+	}
+}

@@ -122,6 +122,16 @@ public:
 	{
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, Shield, OldAttributeData);
 	}
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_BlockChance)
+	FGameplayAttributeData BlockChance = 0;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, BlockChance)
+
+	UFUNCTION()
+	virtual void OnRep_BlockChance(const FGameplayAttributeData& OldAttributeData)
+	{
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, BlockChance, OldAttributeData);
+	}
 	                  
 	// =================================================================================================================
 	// Mana
@@ -163,6 +173,16 @@ public:
 	virtual void OnRep_Power(const FGameplayAttributeData& OldAttributeData)
 	{
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, Power, OldAttributeData);
+	}
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MultiHit)
+	FGameplayAttributeData MultiHit = 0;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, MultiHit)
+	
+	UFUNCTION()
+	virtual void OnRep_MultiHit(const FGameplayAttributeData& OldAttributeData)
+	{
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSAttributeSet, MultiHit, OldAttributeData);
 	}
 
 	// =================================================================================================================

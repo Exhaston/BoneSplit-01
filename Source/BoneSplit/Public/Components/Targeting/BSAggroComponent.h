@@ -27,6 +27,9 @@ public:
 
 protected:
 	
+	UPROPERTY()
+	TArray<TWeakObjectPtr<AActor>> FoundActors;
+	
 	//If set to true, will line trace to the overlapped
 	//actor to check if there is static geometry in between the actor and the owner
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)

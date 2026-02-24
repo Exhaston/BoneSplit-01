@@ -21,10 +21,15 @@ public:
 	
 	UBSMobMovementComponent();
 	
+	virtual FRotator ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const override;
+	
 	virtual void InitializeAsc(UAbilitySystemComponent* InAbilitySystemComponent);
 	
 	virtual float GetMaxSpeed() const override;
 	
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	
+	virtual void PhysNavWalking(float deltaTime, int32 Iterations) override;
 	virtual bool CanMove() const;
 	
 	virtual void BindTags(UAbilitySystemComponent* InAsc);

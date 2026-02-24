@@ -7,6 +7,7 @@
 #include "BSAbilityBase_MobAbility.generated.h"
 
 
+class ABSMobCharacter;
 class AAIController;
 
 namespace EPathFollowingResult
@@ -16,6 +17,14 @@ namespace EPathFollowingResult
 
 class UBSTargetSetting;
 class UBSTargetMode;
+
+UENUM(BlueprintType)
+enum EBSTargetMode : uint8
+{
+	EBSTM_HighestThreat  = 0 UMETA(DisplayName="HighestThreat"),
+	EBSTM_LowestThreat   = 1 UMETA(DisplayName="LowestThreat"),
+	EBSTM_Random         = 2 UMETA(DisplayName="RandomThreat"),
+};                         
 
 UCLASS()
 class BONESPLIT_API UBSAbilityBase_MobAbility : public UBSAbilityBase
@@ -32,6 +41,8 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo, 
 		FGameplayTagContainer* OptionalRelevantTags = nullptr) override;
 	
+	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+	
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle, 
 		const FGameplayAbilityActorInfo* ActorInfo, 
@@ -40,41 +51,27 @@ public:
 	
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 	
+	UFUNCTION(BlueprintCallable)
+	AActor* GetRandomThreatTarget();
+	
+	UFUNCTION(BlueprintCallable)
+	AActor* GetHighestThreatTarget();
+	
+	UFUNCTION(BlueprintCallable)
+	AActor* GetLowestThreatTarget();
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	float AbilityRange = 100;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TEnumAsByte<EBSTargetMode> TargetMode;
+	
+	UFUNCTION(BlueprintPure)
+	AActor* GetCurrentTargetActor();
+	
 	UPROPERTY()
 	TWeakObjectPtr<AActor> CurrentTarget;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bAutoMoveToTarget = true;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bRequireGrounded = true;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bRequireToken = true;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bAutoReleaseToken = true;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	float StoppingDistance = 100;
-	
-	//For storing tasks to avoid garbage collection
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Instanced)
-	UBSTargetSetting* TargetSetting;
-	
 	UFUNCTION(BlueprintPure)
-	AActor* GetTarget() const;
-	
-	UFUNCTION(BlueprintCallable, meta=(AdvancedDisplay="Rate, RootMotionScale"))
-	void StartMontageTask(UAnimMontage* MontageAsset, 
-		FGameplayTagContainer EventTags, float Rate, float RootMotionScale);
-	
-	UFUNCTION()
-	void OnMontageFinished(FGameplayTag Tag, FGameplayEventData Payload);
-	
-	UFUNCTION()
-	void OnMontageEventReceived(FGameplayTag Tag, FGameplayEventData Payload);
-	
-	virtual void MontageEventReceived(FGameplayTag, FGameplayEventData Payload);
+	ABSMobCharacter* GetOwnerCharacter();
 };

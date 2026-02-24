@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "BSAnimInstance.h"
+#include "Components/Inventory/BSEquipment.h"
 #include "BSPlayerAnimInstance.generated.h"
 
+class UBSEquipmentEffect;
 class ABSPlayerCharacter;
+
 /**
  * 
  */
@@ -23,24 +26,27 @@ public:
 	
 	virtual void OnAnyTagChanged(const FGameplayTag Tag, int32 Count) override;
 	
-	UFUNCTION(BlueprintNativeEvent, Category="BoneSplit", DisplayName="OnEquipmentMeshChanged")
-	void BP_OnEquipmentMeshChanged(FGameplayTag MeshTag, USkeletalMesh* NewSkeletalMesh);
+	UFUNCTION(BlueprintNativeEvent, Category="BoneSplit", DisplayName="OnEquipmentChanged")
+	void BP_OnEquipmentChanged();
 	
 	UFUNCTION(BlueprintNativeEvent, Category="BoneSplit", DisplayName="OnWeaponTagChanged")
 	void BP_OnWeaponTagChanged(FGameplayTag NewWeaponTypeTag, FGameplayTag OldWeaponTypeTag);
 	
-	UPROPERTY(BlueprintReadOnly, Category="Bone Split")
-	USkeletalMesh* HeadMeshAsset;
-	UPROPERTY(BlueprintReadOnly, Category="Bone Split")
-	USkeletalMesh* ChestMeshAsset;
-	UPROPERTY(BlueprintReadOnly, Category="Bone Split")
-	USkeletalMesh* LegsMeshAsset;
-	UPROPERTY(BlueprintReadOnly, Category="Bone Split")
-	USkeletalMesh* ArmsMeshAsset;
-	
 	//Always validate before use. Could invalidate under destruction etc.
 	UFUNCTION(BlueprintPure, Category="Bone Split")
 	ABSPlayerCharacter* GetPlayerCharacter() const { return PlayerCharacterOwner; }
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	USkeletalMesh* HeadMeshAsset = nullptr;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	USkeletalMesh* ChestMeshAsset = nullptr;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	USkeletalMesh* ArmsMeshAsset = nullptr;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	USkeletalMesh* LegsMeshAsset = nullptr;
 	
 protected:
 	

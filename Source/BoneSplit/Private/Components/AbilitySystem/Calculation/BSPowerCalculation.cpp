@@ -10,6 +10,9 @@
 #include "Components/Targeting/BSThreatInterface.h"
 #include "Kismet/KismetMathLibrary.h"
 
+#define IS_VALID_AVATAR(Asc) \
+Asc && Asc->GetAvatarActor()
+
 UBSPowerCalculation::UBSPowerCalculation()
 {
     DEFINE_ATTRIBUTE_CAPTUREDEF(UBSAttributeSet, CritChance, Source, false);
@@ -36,7 +39,13 @@ void UBSPowerCalculation::Execute_Implementation(
     const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
                     
     UAbilitySystemComponent* SourceAsc = Spec.GetEffectContext().GetOriginalInstigatorAbilitySystemComponent();
-    const UAbilitySystemComponent* TargetAsc = ExecutionParams.GetTargetAbilitySystemComponent();
+    UAbilitySystemComponent* TargetAsc = ExecutionParams.GetTargetAbilitySystemComponent();
+    
+    if (TargetAsc->HasMatchingGameplayTag(BSTags::Status_Dead))
+    {
+        const FString DebugDead = TargetAsc->GetFName().ToString() + ": Is dead, skipping effect calculation";
+        UE_LOG(BoneSplit, Log, TEXT("%s"), *DebugDead);
+    }
     
     // =================================================================================================================
     // Spec Attributes
@@ -108,20 +117,6 @@ void UBSPowerCalculation::Execute_Implementation(
         }
     } 
     
-    if (!FMath::IsNearlyZero(BaseKnockback) && Spec.GetEffectContext().HasOrigin()
-        && TargetAsc && TargetAsc->GetAvatarActor())
-    {
-        if (IBSAbilitySystemInterface* AscInterface = Cast<IBSAbilitySystemInterface>(TargetAsc->GetAvatarActor()))
-        {
-            const FVector Direction = 
-                TargetAsc->GetAvatarActor()->GetActorLocation() - Spec.GetEffectContext().GetOrigin();
-            
-            AscInterface->Launch(
-            Direction.GetSafeNormal() * BaseKnockback, 
-            false);
-        }
-    }
-    
     // =================================================================================================================
     // Ability System Attributes
     // ================================================================================================================= 
@@ -175,6 +170,27 @@ void UBSPowerCalculation::Execute_Implementation(
     // =================================================================================================================
     
     if (FMath::IsNearlyZero(BasePhysicalDamage) && FMath::IsNearlyZero(BaseMagicDamage)) return; //No damage
+    
+    bool bDied = false;
+    
+    if (TargetAsc && Spec.GetDuration() == FGameplayEffectConstants::INSTANT_APPLICATION && IS_VALID_AVATAR(SourceAsc) && IS_VALID_AVATAR(TargetAsc))
+    {
+        FVector DirectionToTarget = SourceAsc->GetAvatarActor()->GetActorLocation() - TargetAsc->GetAvatarActor()->GetActorLocation();
+        DirectionToTarget.Normalize();
+        if (TargetAsc->GetAvatarActor()->GetActorForwardVector().Dot(DirectionToTarget) > 0)
+        {
+            if (const float TargetBlockChance = TargetAsc->GetNumericAttribute(UBSAttributeSet::GetBlockChanceAttribute()); 
+            UKismetMathLibrary::RandomBoolWithWeight(TargetBlockChance))
+            {
+                FGameplayEventData BlockEventPayload;
+                BlockEventPayload.ContextHandle = Spec.GetEffectContext();
+                BlockEventPayload.EventTag = BSTags::GameplayEvent_Block;
+                BlockEventPayload.Instigator = SourceAsc->GetAvatarActor();
+                TargetAsc->HandleGameplayEvent(BSTags::GameplayEvent_Block, &BlockEventPayload);
+                return; //Block total hit
+            }
+        }
+    }
     
     //Mitigation first
     float Armor = 0;
@@ -236,9 +252,27 @@ void UBSPowerCalculation::Execute_Implementation(
     
     if (DamageRemaining > 0)
     {
+        bDied = TargetAsc->GetNumericAttribute(UBSAttributeSet::GetHealthAttribute()) <= DamageRemaining;
         OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(
             UBSAttributeSet::GetHealthAttribute(),
             EGameplayModOp::Additive,
             -DamageRemaining));
+    }
+    
+    if (!bDied)
+    {
+        if (!FMath::IsNearlyZero(BaseKnockback) && Spec.GetEffectContext().HasOrigin()
+        && TargetAsc && TargetAsc->GetAvatarActor())
+        {
+            if (IBSAbilitySystemInterface* AscInterface = Cast<IBSAbilitySystemInterface>(TargetAsc->GetAvatarActor()))
+            {
+                const FVector Direction = 
+                    TargetAsc->GetAvatarActor()->GetActorLocation() - Spec.GetEffectContext().GetOrigin();
+            
+                AscInterface->Launch(
+                Direction.GetSafeNormal() * BaseKnockback, 
+                false);
+            }
+        }
     }
 }
