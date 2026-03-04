@@ -4,48 +4,26 @@
 #include "Actors/Player/BSPlayerController.h"
 
 #include "AbilitySystemComponent.h"
-#include "AbilitySystemInterface.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Actors/Player/BSGameplayHud.h"
+#include "Actors/Player/BSPlayerState.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/TimelineComponent.h"
+#include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/InteractionSystem/BSInteractionComponent.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/PlayerState.h"
 #include "GameInstance/BSLoadingScreenSubsystem.h"
+#include "Widgets/CommonActivatableWidgetContainer.h"
+#include "Widgets/Base/BSPauseMenu.h"
+#include "Widgets/HUD/BSCharacterPane.h"
+#include "Widgets/HUD/BSGameplayRootWidget.h"
+#include "Widgets/HUD/BSWDamageNumber.h"
+#include "Widgets/HUD/BSWHud.h"
 
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	
-}
-
-void ABSPlayerController::SpawnDefaultHUD()
-{
-	Super::SpawnDefaultHUD();
-}
-
-void ABSPlayerController::PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel)
-{
-	if (GetAbilitySystemComponent() && GetGameInstance())
-	{
-		//GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>()->SaveAscDataSync(
-			//this, GetAbilitySystemComponent());
-	}
-	
-	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
-	
-	if (UBSLoadingScreenSubsystem* LoadingScreenSubsystem = GetGameInstance()->GetSubsystem<UBSLoadingScreenSubsystem>(); 
-		GetLocalPlayer() && GetLocalPlayer()->IsPrimaryPlayer())
-	{
-		//LoadingScreenSubsystem->AddLoadingScreen(this);
-	}
-}
-
-void ABSPlayerController::GetSeamlessTravelActorList(bool bToEntry, TArray<class AActor*>& ActorList)
-{
-	Super::GetSeamlessTravelActorList(bToEntry, ActorList);
 }
 
 void ABSPlayerController::SetupInputComponent()
@@ -89,13 +67,13 @@ void ABSPlayerController::SetupInputComponent()
 	EnhancedInputComponent->BindActionValueLambda(PauseAction, ETriggerEvent::Started, 
 	[this](const FInputActionValue& Value)
 	{
-		GetHUD<ABSGameplayHud>()->TogglePauseWidget();
+		TogglePauseMenu();
 	});	
 	
 	EnhancedInputComponent->BindActionValueLambda(CharacterPaneAction, ETriggerEvent::Started, 
 	[this](const FInputActionValue& Value)
 	{
-		GetHUD<ABSGameplayHud>()->ToggleCharacterPaneWidget();
+		ToggleCharacterPane();
 	});
 	
 	EnhancedInputComponent->BindActionValueLambda(FreeCamAction, ETriggerEvent::Started, 
@@ -236,29 +214,27 @@ void ABSPlayerController::Tick(const float DeltaSeconds)
 	});
 }
 
-void ABSPlayerController::InitPlayerState()
+void ABSPlayerController::OnPossess(APawn* InPawn)
 {
-	Super::InitPlayerState();
-	SetupAsc(GetPlayerState<APlayerState>());
+	Super::OnPossess(InPawn);
+	
+	InitAscFromPS();
+	
+	if (IsLocalPlayerController())
+	{
+		AddPlayerUI();
+	}
 }
 
 void ABSPlayerController::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-	SetupAsc(GetPlayerState<APlayerState>());
-}
-
-void ABSPlayerController::SetupAsc(APlayerState* InPS)
-{
-	if (const IAbilitySystemInterface* AscInterface = Cast<IAbilitySystemInterface>(InPS))
+	
+	InitAscFromPS();
+	
+	if (IsLocalPlayerController())
 	{
-		UAbilitySystemComponent* Asc = AscInterface->GetAbilitySystemComponent();
-		check(Asc);
-		CachedAbilitySystemComponent = Asc;
-		
-		//Technically this isn't required in the controller, as this is done in the player character.
-		//Only a failsafe for edge cases with replication race conditions.
-		//CachedAbilitySystemComponent->InitAbilityActorInfo(InPS, InPS->GetPawn());
+		AddPlayerUI();
 	}
 }
 
@@ -357,10 +333,140 @@ void ABSPlayerController::BindJumpToAction(UEnhancedInputComponent* EnhancedInpu
 UAbilitySystemComponent* ABSPlayerController::GetAbilitySystemComponent() const
 {
 	if (!GetPawn()) return nullptr;
-	if (CachedAbilitySystemComponent.IsValid())
+	if (AbilitySystemComponent.IsValid())
 	{
-		return CachedAbilitySystemComponent.Get();
+		return AbilitySystemComponent.Get();
 	}
 	
 	return nullptr;
+}
+
+UCommonActivatableWidgetStack* ABSPlayerController::GetWidgetStack()
+{
+	return GameplayRootWidgetInstance ? GameplayRootWidgetInstance->WidgetStack : nullptr;
+}
+
+UBSAbilitySystemComponent* ABSPlayerController::GetBSAbilitySystem()
+{
+	return AbilitySystemComponent.IsValid() ? AbilitySystemComponent.Get() : nullptr;
+}
+
+void ABSPlayerController::InitAscFromPS()
+{
+	if (const ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
+	{
+		check(PS);
+		check(PS->GetBSAbilitySystem());
+		AbilitySystemComponent = PS->GetBSAbilitySystem();
+	}
+}
+
+void ABSPlayerController::AddPlayerUI()
+{
+	if (GameplayRootWidgetInstance)
+	{
+		GameplayRootWidgetInstance->RemoveFromParent();
+		GameplayRootWidgetInstance = nullptr;
+	}
+		
+	GameplayRootWidgetInstance = CreateWidget<UBSGameplayRootWidget>(this, GameplayRootWidgetClass);
+	GameplayRootWidgetInstance->AddToPlayerScreen();
+	
+	UBSWHud* HUDWidget = GameplayRootWidgetInstance->WidgetStack->AddWidget<UBSWHud>(HudWidgetClass);
+	HUDWidget->InitializePlayerHUD(AbilitySystemComponent.Get());
+}
+
+void ABSPlayerController::DestroyPlayerUI()
+{
+	if (!GameplayRootWidgetInstance) return;
+	GameplayRootWidgetInstance->RemoveFromParent();
+	GameplayRootWidgetInstance = nullptr;
+}
+
+void ABSPlayerController::SpawnDamageNumber(FGameplayEventData EventData)
+{
+	//TODO; Maybe pool these somehow
+	if (!IsLocalController() || !GetPawn() || !EventData.Target) return;
+	
+	bool bBlocked = false;
+	
+	if (GetPawn() == EventData.Target)
+	{
+		if (!BSConsoleVariables::CVarBSShowIncomingDamageNumbers.GetValueOnGameThread()) bBlocked = true;
+	}
+	else
+	{
+		if (!BSConsoleVariables::CVarBSShowDamageNumbers.GetValueOnGameThread()) bBlocked = true;
+	}
+	
+	if (bBlocked) return;
+	
+	UBSWDamageNumber* NewDamageNumber = CreateWidget<UBSWDamageNumber>(this, FloatingDamageNumberClass);
+	NewDamageNumber->AddToPlayerScreen();
+	NewDamageNumber->InitializeDamageNumber(EventData);
+}
+
+void ABSPlayerController::TogglePauseMenu()
+{
+	
+	if (!IsLocalController()) return;
+	if (GameplayRootWidgetInstance && PauseMenuClass)
+	{
+		if (auto* FoundWidget = 
+			GameplayRootWidgetInstance->WidgetStack->GetWidgetList().FindByPredicate(
+			[this](const UCommonActivatableWidget* Widget)
+			{
+				return Widget && Widget->GetClass() == PauseMenuClass;
+			}))
+		{
+			if (*FoundWidget)
+			{
+				(*FoundWidget)->DeactivateWidget();
+			}
+		}
+		else if (!IsInPauseMenu())
+		{
+			GameplayRootWidgetInstance->WidgetStack->AddWidget(PauseMenuClass);
+		}
+	}
+}
+
+void ABSPlayerController::ToggleCharacterPane()
+{
+	if (!IsLocalController()) return;
+	if (GameplayRootWidgetInstance && CharacterPaneClass)
+	{
+		if (auto* FoundWidget = 
+			GameplayRootWidgetInstance->WidgetStack->GetWidgetList().FindByPredicate(
+			[this](const UCommonActivatableWidget* Widget)
+			{
+				return Widget && Widget->GetClass() == CharacterPaneClass;
+			}))
+		{
+			if (*FoundWidget)
+			{
+				(*FoundWidget)->DeactivateWidget();
+			}
+		}
+		else if (!IsInPauseMenu())
+		{
+			GameplayRootWidgetInstance->WidgetStack->AddWidget(CharacterPaneClass);
+		}
+	}
+}
+
+bool ABSPlayerController::IsInPauseMenu()
+{
+	if (IsLocalController())
+	{
+		if (GameplayRootWidgetInstance && PauseMenuClass)
+		{
+			return GameplayRootWidgetInstance->WidgetStack->GetWidgetList().ContainsByPredicate(
+				[this](const UCommonActivatableWidget* Widget)
+			{
+				return Widget && Widget->GetClass() == PauseMenuClass;
+			});
+		}
+	}
+	return false;
 }

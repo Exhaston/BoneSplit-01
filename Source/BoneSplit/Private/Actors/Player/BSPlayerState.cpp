@@ -4,8 +4,8 @@
 #include "Actors/Player/BSPlayerState.h"
 
 #include "Actors/InteractableBases/BSEquipmentDropBase.h"
-#include "Actors/Player/BSGameplayHud.h"
 #include "Actors/Player/BSLocalSaveSubsystem.h"
+#include "Actors/Player/BSPlayerController.h"
 #include "Actors/Player/BSSaveGame.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
@@ -13,7 +13,6 @@
 #include "Components/TalentSystem/BSTalentComponent.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "GameState/BSGameState.h"
-#include "Net/UnrealNetwork.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
 ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -22,7 +21,6 @@ ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Su
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetOwnerActor(this);
-	
 	AbilitySystemComponent->AddGameplayEventTagContainerDelegate(
 		FGameplayTagContainer(BSTags::GameplayEvent_DamageDealt), 
 		
@@ -67,24 +65,26 @@ void ABSPlayerState::BeginPlay()
 		}
 	}
 	
-	if (GetIsInitialized())
+	if (GetHasAscData())
 	{
-		UE_LOG(BoneSplit, Log, TEXT("Skipping save load - already initialized via travel"));
+		const FString DebugHasDataMsg = "Save data already initialized for " + GetPlayerName();
+		UE_LOG(BoneSplit, Log, TEXT("%s"), *DebugHasDataMsg);
 		return;
 	}
 	
-	if (GetPlayerController() && GetPlayerController()->IsLocalController() && GetPlayerController()->IsPrimaryPlayer())
+	if (HasAuthority())
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("Loading save"));
+		const FString DebugSaveMsg = "Server waiting for save game: " + GetPlayerName();
+		UE_LOG(BoneSplit, Log, TEXT("%s"), *DebugSaveMsg);
+	}
+	
+	if (GetPlayerController() 
+		&& GetPlayerController()->IsLocalPlayerController() && GetPlayerController()->IsPrimaryPlayer())
+	{
 		UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
 		SaveSubsystem->GetOnAsyncLoadCompleteDelegate().AddDynamic(this, &ABSPlayerState::OnSaveLoaded);
 		SaveSubsystem->LoadGameAsync(GetPlayerController());
 	}
-}
-
-void ABSPlayerState::SeamlessTravelTo(APlayerState* NewPlayerState)
-{
-	Super::SeamlessTravelTo(NewPlayerState);
 }
 
 void ABSPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -158,24 +158,13 @@ void ABSPlayerState::CopyProperties(APlayerState* PlayerState)
 		NewPS->GetAbilitySystemComponent()->AddLooseGameplayTag(ActualTag, 1, EGameplayTagReplicationState::TagAndCountToAll);
 	}
 	
-	NewPS->bInitialized = true;
+	NewPS->bIsInitialized = true;
 }
-
-void ABSPlayerState::OnDeactivated()
-{
-	Super::OnDeactivated();
-}
-
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
 void ABSPlayerState::OnSaveLoaded(UBSSaveGame* SaveGame)
 {
 	Server_ReceiveSaveData(SaveGame->SaveData);
-}
-
-void ABSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ABSPlayerState, bInitialized);
+	bIsInitialized = true;
 }
 
 UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const
@@ -208,9 +197,9 @@ void ABSPlayerState::OnDamageOther(FGameplayTag EventTag, const FGameplayEventDa
 
 void ABSPlayerState::Client_SpawnDamageNumber_Implementation(const FGameplayEventData Payload)
 {
-	if (const APlayerController* PC = GetPlayerController(); PC && PC->GetLocalPlayer())
+	if (ABSPlayerController* PC = Cast<ABSPlayerController>(GetPlayerController()); PC && PC->GetLocalPlayer())
 	{
-		PC->GetHUD<ABSGameplayHud>()->SpawnDamageNumber(Payload);
+		PC->SpawnDamageNumber(Payload);
 	}
 }
 
@@ -242,24 +231,17 @@ void ABSPlayerState::Server_ReceiveWantPause_Implementation()
 	}
 }
 
-void ABSPlayerState::OnRep_Initialized() const
-{
-	if (bInitialized)
-	{
-		OnPlayerStateReadyDelegate.Broadcast();
-	}
-}
-
 void ABSPlayerState::Server_ReceiveSaveData_Implementation(const FBSSaveData& SaveData)
 {
+	if (GetHasAscData()) return;
+	GEngine->AddOnScreenDebugMessage(-1,2, FColor::Green, TEXT("Loaded Save"));
 	UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
 	check(SaveSubsystem);
 	
 	SaveSubsystem->ApplyDefaultData(GetAbilitySystemComponent());
 	SaveSubsystem->PopulateAscFromSaveData(GetAbilitySystemComponent(), SaveData);
 	
-	bInitialized = true;
-	OnRep_Initialized();
+	bIsInitialized = true;
 }
 
 UAbilitySystemComponent* ABSPlayerState::GetAbilitySystemComponent() const
@@ -272,7 +254,7 @@ UBSTalentComponent* ABSPlayerState::GetTalentComponent() const
 	return TalentComponent.Get();
 }
 
-bool ABSPlayerState::GetIsInitialized() const
+bool ABSPlayerState::GetHasAscData() const
 {
-	return bInitialized;
+	return bIsInitialized;
 }

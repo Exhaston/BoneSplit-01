@@ -33,9 +33,6 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	ThreatComponent = CreateDefaultSubobject<UBSThreatComponent>(TEXT("ThreatComponent"));
 	ThreatComponent->OnCombatChanged.AddDynamic(this, &ABSMobCharacter::OnCombatChanged);
 	
-	ThreatComponent->OnMaxThreatChanged.AddDynamic(this, &ABSMobCharacter::OnThreatTargetUpdate);
-	
-	
 	GetReplicatedMovement_Mutable().RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
 	
 	GetMesh()->SetReceivesDecals(false);
@@ -115,13 +112,31 @@ void ABSMobCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	
 	Super::EndPlay(EndPlayReason);
-	
-
 }
 
 void ABSMobCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	
+	if (!IsRunningDedicatedServer()
+		&& WidgetComponent && WidgetComponent->GetWidget() && WidgetComponent->GetWidget()->GetOwningLocalPlayer())
+	{
+		ElapsedNameplateCullTime += DeltaSeconds;
+	
+		if (ElapsedNameplateCullTime >= NameplateCullInterval)
+		{
+			ElapsedNameplateCullTime = 0.0f;
+
+			const APlayerController* WidgetOwner = WidgetComponent->GetWidget()->GetOwningPlayer();
+			FVector EyeLocation;
+			FRotator EyeRotation;
+		
+			WidgetOwner->GetPlayerViewPoint(EyeLocation, EyeRotation);
+			
+			WidgetComponent->GetWidget()->SetVisibility(WidgetOwner->LineOfSightTo(this, EyeLocation) 
+				? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+		}
+	}
 	
 	if (!IsValid(this) || !HasAuthority() || GetTearOff() || !GetAbilitySystemComponent() || !GetThreatComponent()) return;
 	
@@ -154,39 +169,6 @@ void ABSMobCharacter::OnTargetFound(AActor* InActor)
 	GetThreatComponent()->AddThreat(InActor, 1);
 }
 
-void ABSMobCharacter::OnThreatTargetUpdate(AActor* NewTarget, float NewThreat)
-{
-	MoveToTarget();
-}
-
-void ABSMobCharacter::MoveToTarget()
-{
-	if (!GetController()) return;
-	CurrentMoveTask = UAITask_MoveTo::AIMoveTo(GetController<AAIController>(), {}, GetThreatComponent()->GetHighestThreatActor(), FollowDistance, EAIOptionFlag::Disable, EAIOptionFlag::Default, true, false);
-	
-	CurrentMoveTask->OnMoveTaskFinished.AddWeakLambda(this, [this]
-	(TEnumAsByte<EPathFollowingResult::Type> MoveTaskResult, AAIController* AIController)
-	{
-		if (!GetWorld()) return;
-		GetWorld()->GetTimerManager().SetTimerForNextTick([this, MoveTaskResult]()
-		{
-			if (!IsValid(this)) return;
-			if (MoveTaskResult == EPathFollowingResult::Success)
-			{
-				bInRange = true;
-				MoveToTarget();
-			}
-			else
-			{
-				bInRange = false;
-				MoveToTarget();
-			}
-		});
-	});
-	
-	CurrentMoveTask->ReadyForActivation();
-}
-
 void ABSMobCharacter::BP_OnNewTarget_Implementation(AActor* NewTarget)
 {
 }
@@ -195,7 +177,6 @@ void ABSMobCharacter::LaunchCharacter(const FVector LaunchVelocity, const bool b
 {
 	if (!HasAuthority()) return;
 	
-
 	GetCharacterMovement()->StopActiveMovement();
 	GetCharacterMovement()->AirControl = 0; //AI shouldn't have air control, let launches control movement
 	
@@ -235,11 +216,6 @@ void ABSMobCharacter::Die(UAbilitySystemComponent* SourceAsc, float Damage)
 		SetActorEnableCollision(false);
 		GetAbilitySystemComponent()->AddLooseGameplayTag(BSTags::Status_Dead, 1, EGameplayTagReplicationState::TagAndCountToAll);
 		GetCharacterMovement()->DisableMovement();
-		
-		if (CurrentMoveTask)
-		{
-			CurrentMoveTask->EndTask();
-		}
 		
 		GetAbilitySystemComponent()->CancelAllAbilities();
 		GetCharacterMovement()->Velocity = FVector::Zero();
@@ -292,7 +268,6 @@ void ABSMobCharacter::OnDeathMontageEnded(UAnimMontage* Montage, bool bFinished)
 	if (Montage != ActiveDeathMontage) return;
 
 	if (const UWorld* World = GetWorld(); !World || World->bIsTearingDown) return;
-	
 	
 	Destroy(true);
 }

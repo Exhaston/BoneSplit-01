@@ -27,6 +27,8 @@ public:
 
 protected:
 	
+	virtual AController* GetOwnerController();
+	
 	UPROPERTY()
 	TArray<TWeakObjectPtr<AActor>> FoundActors;
 	

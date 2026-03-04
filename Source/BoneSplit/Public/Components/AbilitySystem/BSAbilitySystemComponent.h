@@ -88,4 +88,6 @@ private:
 	void NetMulticast_SpawnProjectile(AActor* Owner, TSubclassOf<ABSProjectileBase> ClassToSpawn, FTransform SpawnTransform, FTransform CameraTransform);
 	
 #pragma endregion
+	
+	virtual void ReadyForReplication() override;
 };

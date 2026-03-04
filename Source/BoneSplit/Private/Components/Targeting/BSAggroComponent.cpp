@@ -57,15 +57,15 @@ void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 			
 		if (bCheckVisibility)
 		{
-			if (!UBSAbilityLibrary::CheckTargetVisibility(
-				OwnerActor, OwnerActor->GetActorLocation(), FoundActor))
+			if (const AController* OwnerController = GetOwnerController())
 			{
-				continue;
+				if (!OwnerController->LineOfSightTo(FoundActor)) continue;
 			}
 		}
 			
 		const IAbilitySystemInterface* TargetAscInterface = Cast<IAbilitySystemInterface>(FoundActor);
 		if (!TargetAscInterface) continue;
+		if (!TargetAscInterface->GetAbilitySystemComponent()) continue;
 
 		const bool MatchingFaction = 
 			UBSAbilityLibrary::HasMatchingFaction(
@@ -103,5 +103,11 @@ void UBSAggroComponent::TickComponent(
 	
 	if (IsBeingDestroyed()) return;
 	CheckAggroSphere(true);
+}
+
+AController* UBSAggroComponent::GetOwnerController()
+{
+	const APawn* OwnerPawn = GetOwner<APawn>();
+	return OwnerPawn && OwnerPawn->GetController() ? OwnerPawn->GetController() : nullptr;
 }
 

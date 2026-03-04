@@ -22,7 +22,7 @@ UBSMobMovementComponent::UBSMobMovementComponent()
 	SetWalkableFloorAngle(45);
 	bSlideAlongNavMeshEdge = true;
 	NavWalkingFloorDistTolerance = 0;
-	bSweepWhileNavWalking = false;
+	bSweepWhileNavWalking = true;
 	
 	// =================================================================================================================
 	// Character Properties
@@ -86,8 +86,11 @@ void UBSMobMovementComponent::TickComponent(float DeltaTime, enum ELevelTick Tic
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	
-	bOrientRotationToMovement = Velocity.SizeSquared() > UE_KINDA_SMALL_NUMBER && !IsFalling();
-	bUseControllerDesiredRotation = !bOrientRotationToMovement && !IsFalling();
+	if (GetOwner()->HasAuthority())
+	{
+		bOrientRotationToMovement = Velocity.SizeSquared() > UE_KINDA_SMALL_NUMBER && !IsFalling();
+		bUseControllerDesiredRotation = !bOrientRotationToMovement && !IsFalling();
+	} 
 }
 
 void UBSMobMovementComponent::PhysNavWalking(float deltaTime, int32 Iterations)

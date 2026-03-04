@@ -7,6 +7,7 @@
 #include "CommonActivatableWidget.h"
 #include "BSWHud.generated.h"
 
+class UBSAbilitySystemComponent;
 class UBSActionButton;
 class UBSAttributeBar;
 /**
@@ -19,9 +20,13 @@ class BONESPLIT_API UBSWHud : public UCommonActivatableWidget
 	
 public:
 	
+	virtual void InitializePlayerHUD(UBSAbilitySystemComponent* InAbilitySystemComponent);
+	
 	virtual void NativePreConstruct() override;
 	
 	virtual void NativeConstruct() override;
+	
+	virtual void NativeOnActivated() override;
 
 protected:
 	
@@ -49,7 +54,7 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBSActionButton> ActionButton5;
 	
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
 };

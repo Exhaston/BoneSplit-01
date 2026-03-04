@@ -7,6 +7,7 @@
 #include "BSSaveGame.h"
 #include "Components/Inventory/BSInventoryComponent.h"
 #include "GameFramework/PlayerState.h"
+#include "Widgets/HUD/BSWHud.h"
 #include "BSPlayerState.generated.h"
 
 class UBSInventoryComponent;
@@ -35,13 +36,7 @@ public:
 	
 	virtual void BeginPlay() override;
 	
-	virtual void SeamlessTravelTo(APlayerState* NewPlayerState) override;
-	
 	virtual void CopyProperties(APlayerState* PlayerState) override;
-	
-	virtual void OnDeactivated() override;
-	
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	//Send the save data to the server to initialize the Asc.
 	UFUNCTION(Server, Reliable)
@@ -53,7 +48,7 @@ public:
 	UBSTalentComponent* GetTalentComponent() const;
 	
 	//Checks if the server received save data and has set up Asc.
-	bool GetIsInitialized() const;
+	bool GetHasAscData() const;
 	
 	UBSAbilitySystemComponent* GetBSAbilitySystem() const;
 	
@@ -74,10 +69,8 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FBSOnPlayerColorChangedDep OnPlayerColorChangedDelegate;
 	
-	FBSOnPlayerState OnPlayerStateReadyDelegate;
-	
 	virtual UBSInventoryComponent* GetInventoryComponent() override;
-	
+
 protected:
 	
 	void OnDamageOther(FGameplayTag EventTag, const FGameplayEventData* Payload);
@@ -88,11 +81,8 @@ protected:
 	UFUNCTION()
 	void OnSaveLoaded(UBSSaveGame* SaveGame);
 	
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing=OnRep_Initialized)
-	bool bInitialized = false;
-	
-	UFUNCTION()
-	void OnRep_Initialized() const;
+	UPROPERTY()
+	bool bIsInitialized = false;
 	
 	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
 	TObjectPtr<UBSTalentComponent> TalentComponent;

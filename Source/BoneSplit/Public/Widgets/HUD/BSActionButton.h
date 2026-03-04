@@ -27,6 +27,8 @@ class BONESPLIT_API UBSActionButton : public UCommonUserWidget
 	
 public:
 	
+	virtual void InitializeActionButton(UBSAbilitySystemComponent* InAbilitySystemComponent);
+	
 	virtual void NativeConstruct() override;
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;

@@ -116,6 +116,11 @@ bool UBSAbilitySystemComponent::CancelAbilitiesWithTag(const FGameplayTag InTag)
 	return Result;
 }
 
+void UBSAbilitySystemComponent::ReadyForReplication()
+{
+	Super::ReadyForReplication();
+}
+
 void UBSAbilitySystemComponent::NetMulticast_SpawnProjectileForMob_Implementation(AActor* Owner, const TSubclassOf<ABSProjectileBase> ClassToSpawn, const FTransform SpawnTransform, const int32 NumProjectiles, float ConeAngle, const bool bScaleWithMultiHit)
 {
 	ABSProjectileBase::SpawnProjectiles(Owner, ClassToSpawn, SpawnTransform, NumProjectiles + (bScaleWithMultiHit ? GetNumericAttribute(UBSAttributeSet::GetMultiHitAttribute()) : 0), ConeAngle);

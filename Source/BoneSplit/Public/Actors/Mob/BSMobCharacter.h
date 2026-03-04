@@ -68,17 +68,13 @@ public:
 	float ElapsedAbilityCheckTime = 0;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
-	TMap<TSubclassOf<UGameplayAbility>, float> AbilityWeightMap;
-	
-
-	
-	UFUNCTION()
-	void OnThreatTargetUpdate(AActor* NewTarget, float NewThreat);
-	
-	virtual void MoveToTarget();
+	float NameplateCullInterval = 1;
 	
 	UPROPERTY()
-	UAITask_MoveTo* CurrentMoveTask;
+	float ElapsedNameplateCullTime = 0;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TMap<TSubclassOf<UGameplayAbility>, float> AbilityWeightMap;
 	
 	UFUNCTION(BlueprintNativeEvent)
 	void BP_OnNewTarget(AActor* NewTarget);

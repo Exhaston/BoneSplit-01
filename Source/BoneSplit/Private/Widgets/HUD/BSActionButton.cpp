@@ -10,17 +10,9 @@
 #include "Actors/Player/BSPlayerState.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 
-void UBSActionButton::NativeConstruct()
+void UBSActionButton::InitializeActionButton(UBSAbilitySystemComponent* InAbilitySystemComponent)
 {
-	Super::NativeConstruct();
-	const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>();
-	if (!PS)
-	{
-		const FString MissingAscInfo = "No Owning Player State found. " + GetName();
-		UE_LOG(BoneSplit, Warning, TEXT("%s"), *MissingAscInfo);
-		return;
-	}
-	AbilitySystemComponent = PS->GetBSAbilitySystem();
+	AbilitySystemComponent = InAbilitySystemComponent;
 	if (!AbilitySystemComponent.IsValid())
 	{
 		const FString MissingAscInfo = "No Ability System found from owning player state. " + GetName();
@@ -42,6 +34,12 @@ void UBSActionButton::NativeConstruct()
 	{
 		AttemptSetNewSpec(&Spec);
 	}));
+}
+
+void UBSActionButton::NativeConstruct()
+{
+	Super::NativeConstruct();
+
 }
 
 bool UBSActionButton::AttemptSetNewSpec(FGameplayAbilitySpec* Spec)

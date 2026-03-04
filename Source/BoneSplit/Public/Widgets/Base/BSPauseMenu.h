@@ -10,7 +10,7 @@ class UCommonButtonBase;
 /**
  * 
  */
-UCLASS()
+UCLASS(Abstract, BlueprintType, Blueprintable)
 class BONESPLIT_API UBSPauseMenu : public UCommonActivatableWidget
 {
 	GENERATED_BODY()

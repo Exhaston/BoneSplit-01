@@ -3,7 +3,6 @@
 
 #include "Actors/Player/BSPlayerCharacter.h"
 
-#include "Actors/Player/BSGameplayHud.h"
 #include "Actors/Player/BSPlayerMovementComponent.h"
 #include "Actors/Player/BSPlayerState.h"
 #include "Animation/BSAnimInstance.h"
@@ -97,6 +96,7 @@ void ABSPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	BSConsoleVariables::CVarShowPlayerHoverNames->OnChangedDelegate().RemoveAll(this);
 	BSConsoleVariables::CVarBSCameraOffset->OnChangedDelegate().RemoveAll(this);
 	BSConsoleVariables::CVarShowOwnHoverName->OnChangedDelegate().RemoveAll(this);
+	
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -153,17 +153,41 @@ void ABSPlayerCharacter::InitializeCharacter()
 			});
 		}
 		
-		if (PS->GetIsInitialized())
+		UBSInventoryComponent* InventoryComponent = PS->GetInventoryComponent();
+	
+		//Initialize Asc on the character movement comp for stat tracking
+		GetCharacterMovement<UBSPlayerMovementComponent>()->InitializeAsc(GetAbilitySystemComponent());
+	
+		//Bind Anim Instance to the ability system component.
+		if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
 		{
-			PostPlayerStateInitialize();
+			AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
 		}
-		else
+	
+		//Update meshes to equipment then subscribe to future events
+		for (const auto ExistingEquipment : PS->GetInventoryComponent()->GetEquipment())
 		{
-			PS->OnPlayerStateReadyDelegate.AddWeakLambda(this, [this]()
-			{
-				PostPlayerStateInitialize();
-			});
+			AddEquipmentMesh(ExistingEquipment);
 		}
+	
+		PS->GetInventoryComponent()->GetEquipmentRemovedDelegate().AddWeakLambda(this, [this]
+			(const UBSEquipmentEffect* OldEquipment)
+		{
+			RemoveEquipmentMesh(OldEquipment);
+		});
+	
+		PS->GetInventoryComponent()->GetEquipmentEquippedDelegate().AddWeakLambda(
+			this, [this](const UBSEquipmentEffect* Equipment)
+		{
+				AddEquipmentMesh(Equipment);
+		});
+	
+		//Update Colors and subscribe to future events
+		UpdateMeshColors(InventoryComponent->GetPlayerColor());
+		InventoryComponent->GetPlayerColorChangedDelegate().AddWeakLambda(this, [this](FColor NewColor)
+		{
+			UpdateMeshColors(NewColor);
+		});      
 	}
 }
 
@@ -172,52 +196,6 @@ void ABSPlayerCharacter::OnDamageBlocked_Implementation()
 	if (BlockMontage)
 	{
 		PlayAnimMontage(BlockMontage, 1);
-	}
-}
-
-void ABSPlayerCharacter::PostPlayerStateInitialize()
-{
-	ABSPlayerState* PS = GetPlayerState<ABSPlayerState>();
-	UBSInventoryComponent* InventoryComponent = PS->GetInventoryComponent();
-	
-	//Initialize Asc on the character movement comp for stat tracking
-	GetCharacterMovement<UBSPlayerMovementComponent>()->InitializeAsc(GetAbilitySystemComponent());
-	
-	//Bind Anim Instance to the ability system component.
-	if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
-	{
-		AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
-	}
-	
-	//Update meshes to equipment then subscribe to future events
-	for (const auto ExistingEquipment : PS->GetInventoryComponent()->GetEquipment())
-	{
-		AddEquipmentMesh(ExistingEquipment);
-	}
-	
-	PS->GetInventoryComponent()->GetEquipmentRemovedDelegate().AddWeakLambda(this, [this]
-		(const UBSEquipmentEffect* OldEquipment)
-	{
-		RemoveEquipmentMesh(OldEquipment);
-	});
-	
-	PS->GetInventoryComponent()->GetEquipmentEquippedDelegate().AddWeakLambda(
-		this, [this](const UBSEquipmentEffect* Equipment)
-	{
-			AddEquipmentMesh(Equipment);
-	});
-	
-	//Update Colors and subscribe to future events
-	UpdateMeshColors(InventoryComponent->GetPlayerColor());
-	InventoryComponent->GetPlayerColorChangedDelegate().AddWeakLambda(this, [this](FColor NewColor)
-	{
-		UpdateMeshColors(NewColor);
-	});          
-	
-	//Lastly, after everything is set up, spawn UI for this player locally.
-	if (const APlayerController* PC = GetController<APlayerController>(); PC && PC->IsLocalController())
-	{
-		PC->GetHUD<ABSGameplayHud>()->SpawnWidgets();
 	}
 }
 

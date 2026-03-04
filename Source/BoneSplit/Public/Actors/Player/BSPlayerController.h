@@ -9,6 +9,14 @@
 #include "GameFramework/PlayerController.h"
 #include "BSPlayerController.generated.h"
 
+class UBSAbilitySystemComponent;
+class UCommonActivatableWidgetStack;
+struct FGameplayEventData;
+class UBSGameplayRootWidget;
+class UBSWDamageNumber;
+class UBSPauseMenu;
+class UBSCharacterPane;
+class UBSWHud;
 class UAbilitySystemComponent;
 class UInputAction;
 class UInputMappingContext;
@@ -47,17 +55,11 @@ public:
 	
 	explicit ABSPlayerController(const FObjectInitializer& ObjectInitializer);
 	
-	virtual void SpawnDefaultHUD() override;
-	
-	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
-	
-	virtual void GetSeamlessTravelActorList(bool bToEntry, TArray<class AActor*>& ActorList) override;
-	
 	virtual void SetupInputComponent() override;
 	
 	virtual void Tick(float DeltaSeconds) override;
 	
-	virtual void InitPlayerState() override;
+	virtual void OnPossess(APawn* InPawn) override;
 	
 	virtual void OnRep_PlayerState() override;
 
@@ -65,8 +67,6 @@ protected:
 	
 	UPROPERTY()
 	bool bControlDirectionInput = true;
-	
-	virtual void SetupAsc(APlayerState* InPS);
 	
 	UPROPERTY()
 	FVector2D CachedLookSpeed = {1, 1};
@@ -89,6 +89,8 @@ protected:
 	
 	//Mainly implemented through IAbilitySystemInterface for UI easy access.
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+
 	
 	//The amount of time an ability can attempt to retrigger after a failed activation.
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input|Buffering")
@@ -151,9 +153,43 @@ protected:
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
 	UInputAction* SpecialAction;
 	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="UI")
+	TSubclassOf<UBSWHud> HudWidgetClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="UI")
+	TSubclassOf<UBSCharacterPane> CharacterPaneClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="UI")
+	TSubclassOf<UBSPauseMenu> PauseMenuClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="UI")
+	TSubclassOf<UBSWDamageNumber> FloatingDamageNumberClass;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="UI")
+	TSubclassOf<UBSGameplayRootWidget> GameplayRootWidgetClass;
+	
 	UPROPERTY(Transient)
-	TWeakObjectPtr<UAbilitySystemComponent> CachedAbilitySystemComponent;
+	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY()
 	TArray<FBSBufferedAbility> BufferedAbilities;
+	
+	UPROPERTY()
+	UBSGameplayRootWidget* GameplayRootWidgetInstance;
+	
+public:
+	//Can be null if UI hasn't been added or initialized properly
+	virtual UCommonActivatableWidgetStack* GetWidgetStack();
+	
+	virtual UBSAbilitySystemComponent* GetBSAbilitySystem();
+	
+	virtual void InitAscFromPS();
+	virtual void AddPlayerUI();
+	virtual void DestroyPlayerUI();
+	
+	virtual void SpawnDamageNumber(FGameplayEventData EventData);
+	
+	virtual void TogglePauseMenu();
+	virtual void ToggleCharacterPane();
+	virtual bool IsInPauseMenu();
 };

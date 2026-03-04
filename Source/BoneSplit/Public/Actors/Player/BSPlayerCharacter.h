@@ -235,8 +235,6 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void OnDamageBlocked();
 	
-	virtual void PostPlayerStateInitialize();
-	
 	virtual void SetupFloatingName(APlayerState* PS);
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, meta=(AllowPrivateAccess=true))
