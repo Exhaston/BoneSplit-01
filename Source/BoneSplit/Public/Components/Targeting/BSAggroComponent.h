@@ -35,7 +35,7 @@ protected:
 	//If set to true, will line trace to the overlapped
 	//actor to check if there is static geometry in between the actor and the owner
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bVisibilityCheck;
+	bool bVisibilityCheck = true;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Units=Centimeters, ClampMin=0))
 	float AggroRadius = 500;

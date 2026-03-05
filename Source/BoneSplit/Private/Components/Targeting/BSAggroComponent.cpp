@@ -12,31 +12,34 @@
 UBSAggroComponent::UBSAggroComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.TickInterval = 2;
+	PrimaryComponentTick.TickInterval = 1;
 }
 
 void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 {
 	if (!OnTargetFoundDelegate.IsBound() || AggroRadius <= 0) return;
+
+	const AController* OwnerController = GetOwnerController(); //Only valid of the server, same as authority check.
+	if (!OwnerController) return;
 	
-	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor) return;
+	const UWorld* World = OwnerController->GetWorld();
+	if (!World) return;
 	
-	const IAbilitySystemInterface* OwnerAscInterface = Cast<IAbilitySystemInterface>(OwnerActor);
+	const IAbilitySystemInterface* OwnerAscInterface = Cast<IAbilitySystemInterface>(OwnerController->GetPawn());
 	if (!OwnerAscInterface) return;
 	
 	const FCollisionShape SphereShape = FCollisionShape::MakeSphere(AggroRadius);
 	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(OwnerActor);
+	QueryParams.AddIgnoredActor(OwnerController->GetPawn());
 	QueryParams.bTraceComplex = false;
 	FCollisionObjectQueryParams ObjectParams;
 	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
 		
 	TArray<FOverlapResult> OverlapResults;
 		
-	OwnerActor->GetWorld()->OverlapMultiByObjectType(
+	World->OverlapMultiByObjectType(
 		OverlapResults, 
-		OwnerActor->GetActorLocation(), 
+		OwnerController->GetPawn()->GetActorLocation(), 
 		FQuat::Identity,
 		ObjectParams, 
 		SphereShape, 
@@ -48,21 +51,10 @@ void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 		if (!FoundActor) continue;
 		
 		if (FoundActors.ContainsByPredicate([this, FoundActor](TWeakObjectPtr<AActor> TestActor)
-		{
-			return TestActor == FoundActor;
-		}))
-		{
-			continue;
-		}
-			
-		if (bCheckVisibility)
-		{
-			if (const AController* OwnerController = GetOwnerController())
-			{
-				if (!OwnerController->LineOfSightTo(FoundActor)) continue;
-			}
-		}
-			
+		{ return TestActor == FoundActor; })) continue;
+		
+		if (bCheckVisibility && !OwnerController->LineOfSightTo(FoundActor)) continue;
+		
 		const IAbilitySystemInterface* TargetAscInterface = Cast<IAbilitySystemInterface>(FoundActor);
 		if (!TargetAscInterface) continue;
 		if (!TargetAscInterface->GetAbilitySystemComponent()) continue;
@@ -81,11 +73,11 @@ void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 	
 #if WITH_EDITOR
 	
-	if (BS_HIT_DEBUG)
+	if (BS_AGGRO_DEBUG)
 	{
 		DrawDebugSphere(
-			OwnerActor->GetWorld(), 
-			OwnerActor->GetActorLocation(), 
+			World, 
+			OwnerController->GetPawn()->GetActorLocation(), 
 			AggroRadius, 
 			16, 
 			FColor::Orange, 
@@ -101,8 +93,8 @@ void UBSAggroComponent::TickComponent(
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	
-	if (IsBeingDestroyed()) return;
-	CheckAggroSphere(true);
+	if (IsBeingDestroyed() || !GetWorld() || GetWorld()->bIsTearingDown) return;
+	CheckAggroSphere(bVisibilityCheck);
 }
 
 AController* UBSAggroComponent::GetOwnerController()
