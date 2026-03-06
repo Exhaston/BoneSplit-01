@@ -59,16 +59,10 @@ bool ABSMobController::IsOnValidNavMesh()
 	const bool bOnNav = NavSys->ProjectPointToNavigation(
 		ActorLocation,
 		NavLocation,
-		FVector(0.f, 0.f, GetPawn()->GetSimpleCollisionHalfHeight())  // Query extent (Z tolerance)
+		FVector(0.f, 0.f, GetPawn()->GetSimpleCollisionHalfHeight() + 50)  // Query extent (Z tolerance)
 	);
 
-	if (bOnNav)
-	{
-		const float DistZ = FMath::Abs(NavLocation.Location.Z - ActorLocation.Z);
-		return DistZ < 25.f;
-	}
-
-	return false;
+	return bOnNav;
 }
 
 void ABSMobController::ChasePlayer()

@@ -68,10 +68,9 @@ FVector ABSPatrolPath::GetPatrolPointAt(const int32 Index) const
 void ABSPatrolPath::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	
-	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-	
-	if (bProjectToNavigation && NavSys && NavSys->IsInitialized())
+
+	if (const UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()); 
+		bProjectToNavigation && NavSys && NavSys->IsInitialized())
 	{
 		BuildPatrolPath();
 	}
