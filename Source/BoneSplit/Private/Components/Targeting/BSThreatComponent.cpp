@@ -159,7 +159,10 @@ void UBSThreatComponent::UpdateThreat()
 			{
 				if (AAIController* AIController = OwnerPawn->GetController<AAIController>())
 				{
-					AIController->SetFocus(HighestThreatActor, EAIFocusPriority::Gameplay);
+					if (HighestThreatActor)
+						AIController->SetFocus(HighestThreatActor, EAIFocusPriority::Gameplay);
+					else
+						AIController->ClearFocus(EAIFocusPriority::Gameplay);
 				}
 			}
 		}

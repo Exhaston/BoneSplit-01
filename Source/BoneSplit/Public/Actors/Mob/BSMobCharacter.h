@@ -13,6 +13,7 @@
 #include "GameFramework/Character.h"
 #include "BSMobCharacter.generated.h"
 
+class UBSPatrolComponent;
 class UBSAggroComponent;
 class UPlayMontageCallbackProxy;
 class UAITask_MoveTo;
@@ -42,6 +43,8 @@ public:
 	explicit ABSMobCharacter(const FObjectInitializer& ObjectInitializer);
 	
 	virtual void BeginPlay() override;
+	
+	virtual void PostInitializeComponents() override;
 	
 	virtual void Tick(float DeltaSeconds) override;
 	
@@ -154,6 +157,9 @@ public:
 
 protected:
 	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TObjectPtr<UBSPatrolComponent> PatrolComponent;
+	
 	virtual void SetRandomColor();
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
@@ -200,6 +206,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="BS|Initialization")
 	UBSAbilitySystemComponent* AbilitySystemComponent;
 	
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UBSAggroComponent* AggroComponent;
 };

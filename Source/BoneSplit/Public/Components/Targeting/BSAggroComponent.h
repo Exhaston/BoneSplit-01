@@ -38,5 +38,5 @@ protected:
 	bool bVisibilityCheck = true;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Units=Centimeters, ClampMin=0))
-	float AggroRadius = 500;
+	float AggroRadius = 2000;
 };

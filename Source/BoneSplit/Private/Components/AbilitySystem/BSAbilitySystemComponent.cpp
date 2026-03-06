@@ -30,8 +30,7 @@ void UBSAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActo
 void UBSAbilitySystemComponent::AdjustBlendTimeForMontage(
 	const UAnimInstance* TargetAnimInstance, const UAnimMontage* Montage, const float InRate)
 {
-	check(TargetAnimInstance);
-	check(Montage);
+	if (!TargetAnimInstance || !Montage) return;
 	if (FMath::IsNearlyZero(InRate)) return;
 	FAnimMontageInstance* MontageInstance = TargetAnimInstance->GetInstanceForMontage(Montage);
 	MontageInstance->DefaultBlendTimeMultiplier = 1 / InRate;

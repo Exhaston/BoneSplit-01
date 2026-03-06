@@ -17,10 +17,10 @@ UBSAggroComponent::UBSAggroComponent()
 
 void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 {
-	if (!OnTargetFoundDelegate.IsBound() || AggroRadius <= 0) return;
-
 	const AController* OwnerController = GetOwnerController(); //Only valid of the server, same as authority check.
 	if (!OwnerController) return;
+	
+	if (!OnTargetFoundDelegate.IsBound() || AggroRadius <= 0) return;
 	
 	const UWorld* World = OwnerController->GetWorld();
 	if (!World) return;
@@ -50,7 +50,7 @@ void UBSAggroComponent::CheckAggroSphere(const bool bCheckVisibility)
 		AActor* FoundActor = OverlapResult.GetActor();
 		if (!FoundActor) continue;
 		
-		if (FoundActors.ContainsByPredicate([this, FoundActor](TWeakObjectPtr<AActor> TestActor)
+		if (FoundActors.ContainsByPredicate([this, FoundActor](const TWeakObjectPtr<AActor> TestActor)
 		{ return TestActor == FoundActor; })) continue;
 		
 		if (bCheckVisibility && !OwnerController->LineOfSightTo(FoundActor)) continue;

@@ -10,6 +10,7 @@
 #include "Components/WidgetComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
+#include "Components/Patrol/BSPatrolComponent.h"
 #include "Components/Targeting/BSAggroComponent.h"
 #include "Components/Targeting/BSThreatComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -21,7 +22,9 @@ ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) :
 Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+	bAlwaysRelevant = true;
+	SetNetUpdateFrequency(25);
+	bReplicates = true;
 	bUseControllerRotationYaw = false;
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UBSAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -44,6 +47,8 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	
 	AggroComponent = CreateDefaultSubobject<UBSAggroComponent>(TEXT("AggroComponent"));
 	AggroComponent->OnTargetFoundDelegate.AddDynamic(this, &ABSMobCharacter::OnTargetFound);
+	
+	PatrolComponent = CreateDefaultSubobject<UBSPatrolComponent>(TEXT("PatrolComponent"));
 }
 
 void ABSMobCharacter::BeginPlay()
@@ -82,6 +87,8 @@ void ABSMobCharacter::BeginPlay()
 		}
 		
 		AbilitySystemComponent->AddLooseGameplayTags(GrantedTags, 1, EGameplayTagReplicationState::TagAndCountToAll);
+		
+		PatrolComponent->StartPatrol();
 	}
 
 	if (UBSMobSubsystem* MobSubsystem = GetWorld()->GetSubsystem<UBSMobSubsystem>())
@@ -101,6 +108,12 @@ void ABSMobCharacter::BeginPlay()
 			FloatingUnitPlateSubsystem->RegisterFloatingNamePlate(WidgetComponent);
 		}
 	}
+}
+
+void ABSMobCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	WidgetComponent->SetVisibility(false);
 }
 
 void ABSMobCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -133,8 +146,9 @@ void ABSMobCharacter::Tick(float DeltaSeconds)
 		
 			WidgetOwner->GetPlayerViewPoint(EyeLocation, EyeRotation);
 			
-			WidgetComponent->GetWidget()->SetVisibility(WidgetOwner->LineOfSightTo(this, EyeLocation) 
-				? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+			bool Distance = FVector::DistSquared(EyeLocation, GetActorLocation()) <= FMath::Square(2000);
+			
+			WidgetComponent->SetVisibility(WidgetOwner->LineOfSightTo(this, EyeLocation) && Distance);
 		}
 	}
 	
@@ -166,6 +180,7 @@ void ABSMobCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 void ABSMobCharacter::OnTargetFound(AActor* InActor)
 {
 	if (!HasAuthority()) return;
+	PatrolComponent->StopPatrol();
 	GetThreatComponent()->AddThreat(InActor, 1);
 }
 

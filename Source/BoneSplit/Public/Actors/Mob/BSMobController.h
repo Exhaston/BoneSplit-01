@@ -24,10 +24,12 @@ public:
 
 	void StartChasing();
 	void StopChasing();
+	
+	bool IsOnValidNavMesh();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Movement")
-	float AcceptanceRadius = 150.f;
+	float AcceptanceRadius = 200.f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Movement")
 	float RestartDistance = 600.f;

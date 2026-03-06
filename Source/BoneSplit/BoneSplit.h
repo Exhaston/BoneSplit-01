@@ -243,6 +243,7 @@ namespace BSConsoleVariables
 	extern TAutoConsoleVariable<float> CVarBSDebugHitDetectionDuration;
 	
 	extern TAutoConsoleVariable<bool> CVarBSDebugAggroSpheres;
+	extern TAutoConsoleVariable<bool> CVarBSDebugPatrolPaths;
 	
 	extern TAutoConsoleVariable<bool> CVarBSBarsShowNumbers;
 	extern TAutoConsoleVariable<bool> CVarBSBarsShowPercentages;

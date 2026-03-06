@@ -215,6 +215,12 @@ namespace BSConsoleVariables
 	TEXT("false = Default"),
 	ECVF_Default);
 	
+	TAutoConsoleVariable<bool> CVarBSDebugPatrolPaths(
+	TEXT("BS.Debug.PatrolPaths"),
+	false,
+	TEXT("false = Default"),
+	ECVF_Default);
+	
 	TAutoConsoleVariable<bool> CVarBSBarsShowNumbers(
 	TEXT("BS.NamePlates.ShowNumbers"),
 	false,

@@ -74,4 +74,10 @@ protected:
 	
 	UPROPERTY()
 	FGameplayAbilitySpecHandle CurrentCachedHandle;
+	
+	UPROPERTY()
+	float BufferTime = 0.5f;
+	
+	UPROPERTY()
+	float CurrentBufferElapsed = 0;
 };

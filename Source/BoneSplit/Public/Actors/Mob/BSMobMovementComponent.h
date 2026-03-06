@@ -23,6 +23,7 @@ public:
 	
 	virtual FRotator ComputeOrientToMovementRotation(const FRotator& CurrentRotation, float DeltaTime, FRotator& DeltaRotation) const override;
 	
+	virtual void PhysicsRotation(float DeltaTime) override;
 	virtual void InitializeAsc(UAbilitySystemComponent* InAbilitySystemComponent);
 	
 	virtual float GetMaxSpeed() const override;

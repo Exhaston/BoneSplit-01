@@ -3,6 +3,9 @@
 
 #include "Actors/Mob/BSMobController.h"
 
+#include "NavigationSystem.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 
 ABSMobController::ABSMobController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -33,7 +36,7 @@ void ABSMobController::StartChasing()
 		CheckInterval,
 		true,
 		0.f
-	);
+	); 
 }
 
 void ABSMobController::StopChasing()
@@ -43,10 +46,35 @@ void ABSMobController::StopChasing()
 	StopMovement();
 }
 
+bool ABSMobController::IsOnValidNavMesh()
+{
+	if (!GetPawn()) return false;
+
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetPawn()->GetWorld());
+	if (!NavSys) return false;
+
+	FNavLocation NavLocation;
+	const FVector ActorLocation = GetPawn()->GetActorLocation();
+
+	const bool bOnNav = NavSys->ProjectPointToNavigation(
+		ActorLocation,
+		NavLocation,
+		FVector(0.f, 0.f, GetPawn()->GetSimpleCollisionHalfHeight())  // Query extent (Z tolerance)
+	);
+
+	if (bOnNav)
+	{
+		const float DistZ = FMath::Abs(NavLocation.Location.Z - ActorLocation.Z);
+		return DistZ < 25.f;
+	}
+
+	return false;
+}
+
 void ABSMobController::ChasePlayer()
 {
-	APawn* AIPawn = GetPawn();
-	AActor* PlayerPawn = GetFocusActor();
+	const APawn* AIPawn = GetPawn();
+	const AActor* PlayerPawn = GetFocusActor();
 
 	if (!AIPawn || !PlayerPawn)
 		return;
@@ -66,7 +94,7 @@ void ABSMobController::ChasePlayer()
 		MoveRequest.SetReachTestIncludesGoalRadius(false);
 		MoveRequest.SetReachTestIncludesAgentRadius(false);
 		MoveRequest.SetAcceptanceRadius(AcceptanceRadius);
-		MoveRequest.SetUsePathfinding(true);
+		MoveRequest.SetUsePathfinding(IsOnValidNavMesh()); //Force move towards if outside navmesh
 
 		MoveTo(MoveRequest);
 	}

@@ -64,6 +64,10 @@ void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	
 	if (!GetButtonMaterial() || !AbilitySystemComponent.IsValid()) return;
 	
+
+	
+
+	
 	const FGameplayAbilitySpec* Spec = AbilitySystemComponent->FindAbilitySpecFromHandle(CurrentCachedHandle);
 	if (!Spec)
 	{
@@ -72,8 +76,21 @@ void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	}
 	
 	const UGameplayAbility* AbilityInstance = Spec->GetPrimaryInstance();
+	
+	CurrentBufferElapsed+=InDeltaTime;
+	
+	if (BufferTime <= CurrentBufferElapsed && !Spec->InputPressed)
+	{
+		CurrentBufferElapsed = 0;
+		GetButtonMaterial()->SetScalarParameterValue(PressedParamName, 0);
+	}
+	
+	if (Spec->InputPressed)
+	{
+		GetButtonMaterial()->SetScalarParameterValue(PressedParamName, 1);
+	}
 			
-	GetButtonMaterial()->SetScalarParameterValue(PressedParamName, Spec->InputPressed ? 1 : 0);
+	
 				
 	float TimeRemaining = 0;
 	float Duration = 0;

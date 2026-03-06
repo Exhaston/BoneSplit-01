@@ -4,6 +4,7 @@
 #include "Actors/Mob/BSMobMovementComponent.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
+#include "GameFramework/Character.h"
 #include "Navigation/PathFollowingComponent.h"
 
 UBSMobMovementComponent::UBSMobMovementComponent()
@@ -30,7 +31,7 @@ UBSMobMovementComponent::UBSMobMovementComponent()
 	
 	bUseFlatBaseForFloorChecks = false;
 	GravityScale = 2;
-	NetworkSmoothingMode = ENetworkSmoothingMode::Linear;
+	NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
 	bOrientRotationToMovement = true;
 	DefaultLandMovementMode = MOVE_NavWalking;
 	bAllowPhysicsRotationDuringAnimRootMotion = false;
@@ -56,6 +57,11 @@ FRotator UBSMobMovementComponent::ComputeOrientToMovementRotation(const FRotator
 
 	// Rotate toward direction of acceleration.
 	return Velocity.GetSafeNormal().Rotation();
+}
+
+void UBSMobMovementComponent::PhysicsRotation(float DeltaTime)
+{
+	Super::PhysicsRotation(DeltaTime);
 }
 
 void UBSMobMovementComponent::InitializeAsc(UAbilitySystemComponent* InAbilitySystemComponent)
@@ -86,11 +92,8 @@ void UBSMobMovementComponent::TickComponent(float DeltaTime, enum ELevelTick Tic
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	
-	if (GetOwner()->HasAuthority())
-	{
-		bOrientRotationToMovement = Velocity.SizeSquared() > UE_KINDA_SMALL_NUMBER && !IsFalling();
-		bUseControllerDesiredRotation = !bOrientRotationToMovement && !IsFalling();
-	} 
+	bOrientRotationToMovement = Velocity.SizeSquared() > UE_KINDA_SMALL_NUMBER && !IsFalling() && !CharacterOwner->IsPlayingRootMotion();
+	bUseControllerDesiredRotation = !bOrientRotationToMovement && !IsFalling();
 }
 
 void UBSMobMovementComponent::PhysNavWalking(float deltaTime, int32 Iterations)
