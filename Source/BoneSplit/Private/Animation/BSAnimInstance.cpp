@@ -64,6 +64,8 @@ void UBSAnimInstance::UpdateRotation()
 {
 	AimRotation = CharacterOwner->GetBaseAimRotation();
 	
+	AimRotation -= CharacterOwner->GetActorRotation();
+	
 	AimRotation.Pitch = FRotator::NormalizeAxis(AimRotation.Pitch);
 	AimRotation.Pitch *= -1;
 }

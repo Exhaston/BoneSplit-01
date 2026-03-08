@@ -45,25 +45,30 @@ public:
 	
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 	
+	virtual void HandleDamage(const FGameplayEffectModCallbackData& Data);
+	
+	virtual void HandleHealing(const FGameplayEffectModCallbackData& Data);
+	
+	virtual void HandleKnockback(const FGameplayEffectModCallbackData& Data);
+	
+	virtual void HandleDeath(const FGameplayEffectModCallbackData& Data);
+	
+	//Returns 1 if no crit. Will return the total crit modifier from spec and source if crit.
+	virtual float GetCriticalModifier(const FGameplayEffectModCallbackData& Data);
+	
+	virtual float GetPowerModifier(const FGameplayEffectModCallbackData& Data);
+	
 #pragma endregion
 
 #pragma region MetaAttributes
 	
 	// =================================================================================================================
-	// META
+	// META meta=(HideInDetailsView)
 	// ================================================================================================================= 
 	
 	UPROPERTY(BlueprintReadOnly)
-	FGameplayAttributeData PhysicalDamage;
-	ATTRIBUTE_ACCESSORS(UBSAttributeSet, PhysicalDamage)
-	
-	UPROPERTY(BlueprintReadOnly)
-	FGameplayAttributeData MagicDamage;
-	ATTRIBUTE_ACCESSORS(UBSAttributeSet, MagicDamage)
-	
-	UPROPERTY(BlueprintReadOnly)
-	FGameplayAttributeData TrueDamage;
-	ATTRIBUTE_ACCESSORS(UBSAttributeSet, TrueDamage)
+	FGameplayAttributeData Damage;
+	ATTRIBUTE_ACCESSORS(UBSAttributeSet, Damage)
 	
 	UPROPERTY(BlueprintReadOnly)
 	FGameplayAttributeData Healing;

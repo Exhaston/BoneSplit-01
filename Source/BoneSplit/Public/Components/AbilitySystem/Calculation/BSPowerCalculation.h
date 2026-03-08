@@ -24,6 +24,8 @@ public:
 	
 private:
 	
+	static float DiminishingReturns(float Input, float Cap);
+	
 	DECLARE_ATTRIBUTE_CAPTUREDEF(CritChance);
 	DECLARE_ATTRIBUTE_CAPTUREDEF(CritMod);
 	DECLARE_ATTRIBUTE_CAPTUREDEF(Shield);

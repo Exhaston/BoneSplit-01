@@ -5,13 +5,12 @@
 #include "Actors/Predictables/BSProjectileBase.h"
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/Inventory/BSEquipment.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 UBSAbilitySystemComponent::UBSAbilitySystemComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	
-
 }
 
 void UBSAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor)

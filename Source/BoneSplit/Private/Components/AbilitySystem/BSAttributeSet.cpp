@@ -4,8 +4,11 @@
 #include "Components/AbilitySystem/BSAttributeSet.h"
 
 #include "GameplayEffectExtension.h"
+#include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "Statics/BSMathLibrary.h"
 
 void UBSAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -90,7 +93,6 @@ float UBSAttributeSet::GetMinForAttribute(const FGameplayAttribute& Attribute)
 void UBSAttributeSet::AdjustAttributeForMaxChange(
 	const FGameplayAttribute& AffectedAttribute, const float OldValue, const float NewMaxValue) const
 {
-
 	UAbilitySystemComponent* AbilityComp = GetOwningAbilitySystemComponent();
 	if (AbilityComp->GetNumericAttribute(AffectedAttribute) <= 0) return;
 	if (OldValue <= 0) return;
@@ -107,17 +109,216 @@ void UBSAttributeSet::AdjustAttributeForMaxChange(
 void UBSAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
+
+	const bool bIsDead = GetOwningAbilitySystemComponent()->HasMatchingGameplayTag(BSTags::Status_Dead);
 	
-	AActor* AvatarActor = GetOwningAbilitySystemComponent()->GetAvatarActor();
-	AActor* EffectSourceAvatar = Data.EffectSpec.GetEffectContext().GetEffectCauser();
-	
-	if (AvatarActor && Data.EvaluatedData.Attribute == GetHealthAttribute() && GetHealth() <= 0)
+	if (Data.EvaluatedData.Attribute == GetDamageAttribute() && GetHealth() > 0 && !bIsDead)
 	{
-		if (IBSAbilitySystemInterface* Killable = Cast<IBSAbilitySystemInterface>(AvatarActor))
+		HandleDamage(Data);
+	}
+	
+	if (Data.EvaluatedData.Attribute == GetHealingAttribute() && GetHealth() > 0 && !bIsDead)
+	{
+		HandleHealing(Data);
+	}
+	
+	if (Data.EvaluatedData.Attribute == GetKnockbackAttribute() && GetHealth() > 0 && !bIsDead)
+	{
+		HandleKnockback(Data);
+	}
+	
+	if (GetHealth() <= 0 && !bIsDead)
+	{
+		HandleDeath(Data);
+	}
+}
+
+void UBSAttributeSet::HandleDamage(const FGameplayEffectModCallbackData& Data)
+{
+	const FGameplayEffectSpec& Spec = Data.EffectSpec;
+	
+	FGameplayTagContainer EffectTags;
+	Spec.GetAllAssetTags(EffectTags);
+	
+	UAbilitySystemComponent* SourceAsc = Spec.GetEffectContext().GetInstigatorAbilitySystemComponent();
+	UAbilitySystemComponent* TargetAsc = &Data.Target;
+	
+	if (!SourceAsc || !TargetAsc) return;
+	
+	//Grab temp damage meta attribute and reset it for next calculation
+	float LocalDamage = GetDamage();
+	SetDamage(0);
+	
+	const float LocalCritMod = GetCriticalModifier(Data);
+	const float PowerMod = GetPowerModifier(Data);
+	
+	LocalDamage += PowerMod;
+	
+	LocalDamage *= LocalCritMod;
+	
+	FGameplayEventData DamageEventPayload;
+	DamageEventPayload.Target = TargetAsc->GetAvatarActor();
+	DamageEventPayload.ContextHandle = Spec.GetEffectContext();
+	DamageEventPayload.EventMagnitude = LocalDamage * Spec.GetStackCount();
+	DamageEventPayload.InstigatorTags.AppendTags(EffectTags);
+	if (LocalCritMod > 1) DamageEventPayload.InstigatorTags.AddTagFast(BSTags::EffectTag_Critical);
+
+	//Source Event
+	SourceAsc->HandleGameplayEvent(BSTags::GameplayEvent_DamageDealt, &DamageEventPayload);  
+	
+	//Target Event
+	TargetAsc->HandleGameplayEvent(BSTags::GameplayEvent_DamageTaken, &DamageEventPayload); 
+	
+	if (float NewShield = GetShield(); NewShield > 0)
+	{
+		if (LocalDamage <= NewShield)
 		{
-			Killable->Die(Data.EffectSpec.GetEffectContext().GetInstigatorAbilitySystemComponent(), Data.EvaluatedData.Magnitude);
+			NewShield -= LocalDamage;
+			LocalDamage = 0;
+		}
+		else
+		{
+			LocalDamage -= NewShield;
+			NewShield = 0;
+		}
+		
+		SetShield(FMath::Clamp(NewShield, 0, FLT_MAX));
+	}
+	
+	if (LocalDamage > 0)
+	{
+		SetHealth(FMath::Clamp(GetHealth() - LocalDamage, 0, GetMaxHealth()));
+	}
+}
+
+void UBSAttributeSet::HandleHealing(const FGameplayEffectModCallbackData& Data)
+{
+	const FGameplayEffectSpec& Spec = Data.EffectSpec;
+	
+	FGameplayTagContainer EffectTags;
+	Spec.GetAllAssetTags(EffectTags);
+	
+	UAbilitySystemComponent* SourceAsc = Spec.GetEffectContext().GetInstigatorAbilitySystemComponent();
+	UAbilitySystemComponent* TargetAsc = &Data.Target;
+	
+	if (!SourceAsc || !TargetAsc) return;
+	
+	float LocalHealing = GetHealing();
+	SetHealing(0);
+	
+	const float LocalCritMod = GetCriticalModifier(Data);
+	const float PowerMod = GetPowerModifier(Data);
+	
+	LocalHealing += PowerMod;
+	
+	LocalHealing *= LocalCritMod;
+	
+	FGameplayEventData HealingEventPayload;
+	HealingEventPayload.Target = TargetAsc->GetAvatarActor();
+	HealingEventPayload.ContextHandle = Spec.GetEffectContext();
+	HealingEventPayload.EventMagnitude = LocalHealing * Spec.GetStackCount();
+	HealingEventPayload.InstigatorTags.AppendTags(EffectTags);
+	if (LocalCritMod > 1) HealingEventPayload.InstigatorTags.AddTagFast(BSTags::EffectTag_Critical);
+
+	//Source Event
+	SourceAsc->HandleGameplayEvent(BSTags::GameplayEvent_DamageDealt, &HealingEventPayload);  
+	
+	//Target Event
+	TargetAsc->HandleGameplayEvent(BSTags::GameplayEvent_DamageTaken, &HealingEventPayload); 
+	
+	if (LocalHealing > 0)
+	{
+		SetHealth(FMath::Clamp(GetHealth() + LocalHealing, 0, GetMaxHealth()));
+	}
+}
+
+void UBSAttributeSet::HandleKnockback(const FGameplayEffectModCallbackData& Data)
+{
+	const FGameplayEffectSpec& Spec = Data.EffectSpec;
+	const UAbilitySystemComponent* SourceAsc = Data.EffectSpec.GetEffectContext().GetInstigatorAbilitySystemComponent();
+	const UAbilitySystemComponent* TargetAsc = &Data.Target;
+	const AActor* SourceAvatar = SourceAsc->GetAvatarActor();
+	
+	if (!SourceAsc || !TargetAsc || !SourceAvatar) return;
+
+	const float LocalKnockback = GetKnockback();
+	SetKnockback(0);
+
+	const FVector Origin = 
+		Spec.GetEffectContext().HasOrigin() ? Spec.GetEffectContext().GetOrigin() : SourceAvatar->GetActorLocation();
+	
+	if (!FMath::IsNearlyZero(LocalKnockback) && Spec.GetEffectContext().HasOrigin()
+		&& TargetAsc && TargetAsc->GetAvatarActor())
+	{
+		if (IBSAbilitySystemInterface* AscInterface = Cast<IBSAbilitySystemInterface>(TargetAsc->GetAvatarActor()))
+		{
+			const FVector Direction = 
+				TargetAsc->GetAvatarActor()->GetActorLocation() - Origin;
+            
+			AscInterface->Launch(
+			Direction.GetSafeNormal() * LocalKnockback, 
+			false);
 		}
 	}
+}
+
+void UBSAttributeSet::HandleDeath(const FGameplayEffectModCallbackData& Data)
+{
+	UAbilitySystemComponent* TargetAsc = &Data.Target;
+	if (!TargetAsc) return;
+	
+	AActor* AvatarActor = TargetAsc->GetAvatarActor();
+	if (!AvatarActor) return;
+	
+	if (IBSAbilitySystemInterface* Killable = Cast<IBSAbilitySystemInterface>(AvatarActor))
+	{
+		TargetAsc->SetLooseGameplayTagCount(
+		BSTags::Status_Dead, 1, EGameplayTagReplicationState::TagAndCountToAll);
+		
+		Killable->Die(Data.EffectSpec.GetEffectContext().GetInstigatorAbilitySystemComponent(), Data.EvaluatedData.Magnitude);
+	}
+}
+
+float UBSAttributeSet::GetCriticalModifier(const FGameplayEffectModCallbackData& Data)
+{
+	const UAbilitySystemComponent* CasterAsc = Data.EffectSpec.GetEffectContext().GetInstigatorAbilitySystemComponent();
+	float TotalCritChance = CasterAsc->GetNumericAttribute(GetCritChanceAttribute());
+	if (auto* CritAttrMod = 
+	Data.EffectSpec.GetModifiedAttribute(GetCritChanceAttribute()))
+	{
+		TotalCritChance += CritAttrMod->TotalMagnitude;
+	}
+	
+	float TotalCritMod = 1; //base if we dont crit
+	
+	if (UKismetMathLibrary::RandomBoolWithWeight(FMath::Clamp(TotalCritChance, 0.0f, 1.f)))
+	{
+		TotalCritMod = CasterAsc->GetNumericAttribute(GetCritModAttribute());
+		if (auto* CritAttrMod = 
+		Data.EffectSpec.GetModifiedAttribute(GetCritModAttribute()))
+		{
+			TotalCritMod += CritAttrMod->TotalMagnitude;
+		}
+		
+		if (TotalCritChance > 1) TotalCritMod += TotalCritChance - 1; //Bonus crit as bonus mod damage instead.
+	}	
+	
+	return TotalCritMod;
+}
+
+float UBSAttributeSet::GetPowerModifier(const FGameplayEffectModCallbackData& Data)
+{
+	const UAbilitySystemComponent* CasterAsc = Data.EffectSpec.GetEffectContext().GetInstigatorAbilitySystemComponent();
+	float TotalPower = CasterAsc->GetNumericAttribute(GetPowerAttribute());
+	if (auto* CritAttrMod = 
+	Data.EffectSpec.GetModifiedAttribute(GetPowerAttribute()))
+	{
+		TotalPower += CritAttrMod->TotalMagnitude;
+	}
+	
+	TotalPower = UBSMathLibrary::CalculateDiminishingReturns(TotalPower, 200);
+	
+	return TotalPower;
 }
 
 #pragma endregion

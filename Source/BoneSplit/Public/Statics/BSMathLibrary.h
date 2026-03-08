@@ -19,4 +19,7 @@ public:
 	//Spherically interpolates A towards B by T (Alpha, 0 - 1)
 	UFUNCTION(BlueprintCallable, DisplayName="Slerp")
 	static FVector Slerp(const FVector& A, const FVector& B, const float T);
+	
+	UFUNCTION(BlueprintCallable, DisplayName="Calculate Diminishing Returns")
+	static float CalculateDiminishingReturns(float InFloat, float InCap);
 };

@@ -177,6 +177,11 @@ void ABSMobCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(ABSMobCharacter, bIsInCombat);
 }
 
+FRotator ABSMobCharacter::GetBaseAimRotation() const
+{
+	return Super::GetBaseAimRotation();
+}
+
 void ABSMobCharacter::OnTargetFound(AActor* InActor)
 {
 	if (!HasAuthority()) return;
@@ -226,10 +231,9 @@ FBSOnDeathDelegate& ABSMobCharacter::GetOnDeathDelegate()
 
 void ABSMobCharacter::Die(UAbilitySystemComponent* SourceAsc, float Damage)
 {
-	if (HasAuthority() && GetAbilitySystemComponent() && !GetAbilitySystemComponent()->HasMatchingGameplayTag(BSTags::Status_Dead))
+	if (HasAuthority() && GetAbilitySystemComponent())
 	{             
 		SetActorEnableCollision(false);
-		GetAbilitySystemComponent()->AddLooseGameplayTag(BSTags::Status_Dead, 1, EGameplayTagReplicationState::TagAndCountToAll);
 		GetCharacterMovement()->DisableMovement();
 		
 		GetAbilitySystemComponent()->CancelAllAbilities();

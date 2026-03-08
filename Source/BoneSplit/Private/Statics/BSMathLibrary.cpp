@@ -15,3 +15,9 @@ FVector UBSMathLibrary::Slerp(const FVector& A, const FVector& B, const float T)
 	
 	return TermOne + TermTwo;
 }
+
+float UBSMathLibrary::CalculateDiminishingReturns(const float InFloat, const float InCap)
+{
+	if (InCap == 0 || InFloat == 0) return InFloat;
+	return (InFloat * InCap) / (InFloat + InCap);
+}

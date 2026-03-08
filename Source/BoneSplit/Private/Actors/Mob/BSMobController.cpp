@@ -4,8 +4,6 @@
 #include "Actors/Mob/BSMobController.h"
 
 #include "NavigationSystem.h"
-#include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 
 ABSMobController::ABSMobController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -27,6 +25,7 @@ void ABSMobController::OnUnPossess()
 
 void ABSMobController::StartChasing()
 {
+	if (!GetWorld() || GetWorld()->bIsTearingDown) return;
 	ReceiveMoveCompleted.AddDynamic(this, &ABSMobController::CustomOnMoveCompleted);
 	
 	GetWorldTimerManager().SetTimer(
@@ -34,13 +33,13 @@ void ABSMobController::StartChasing()
 		this,
 		&ABSMobController::ChasePlayer,
 		CheckInterval,
-		true,
-		0.f
+		true
 	); 
 }
 
 void ABSMobController::StopChasing()
 {
+	if (!GetWorld() || GetWorld()->bIsTearingDown) return;
 	GetWorldTimerManager().ClearTimer(ChaseTimerHandle);
 	ReceiveMoveCompleted.RemoveDynamic(this, &ABSMobController::CustomOnMoveCompleted);
 	StopMovement();
@@ -48,7 +47,7 @@ void ABSMobController::StopChasing()
 
 bool ABSMobController::IsOnValidNavMesh()
 {
-	if (!GetPawn()) return false;
+	if (!GetWorld() || !GetPawn() || GetWorld()->bIsTearingDown) return false;
 
 	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetPawn()->GetWorld());
 	if (!NavSys) return false;
@@ -67,6 +66,7 @@ bool ABSMobController::IsOnValidNavMesh()
 
 void ABSMobController::ChasePlayer()
 {
+	if (!GetWorld() || GetWorld()->bIsTearingDown) return;
 	const APawn* AIPawn = GetPawn();
 	const AActor* PlayerPawn = GetFocusActor();
 
@@ -84,11 +84,13 @@ void ABSMobController::ChasePlayer()
 	if (Distance > RestartDistance || GetMoveStatus() == EPathFollowingStatus::Idle)
 	{
 		FAIMoveRequest MoveRequest;
-		MoveRequest.SetGoalActor(PlayerPawn);
+		FVector VelocityAdjust = { PlayerPawn->GetVelocity().X, PlayerPawn->GetVelocity().Y, 0 };
+		MoveRequest.SetGoalLocation(PlayerPawn->GetActorLocation());
 		MoveRequest.SetReachTestIncludesGoalRadius(false);
 		MoveRequest.SetReachTestIncludesAgentRadius(false);
 		MoveRequest.SetAcceptanceRadius(AcceptanceRadius);
-		MoveRequest.SetUsePathfinding(IsOnValidNavMesh()); //Force move towards if outside navmesh
+		MoveRequest.SetProjectGoalLocation(true);
+		MoveRequest.SetUsePathfinding(IsOnValidNavMesh());
 
 		MoveTo(MoveRequest);
 	}

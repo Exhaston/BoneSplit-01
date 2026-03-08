@@ -35,7 +35,7 @@ protected:
 	float RestartDistance = 600.f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Movement")
-	float CheckInterval = 0.5f;
+	float CheckInterval = 0.25f;
 
 private:
 	UPROPERTY()

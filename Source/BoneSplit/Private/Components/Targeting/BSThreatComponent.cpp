@@ -25,6 +25,8 @@ bool UBSThreatComponent::IsInCombat() const
 
 void UBSThreatComponent::AddThreat(AActor* InActor, const float Threat)
 {
+	if (InActor == GetOwner()) return;
+	
 	const bool bWasInCombat = IsInCombat();
 	
 	float& Current = ThreatMap.FindOrAdd(InActor);

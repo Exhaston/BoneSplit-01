@@ -52,6 +52,8 @@ public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	virtual FRotator GetBaseAimRotation() const override;
+	
 	UFUNCTION()
 	void OnTargetFound(AActor* InActor);
 	
