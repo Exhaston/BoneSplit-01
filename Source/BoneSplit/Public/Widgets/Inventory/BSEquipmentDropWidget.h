@@ -6,6 +6,7 @@
 #include "CommonUserWidget.h"
 #include "BSEquipmentDropWidget.generated.h"
 
+struct FBSEquipmentInstance;
 class UBSEquipmentEffect;
 class UCommonLazyImage;
 class UCommonRichTextBlock;
@@ -22,12 +23,16 @@ public:
 	//TODO: Add granted ability images
 	
 	virtual void InitializeEquipmentDropWidget(const UBSEquipmentEffect* EquipmentEffectCDO);
+	virtual void InitializeEquipmentDropWidget(const FBSEquipmentInstance EquipmentInstance);
 	
 	UPROPERTY(meta=(BindWidget))
 	UCommonRichTextBlock* EquipmentNameText;
 	
 	UPROPERTY(meta=(BindWidget))
 	UCommonRichTextBlock* EquipmentDescriptionText;
+	
+	UPROPERTY(meta=(BindWidget))
+	UCommonRichTextBlock* EquipmentLevel;
 	
 	UPROPERTY(meta=(BindWidget))
 	UCommonLazyImage* EquipmentIcon;

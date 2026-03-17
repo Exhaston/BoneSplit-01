@@ -3,8 +3,15 @@
 #include "Actors/Mob/BSMobCharacter.h"
 
 #include "AIController.h"
+#include "CharacterAbilitySystem.h"
+#include "NavigationInvokerComponent.h"
+#include "Abilities/BSExtendedAttributeSet.h"
+#include "Abilities/BSGameplayLibrary.h"
+#include "Actors/Mob/BSMobController.h"
 #include "Actors/Mob/BSMobMovementComponent.h"
 #include "Actors/Mob/BSMobSubsystem.h"
+#include "Actors/Projectiles/BSProjectileSpawnerComponent.h"
+#include "AI/Navigation/NavigationInvokerInterface.h"
 #include "Animation/BSAnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
@@ -18,6 +25,43 @@
 #include "Widgets/HUD/BSFloatingNamePlate.h"
 #include "Widgets/HUD/FloatingUnitPlates/BSFloatingUnitPlateSubsystem.h"
 
+ABSMobController* ABSMobCharacter::GetMobController() const
+{
+	return GetController<ABSMobController>();
+}
+
+void ABSMobCharacter::OnMobDied(UAbilitySystemComponent*, UAbilitySystemComponent*, FGameplayTagContainer, float, float)
+{
+	OnMobDiedDelegate.Broadcast(this);
+	
+	AbilitySystemComponent->ClearActorInfo();
+	
+	if (HasAuthority() && GetAbilitySystemComponent())
+	{             
+		
+		SetActorEnableCollision(false);
+		GetCharacterMovement()->DisableMovement();
+		
+		GetAbilitySystemComponent()->CancelAllAbilities();
+		GetCharacterMovement()->Velocity = FVector::Zero();
+		
+		if (GetController()) GetController()->UnPossess();
+		
+		if (!DeathAnimations.IsEmpty())
+		{
+			ActiveDeathMontage = DeathAnimations[FMath::RandRange(0, DeathAnimations.Num() - 1)];
+			CommitDeath(ActiveDeathMontage);
+		}
+	}
+}
+
+void ABSMobCharacter::Destroyed()
+{
+	OnMobDiedDelegate.Broadcast(this);
+	
+	Super::Destroyed();
+}
+
 ABSMobCharacter::ABSMobCharacter(const FObjectInitializer& ObjectInitializer) : 
 Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(CharacterMovementComponentName))
 {
@@ -27,10 +71,11 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	bReplicates = true;
 	bUseControllerRotationYaw = false;
 	
-	AbilitySystemComponent = CreateDefaultSubobject<UBSAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent = CreateDefaultSubobject<UCharacterAbilitySystem>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	
+	AbilitySystemComponent->OnHealthZero.AddDynamic(this, &ABSMobCharacter::OnMobDied);
 	AttributeSet = CreateDefaultSubobject<UBSAttributeSet>(TEXT("AttributeSet"));
 	
 	ThreatComponent = CreateDefaultSubobject<UBSThreatComponent>(TEXT("ThreatComponent"));
@@ -49,6 +94,13 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UBSMobMovementComponent>(Charac
 	AggroComponent->OnTargetFoundDelegate.AddDynamic(this, &ABSMobCharacter::OnTargetFound);
 	
 	PatrolComponent = CreateDefaultSubobject<UBSPatrolComponent>(TEXT("PatrolComponent"));
+	
+	NavigationInvokerComponent = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavigationInvokerComponent"));
+	
+	ProjectileSpawnerComponent = CreateDefaultSubobject<UBSProjectileSpawnerComponent>(TEXT("ProjectileSpawnerComponent"));
+	
+	AIControllerClass = ABSMobController::StaticClass();
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 void ABSMobCharacter::BeginPlay()
@@ -70,25 +122,10 @@ void ABSMobCharacter::BeginPlay()
 	{
 		SetRandomColor();
 		int32 DifficultyLevel = 1;
-
-		for (auto GrantedAbilities : AbilityWeightMap)
-		{
-			FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(GrantedAbilities.Key);
-			AbilitySpec.Level = DifficultyLevel;
-			AbilitySystemComponent->GiveAbility(AbilitySpec);
-		}
 		
-		for (const auto DefaultEffect : Effects)
-		{
-			FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(
-				DefaultEffect, DifficultyLevel, AbilitySystemComponent->MakeEffectContext());
-
-			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec.Data);
-		}
+		UBSGameplayLibrary::ApplyCharacterDataTo(InitData, AbilitySystemComponent);
 		
-		AbilitySystemComponent->AddLooseGameplayTags(GrantedTags, 1, EGameplayTagReplicationState::TagAndCountToAll);
-		
-		PatrolComponent->StartPatrol();
+		ElapsedAbilityCheckTime = FMath::RandRange(-1.f, 1.f);
 	}
 
 	if (UBSMobSubsystem* MobSubsystem = GetWorld()->GetSubsystem<UBSMobSubsystem>())
@@ -110,10 +147,16 @@ void ABSMobCharacter::BeginPlay()
 	}
 }
 
+void ABSMobCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+}
+
 void ABSMobCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 	WidgetComponent->SetVisibility(false);
+	AbilitySystemComponent->AddSet<UBSExtendedAttributeSet>();
 }
 
 void ABSMobCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -152,9 +195,15 @@ void ABSMobCharacter::Tick(float DeltaSeconds)
 		}
 	}
 	
-	if (!IsValid(this) || !HasAuthority() || GetTearOff() || !GetAbilitySystemComponent() || !GetThreatComponent()) return;
+	if (!GetAbilitySystemComponent()) return;
+	
+	if (!GetMobController() || !GetMobController()->GetFocusActor()) return;
+	
+	if (GetTearOff() || !GetThreatComponent()) return;
 	
 	ElapsedAbilityCheckTime += DeltaSeconds;
+	
+	if (!GetController<AAIController>() || GetController<AAIController>()->IsFollowingAPath()) return;
 	
 	if (ElapsedAbilityCheckTime >= AbilityCheckTimeInterval)
 	{
@@ -231,22 +280,7 @@ FBSOnDeathDelegate& ABSMobCharacter::GetOnDeathDelegate()
 
 void ABSMobCharacter::Die(UAbilitySystemComponent* SourceAsc, float Damage)
 {
-	if (HasAuthority() && GetAbilitySystemComponent())
-	{             
-		SetActorEnableCollision(false);
-		GetCharacterMovement()->DisableMovement();
-		
-		GetAbilitySystemComponent()->CancelAllAbilities();
-		GetCharacterMovement()->Velocity = FVector::Zero();
-		
-		if (GetController()) GetController()->UnPossess();
-		
-		if (!DeathAnimations.IsEmpty())
-		{
-			ActiveDeathMontage = DeathAnimations[FMath::RandRange(0, DeathAnimations.Num() - 1)];
-			CommitDeath(ActiveDeathMontage);
-		}
-	}
+
 }
 
 void ABSMobCharacter::CommitDeath_Implementation(UAnimMontage* Montage)

@@ -3,58 +3,90 @@
 
 #include "Components/Patrol/BSPatrolComponent.h"
 #include "AIController.h"
+#include "NavigationSystem.h"
+#include "Actors/Mob/BSMobController.h"
+#include "AI/NavigationSystemBase.h"
 #include "Components/Patrol/BSPatrolPath.h"
 
 
 #include "Navigation/PathFollowingComponent.h"
 
-UBSPatrolComponent::UBSPatrolComponent()
+UBSPatrolComponent::UBSPatrolComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
+    // Tick only needed while active; disabled until StartPatrol
     PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bStartWithTickEnabled = false;
+    
 }
 
 void UBSPatrolComponent::BeginPlay()
 {
     Super::BeginPlay();
     
-    if (!GetOwner()->HasAuthority()) return;
+    FTimerHandle TimerHandle;
+    GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+    {
+        if (APawn* OwnerPawn = GetOwner<APawn>())
+        {
+            if (OwnerPawn->GetController())
+            {
+                OnPawnControllerSet(OwnerPawn, nullptr, OwnerPawn->GetController());
+            }
+            else
+            {
+               OwnerPawn->ReceiveControllerChangedDelegate.AddDynamic(this, &UBSPatrolComponent::OnPawnControllerSet); 
+            }
+        }
+    }, 1, false);
+    
+
+}
+
+void UBSPatrolComponent::OnPawnControllerSet(APawn* OwnerPawn, AController* OldController, AController* NewController)
+{
+    MobController = Cast<ABSMobController>(NewController);
+    
+    if (!MobController) return;
     
     if (FollowActor)
     {
         FollowActorOffset = FollowActor->GetActorTransform().InverseTransformPosition(
-            GetOwner()->GetActorLocation()
-        );
+            GetOwner()->GetActorLocation());
     }
-
-    if (const AAIController* Controller = GetOwnerController())
+    
+    MobController->GetPathFollowingComponent()->OnRequestFinished.AddUObject(
+    this, &UBSPatrolComponent::OnMoveCompleted);
+    
+    if (const UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()); 
+        NavSys && NavSys->IsInitialized())
     {
-        Controller->GetPathFollowingComponent()->OnRequestFinished.AddUObject(
-            this, &UBSPatrolComponent::OnMoveCompleted
-        );
+        StartPatrol();
+    }
+    else
+    {
+        UNavigationSystemBase::OnNavigationInitDoneStaticDelegate().AddWeakLambda(
+        this, [this](const UNavigationSystemBase&)
+        {
+            StartPatrol();
+        });
     }
 }
 
-void UBSPatrolComponent::MoveToFollowActor()
-{
-    if (GetOwner() && GetOwner()->HasAuthority() && FollowActor && GetOwnerController())
-    {
-        FVector TargetLocation = FollowActor->GetActorTransform().TransformPositionNoScale(FollowActorOffset);
-        GetOwnerController()->MoveToLocation(
-            TargetLocation, 
-            50, true, true, false);
-    }
-}
+// ---------------------------------------------------------------------------
+// Public
+// ---------------------------------------------------------------------------
 
 void UBSPatrolComponent::StartPatrol()
 {
+    if (!GetOwner() || !GetOwner()->HasAuthority()) return;
+    
     if (FollowActor)
     {
         bPatrolActive = true;
+        SetComponentTickEnabled(true);
         return;
     }
-    
-    if (!GetOwner() || !GetOwner()->HasAuthority()) return; 
-    
+
     if (!PatrolPathActor) return;
 
     const int32 PointCount = PatrolPathActor->GetPatrolPointCount();
@@ -65,6 +97,7 @@ void UBSPatrolComponent::StartPatrol()
     bPatrolActive     = true;
     bWaiting          = false;
 
+    SetComponentTickEnabled(true);
     MoveToCurrentPoint();
 }
 
@@ -72,24 +105,32 @@ void UBSPatrolComponent::StopPatrol()
 {
     bPatrolActive = false;
     bWaiting      = false;
+    SetComponentTickEnabled(false);
 
-    if (AAIController* Controller = GetOwnerController())
+    if (MobController)
     {
-        Controller->StopMovement();
+        MobController->StopMovement();
     }
 }
 
-void UBSPatrolComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+// ---------------------------------------------------------------------------
+// Tick
+// ---------------------------------------------------------------------------
+
+void UBSPatrolComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+    FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    
-    if (FollowActor && bPatrolActive)
+
+    if (!bPatrolActive) return;
+
+    if (FollowActor)
     {
         MoveToFollowActor();
         return;
     }
 
-    if (!bPatrolActive || !bWaiting) return;
+    if (!bWaiting) return;
 
     WaitTimeRemaining -= DeltaTime;
     if (WaitTimeRemaining <= 0.f)
@@ -100,29 +141,72 @@ void UBSPatrolComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
     }
 }
 
+// ---------------------------------------------------------------------------
+// Movement
+// ---------------------------------------------------------------------------
+
 void UBSPatrolComponent::MoveToCurrentPoint()
 {
-    AAIController* Controller = GetOwnerController();
-    if (!Controller || !PatrolPathActor) return;
+    if (!MobController || !PatrolPathActor) return;
+    
+    GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("PATROL"));
 
     const FVector Point = PatrolPathActor->GetPatrolPointAt(CurrentPointIndex);
-    Controller->MoveToLocation(Point, 50, true, true, false);
+    MobController->MoveToLocation(
+        Point, 
+        AcceptanceRadius,
+        true,
+       true,
+       true);
 }
 
-void UBSPatrolComponent::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
+void UBSPatrolComponent::MoveToFollowActor()
+{
+    if (!FollowActor || !GetOwner() || !GetOwner()->HasAuthority()) return;
+    
+    if (!MobController) return;
+
+    const FVector TargetLocation =
+        FollowActor->GetActorTransform().TransformPositionNoScale(FollowActorOffset);
+
+    // Only re-issue the move request if the target has moved meaningfully,
+    // avoids spamming pathfinding every frame
+    if (FVector::DistSquared(TargetLocation, LastIssuedFollowLocation)
+        < FMath::Square(FollowMoveThreshold))
+    {
+        return;
+    }
+
+    LastIssuedFollowLocation = TargetLocation;
+    MobController->MoveToLocation(TargetLocation, AcceptanceRadius,
+        /*bStopOnOverlap*/true, /*bUsePathfinding*/true,
+        /*bProjectDestinationToNavigation*/false);
+}
+
+// ---------------------------------------------------------------------------
+// Patrol logic
+// ---------------------------------------------------------------------------
+
+void UBSPatrolComponent::OnMoveCompleted(FAIRequestID /*RequestID*/,
+    const FPathFollowingResult& Result)
 {
     if (!bPatrolActive || FollowActor) return;
-    if (Result.Flags != FPathFollowingResultFlags::Success) return;
 
-    if (const FBSWayStop* WayStop = PatrolPathActor->GetWayStopAtPatrolIndex(CurrentPointIndex))
+    // Ignore partial moves (blocked, aborted, etc.)
+    if (!Result.HasFlag(FPathFollowingResultFlags::Success)) return;
+
+    /*
+    FBSWayStop WayStop;
+    if (PatrolPathActor->TryGetWayStopAtPatrolIndex(CurrentPointIndex, WayStop))
     {
-        if (WayStop->WaitTime > 0.f)
+        if (WayStop.WaitTime > 0.f)
         {
             bWaiting          = true;
-            WaitTimeRemaining = WayStop->WaitTime;
-            return;
+            WaitTimeRemaining = WayStop.WaitTime;
+            return; // Tick will call AdvancePatrolIndex when timer expires
         }
     }
+    */
 
     AdvancePatrolIndex();
     MoveToCurrentPoint();
@@ -130,31 +214,31 @@ void UBSPatrolComponent::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 
 void UBSPatrolComponent::AdvancePatrolIndex()
 {
+    if (!PatrolPathActor) return;
+
     const int32 PointCount = PatrolPathActor->GetPatrolPointCount();
-    const int32 LastIndex  = PointCount - 1;
+    if (PointCount == 0) return;
+
+    const int32 LastIndex = PointCount - 1;
 
     if (PatrolPathActor->IsClosed())
     {
-        CurrentPointIndex = (CurrentPointIndex + 1) % PointCount;
+        // Respect Direction so closed loops can also run in reverse
+        CurrentPointIndex = (CurrentPointIndex + Direction + PointCount) % PointCount;
     }
     else
     {
-        if (CurrentPointIndex + Direction < 0 || CurrentPointIndex + Direction > LastIndex)
+        const int32 Next = CurrentPointIndex + Direction;
+        if (Next < 0 || Next > LastIndex)
         {
-            Direction *= -1;
+            Direction        *= -1;
+            CurrentPointIndex += Direction;
         }
-
-        CurrentPointIndex += Direction;
+        else
+        {
+            CurrentPointIndex = Next;
+        }
     }
-}
-
-AAIController* UBSPatrolComponent::GetOwnerController()
-{
-    if (CachedOwnerController.IsValid()) return CachedOwnerController.Get();
-    const APawn* OwnerPawn = GetOwner<APawn>();
-    if (!OwnerPawn) return nullptr;
-    CachedOwnerController = OwnerPawn->GetController<AAIController>();
-    return CachedOwnerController.IsValid() ? CachedOwnerController.Get() : nullptr;
 }
 
 

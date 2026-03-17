@@ -35,7 +35,8 @@ public class BoneSplit : ModuleRules
 			"Networking",
 			"OnlineSubsystem",
 			"ControlRig",
-			"RigVM"
+			"RigVM", 
+			"GameplayAbilitiesExtension"
 		]);
 	}
 }

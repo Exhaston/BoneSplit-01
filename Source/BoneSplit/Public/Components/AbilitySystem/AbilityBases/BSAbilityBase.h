@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CharacterAbilityBase.h"
 #include "IconThumbnailInterface.h"
 #include "Abilities/GameplayAbility.h"
 #include "BoneSplit/BoneSplit.h"
@@ -10,7 +11,6 @@
 
 class ABSProjectileBase;
 class UBSAbilitySystemComponent;
-enum EBSAbilityInputID : uint8;
 class ABSPredictableActor;
 
 #define COMMIT_ABILITY(Handle, ActorInfo, ActivationInfo)   \
@@ -21,12 +21,27 @@ if (!CommitAbility(Handle, ActorInfo, ActivationInfo))      \
 }
 #define CANCEL_ABILITY() \
 CancelAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true); return;
+
+UENUM(BlueprintType)
+enum EBSAbilityInputID                
+{   
+	EAII_None = 0 UMETA(DisplayName = "None"),
+	EAII_Special = 1 UMETA(DisplayName = "Special"),                 
+	EAII_Head = 2 UMETA(DisplayName = "Head"),
+	EAII_Legs = 3 UMETA(DisplayName = "Legs"),
+	EAII_Soul = 4 UMETA(DisplayName = "Soul"),
+	EAII_Primary = 5 UMETA(DisplayName = "Primary"),
+	EAII_Secondary = 6 UMETA(DisplayName = "Secondary"),
+	EAII_Interact = 7 UMETA(DisplayName = "Interact"),
+	EAII_Jump = 8 UMETA(DisplayName = "Jump")
+};
+
 /**
  * Ability base that supports Icons, Ability Charges through Effect Stacking (Assumes Full Replication mode on Asc), 
  * Spawning Predictable Actors such as projectiles.
  */
 UCLASS(Abstract, BlueprintType, Blueprintable, DisplayName="Ability Base")
-class BONESPLIT_API UBSAbilityBase : public UGameplayAbility, public IIconThumbnailInterface
+class BONESPLIT_API UBSAbilityBase : public UCharacterAbilityBase, public IIconThumbnailInterface
 {
 	GENERATED_BODY()
 	
@@ -34,11 +49,15 @@ public:
 	
 	UBSAbilityBase();
 	
+	virtual float GetCostModifier() const override;
+	
+	virtual float GetCooldownModifier() const override;
+	
+	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
+	
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	
 	virtual TSoftObjectPtr<UTexture2D> GetIcon_Implementation() const override;
-	
-	virtual bool CheckCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 	
 	void Native_OnGameplayEventReceived(FGameplayTag EventTag, const FGameplayEventData* Payload);
 	
@@ -65,6 +84,9 @@ public:
 	void GetTargetRotationForProjectile(const FVector& ProjectileOrigin, FVector& BaseAimDirection, FVector& OutProjectileBaseAimPoint, FVector& OutCameraBaseAimPoint) const;
 	
 protected:
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Player")
+	TEnumAsByte<EBSAbilityInputID> InputID = EAII_None;
 	
 	UFUNCTION(BlueprintPure)
 	UBSAbilitySystemComponent* GetBSAbilitySystemComponent() const;

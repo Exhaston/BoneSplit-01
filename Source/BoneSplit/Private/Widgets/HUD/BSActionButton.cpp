@@ -3,31 +3,32 @@
 
 #include "Widgets/HUD/BSActionButton.h"
 
+#include "AbilityBufferComponent.h"
 #include "AbilitySystemComponent.h"
+#include "CharacterAbilitySystem.h"
 #include "CommonLazyImage.h"
 #include "CommonRichTextBlock.h"
 #include "IconThumbnailInterface.h"
 #include "Actors/Player/BSPlayerState.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 
-void UBSActionButton::InitializeActionButton(UBSAbilitySystemComponent* InAbilitySystemComponent)
+TAutoConsoleVariable<bool> CVarToggleCooldownNumbers(
+TEXT("BS.UI.ToggleCooldownNumbers"),
+true,
+TEXT("true = Default"),
+ECVF_Default);
+
+void UBSActionButton::InitializeActionButton(UCharacterAbilitySystem* InAbilitySystemComponent)
 {
 	AbilitySystemComponent = InAbilitySystemComponent;
-	if (!AbilitySystemComponent.IsValid())
+	if (!AbilitySystemComponent)
 	{
 		const FString MissingAscInfo = "No Ability System found from owning player state. " + GetName();
 		UE_LOG(BoneSplit, Warning, TEXT("%s"), *MissingAscInfo);
 		return;
 	}
 	
-	TArray<FGameplayAbilitySpecHandle> CurrentSpecHandles;
-	AbilitySystemComponent->FindAllAbilitiesWithTags(CurrentSpecHandles, FGameplayTagContainer(AbilityTag));
-
-	for (const auto& SpecHandle : CurrentSpecHandles)
-	{
-
-		AttemptSetNewSpec(AbilitySystemComponent->FindAbilitySpecFromHandle(SpecHandle));
-	}
+	AbilityBufferComponent = UAbilityBufferComponent::GetBufferComponentFromController(GetOwningPlayer());
 	
 	AbilitySystemComponent->NotifyAbilitiesTo(FBSOnAbilityGranted::FDelegate::CreateWeakLambda(
 	this, [this](FGameplayAbilitySpec& Spec)
@@ -39,12 +40,18 @@ void UBSActionButton::InitializeActionButton(UBSAbilitySystemComponent* InAbilit
 void UBSActionButton::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	
+	CVarToggleCooldownNumbers->OnChangedDelegate().AddWeakLambda(this, [this](IConsoleVariable* Var)
+	{
+		CooldownNumberText->SetVisibility(Var->GetBool() ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+	});
+	
+	CooldownNumberText->SetVisibility(CVarToggleCooldownNumbers.GetValueOnGameThread() ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 }
 
 bool UBSActionButton::AttemptSetNewSpec(FGameplayAbilitySpec* Spec)
 {
-	if (!Spec || !Spec->Ability || !Spec->Ability->GetAssetTags().HasTagExact(AbilityTag)) return false;
+	if (!Spec || Spec->InputID != InputID) return false;
 	
 	CurrentCachedHandle = Spec->Handle;
 	
@@ -62,11 +69,7 @@ void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	
-	if (!GetButtonMaterial() || !AbilitySystemComponent.IsValid()) return;
-	
-
-	
-
+	if (!GetButtonMaterial() || !AbilitySystemComponent) return;
 	
 	const FGameplayAbilitySpec* Spec = AbilitySystemComponent->FindAbilitySpecFromHandle(CurrentCachedHandle);
 	if (!Spec)
@@ -77,21 +80,12 @@ void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	
 	const UGameplayAbility* AbilityInstance = Spec->GetPrimaryInstance();
 	
-	CurrentBufferElapsed+=InDeltaTime;
-	
-	if (BufferTime <= CurrentBufferElapsed && !Spec->InputPressed)
+	if (AbilityBufferComponent)
 	{
-		CurrentBufferElapsed = 0;
-		GetButtonMaterial()->SetScalarParameterValue(PressedParamName, 0);
+		GetButtonMaterial()->SetScalarParameterValue(
+			PressedParamName, AbilityBufferComponent->GetIsBufferedOrPressed(Spec->InputID));
 	}
 	
-	if (Spec->InputPressed)
-	{
-		GetButtonMaterial()->SetScalarParameterValue(PressedParamName, 1);
-	}
-			
-	
-				
 	float TimeRemaining = 0;
 	float Duration = 0;
 	
@@ -101,6 +95,23 @@ void UBSActionButton::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		TimeRemaining,
 		Duration
 	);
+	
+	if (TimeRemaining > 0)
+	{
+		CooldownNumberText->SetRenderOpacity(1);
+		
+		FNumberFormattingOptions NumberFormat;
+		NumberFormat.MinimumFractionalDigits = 0;
+		NumberFormat.MaximumFractionalDigits = 0;
+		NumberFormat.MinimumIntegralDigits = 1;
+		NumberFormat.MaximumIntegralDigits = 10000;
+		CooldownNumberText->SetText(FText::AsNumber(TimeRemaining, &NumberFormat));
+	}
+	else
+	{
+		CooldownNumberText->SetRenderOpacity(0);
+	}
+
 	
 	if (AbilityInstance->GetCooldownGameplayEffect() && AbilityInstance->GetCooldownGameplayEffect()->StackLimitCount > 1)
 	{

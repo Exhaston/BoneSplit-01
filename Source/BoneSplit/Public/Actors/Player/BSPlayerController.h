@@ -5,10 +5,15 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "ClientAuthoritativePlayerController.h"
+#include "GameplayTagContainer.h"
 #include "Components/TimelineComponent.h"
+#include "Equipment/BSEquipmentInterface.h"
 #include "GameFramework/PlayerController.h"
 #include "BSPlayerController.generated.h"
 
+class UAbilityBufferComponent;
+struct FGameplayTagContainer;
+class UCharacterAbilitySystem;
 class UBSAbilitySystemComponent;
 class UCommonActivatableWidgetStack;
 struct FGameplayEventData;
@@ -20,34 +25,14 @@ class UBSWHud;
 class UAbilitySystemComponent;
 class UInputAction;
 class UInputMappingContext;
-
-USTRUCT(BlueprintType, DisplayName="Buffered Ability", Category="BoneSplit")
-struct FBSBufferedAbility
-{
-	GENERATED_BODY()
-	
-	FBSBufferedAbility() = default;
-	
-	UPROPERTY()
-	int32 AbilityID = -1;
-	
-	UPROPERTY()
-	float TimeRemaining = 0;
-	
-	UPROPERTY()
-	bool bExpired = false;
-	
-	bool operator==(const FBSBufferedAbility& Other) const
-	{
-		return AbilityID == Other.AbilityID;
-	}
-};
 									 
 /**
  * Since the pawn can change during different events, we have all the input and buffering setup here directly.
  */                        
 UCLASS(DisplayName="Player Controller", Category="BoneSplit", ClassGroup="BoneSplit")
-class BONESPLIT_API ABSPlayerController : public AClientAuthoritativePlayerController, public IAbilitySystemInterface
+class BONESPLIT_API ABSPlayerController : public AClientAuthoritativePlayerController, 
+public IAbilitySystemInterface,
+public IBSEquipmentInterface
 {
 	GENERATED_BODY()
 
@@ -57,13 +42,22 @@ public:
 	
 	virtual void SetupInputComponent() override;
 	
+	virtual void OnUnPossess() override;
+	
 	virtual void Tick(float DeltaSeconds) override;
 	
-	virtual void OnPossess(APawn* InPawn) override;
+	virtual void AddPlayerUI();
 	
-	virtual void OnRep_PlayerState() override;
+	virtual void InitializeWithAbilitySystem(UCharacterAbilitySystem* InCharacterAbilitySystem);
+	
+	virtual UBSEquipmentComponent* GetEquipmentComponent() const override;
+	
+	virtual void ApplyEquipment(const FBSEquipPickupInfo& Pickup) override;
 
 protected:
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TObjectPtr<UAbilityBufferComponent> AbilityBufferComponent;
 	
 	UPROPERTY()
 	bool bControlDirectionInput = true;
@@ -77,24 +71,13 @@ protected:
 	UFUNCTION()
 	void QuickTurnTimelineTick(float Alpha);
 	
-	virtual bool TryActivatePawnAbility(int32 ID, bool bBuffer = false);
-	
-	virtual void ReleaseAbilityForPawn(int32 ID);
-	
-	virtual void BufferAbility(int32 ID);
-	
-	virtual void BindAbilityToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action, int32 ID, bool bCanReTrigger = false);
-	
 	virtual void BindJumpToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action);
 	
 	//Mainly implemented through IAbilitySystemInterface for UI easy access.
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
-
-	
-	//The amount of time an ability can attempt to retrigger after a failed activation.
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input|Buffering")
-	float BufferTime = 0.5;
+	UPROPERTY(Transient)
+	UCharacterAbilitySystem* CharacterAbilitySystem;
 	
 	UPROPERTY()
 	FRotator InitialRotation;
@@ -133,22 +116,13 @@ protected:
 	UInputAction* InteractAction;
 	
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
-	UInputAction* JumpAction;
+	UInputAction* BasicAbilityAction;
 	
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
-	UInputAction* HeadAction;
+	FGameplayTag BasicAbilityTag;
 	
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
-	UInputAction* PrimaryArmAction;
-	
-	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
-	UInputAction* SecondaryArmAction;
-	
-	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
-	UInputAction* LegsAction;
-	
-	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
-	UInputAction* SoulAction;
+	TMap<FGameplayTag, UInputAction*> AbilityInputMapping; 
 	
 	UPROPERTY(BLueprintReadOnly, EditDefaultsOnly, Category="Input|Actions")
 	UInputAction* SpecialAction;
@@ -168,12 +142,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="UI")
 	TSubclassOf<UBSGameplayRootWidget> GameplayRootWidgetClass;
 	
-	UPROPERTY(Transient)
-	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
-	
-	UPROPERTY()
-	TArray<FBSBufferedAbility> BufferedAbilities;
-	
 	UPROPERTY()
 	UBSGameplayRootWidget* GameplayRootWidgetInstance;
 	
@@ -181,10 +149,13 @@ public:
 	//Can be null if UI hasn't been added or initialized properly
 	virtual UCommonActivatableWidgetStack* GetWidgetStack();
 	
-	virtual UBSAbilitySystemComponent* GetBSAbilitySystem();
+	virtual UCharacterAbilitySystem* GetCharacterAbilitySystem();
 	
-	virtual void InitAscFromPS();
-	virtual void AddPlayerUI();
+	UFUNCTION()
+	void OnDamageDealt(UAbilitySystemComponent* InstigatorAsc, UAbilitySystemComponent* TargetAsc, FGameplayTagContainer EffectTags, float BaseDamage, float TotalDamage);
+	
+	virtual void SpawnFloatingNumber(UAbilitySystemComponent* InstigatorAsc, UAbilitySystemComponent* TargetAsc, FGameplayTagContainer EffectTags, float Number);
+
 	virtual void DestroyPlayerUI();
 	
 	virtual void SpawnDamageNumber(FGameplayEventData EventData);

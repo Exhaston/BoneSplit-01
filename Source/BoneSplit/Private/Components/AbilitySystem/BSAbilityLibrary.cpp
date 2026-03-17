@@ -3,6 +3,7 @@
 
 #include "Components/AbilitySystem/BSAbilityLibrary.h"
 
+#include "AbilitiesExtensionLib.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -57,7 +58,7 @@ UAbilitySystemComponent* UBSAbilityLibrary::GetAbilitySystemComponent(AActor* Ta
 bool UBSAbilityLibrary::HasMatchingFaction(UAbilitySystemComponent* Asc, UAbilitySystemComponent* OtherAsc)
 {
 	FGameplayTagContainer FilterContainer;
-	FilterContainer.AddTagFast(BSTags::Faction);
+	FilterContainer.AddTagFast(DefaultFactionTags::Faction);
 
 	const FGameplayTagContainer FilteredOwnerTags = Asc->GetOwnedGameplayTags().Filter(FilterContainer);
 	

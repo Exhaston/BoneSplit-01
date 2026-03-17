@@ -145,6 +145,7 @@ void UBSAttributeBar::SmoothOldToCurrent(const float DeltaTime)
 
 void UBSAttributeBar::SetAttributeValues(const float InCurrentValue, const float InMaxValue)
 {
+	if (InMaxValue <= 0) return;
 	Value = FMath::Clamp(InCurrentValue, 0, FLT_MAX);
 	MaxValue = FMath::Clamp(InMaxValue, 1, FLT_MAX);
 	NormalizedPercent = InCurrentValue / InMaxValue; 

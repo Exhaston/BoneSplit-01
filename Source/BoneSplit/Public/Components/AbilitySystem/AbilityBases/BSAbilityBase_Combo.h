@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BSAbilityBase.h"
+#include "CharacterAbilityBase.h"
 #include "BSAbilityBase_Combo.generated.h"
 
 class UAbilityTask_WaitInputRelease;
@@ -18,9 +19,6 @@ class BONESPLIT_API UBSAbilityBase_Combo : public UBSAbilityBase
 	GENERATED_BODY()
 	
 public:
-	
-	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
-	
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	
 	//Montage to play. Can be any slot montage.
@@ -43,10 +41,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	float MontageRootMotionScale = 1;
 	
-	//Checks if the avatar actor is grounded in CanActivate()
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bRequireGrounded = true;
-	
 	//Set to true if this ability is to be held for a looping animation with breakpoints in notifies
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	bool bIsComboAbility = true;
@@ -62,9 +56,12 @@ public:
 	
 	UFUNCTION()
 	void OnMontageEnded(FGameplayTag Tag, FGameplayEventData EventData);
-	
 	UFUNCTION()
 	void OnEventReceived(FGameplayTag Tag, FGameplayEventData EventData);
 	
 	virtual void HandleMontageComboEnd(FGameplayTag Tag, FGameplayEventData EventData);
+	
+
+	
+
 };

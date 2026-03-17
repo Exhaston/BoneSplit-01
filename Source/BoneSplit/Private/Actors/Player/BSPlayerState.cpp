@@ -3,6 +3,10 @@
 
 #include "Actors/Player/BSPlayerState.h"
 
+#include "CharacterAbilitySystem.h"
+#include "DefaultAttributeSet.h"
+#include "PawnInitializationComponent.h"
+#include "Abilities/BSExtendedAttributeSet.h"
 #include "Actors/InteractableBases/BSEquipmentDropBase.h"
 #include "Actors/Player/BSLocalSaveSubsystem.h"
 #include "Actors/Player/BSPlayerController.h"
@@ -11,13 +15,14 @@
 #include "Components/AbilitySystem/BSAttributeSet.h"
 #include "Components/Inventory/BSInventoryComponent.h"
 #include "Components/TalentSystem/BSTalentComponent.h"
+#include "Equipment/BSEquipmentComponent.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "GameState/BSGameState.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
 ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	AbilitySystemComponent = CreateDefaultSubobject<UBSAbilitySystemComponent>("AbilitySystemComponent");
+	AbilitySystemComponent = CreateDefaultSubobject<UCharacterAbilitySystem>("AbilitySystemComponent");
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetOwnerActor(this);
@@ -32,18 +37,31 @@ ABSPlayerState::ABSPlayerState(const FObjectInitializer& ObjectInitializer) : Su
 	InventoryComponent = CreateDefaultSubobject<UBSInventoryComponent>("InventoryComponent");
 	InventoryComponent->SetAbilitySystem(AbilitySystemComponent.Get());
 	
+	EquipmentComponent = CreateDefaultSubobject<UBSEquipmentComponent>("EquipmentComponent");
+	
 	bAlwaysRelevant = true;
 	bReplicates = true;
 	SetNetUpdateFrequency(60);
 }
 
+void ABSPlayerState::ApplyEquipment(const FBSEquipPickupInfo& Pickup)
+{
+	GetEquipmentComponent()->Server_RequestEquipFromDrop(Pickup);
+}
+
+UCharacterAbilitySystem* ABSPlayerState::GetCharacterAbilitySystem() const
+{
+	return AbilitySystemComponent;
+}
+
 void ABSPlayerState::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->AddSet<UBSAttributeSet>();
-	}
+	
+	check(AbilitySystemComponent);
+	AbilitySystemComponent->InitAbilityActorInfo(this, GetPawn());
+	AbilitySystemComponent->AddSet<UBSAttributeSet>();
+	AbilitySystemComponent->AddSet<UBSExtendedAttributeSet>();
 }
 
 void ABSPlayerState::BeginPlay()
@@ -84,6 +102,16 @@ void ABSPlayerState::BeginPlay()
 		UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
 		SaveSubsystem->GetOnAsyncLoadCompleteDelegate().AddDynamic(this, &ABSPlayerState::OnSaveLoaded);
 		SaveSubsystem->LoadGameAsync(GetPlayerController());
+	}
+}
+
+void ABSPlayerState::ClientInitialize(AController* C)
+{
+	Super::ClientInitialize(C);
+	
+	if (UPawnInitializationComponent* PawnExtComp = UPawnInitializationComponent::FindPawnExtensionComponent(GetPawn()))
+	{
+		PawnExtComp->TryInitAbilitySystemForPlayer(GetCharacterAbilitySystem(), this);
 	}
 }
 
@@ -165,11 +193,6 @@ void ABSPlayerState::OnSaveLoaded(UBSSaveGame* SaveGame)
 {
 	Server_ReceiveSaveData(SaveGame->SaveData);
 	bIsInitialized = true;
-}
-
-UBSAbilitySystemComponent* ABSPlayerState::GetBSAbilitySystem() const
-{
-	return AbilitySystemComponent.Get();
 }
 
 void ABSPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)

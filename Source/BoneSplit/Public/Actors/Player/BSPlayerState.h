@@ -6,10 +6,13 @@
 #include "AbilitySystemInterface.h"
 #include "BSSaveGame.h"
 #include "Components/Inventory/BSInventoryComponent.h"
+#include "Equipment/BSEquipmentInterface.h"
 #include "GameFramework/PlayerState.h"
 #include "Widgets/HUD/BSWHud.h"
 #include "BSPlayerState.generated.h"
 
+class UBSEquipmentComponent;
+class UCharacterAbilitySystem;
 class UBSInventoryComponent;
 class ABSPlayerState;
 struct FBSEquipmentDropInfo;
@@ -24,7 +27,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBSOnPlayerColorChangedDep, FColor, 
 DECLARE_MULTICAST_DELEGATE(FBSOnPlayerState);
 
 UCLASS(DisplayName="Player State", Abstract, BlueprintType, Blueprintable, Category="BoneSplit")
-class BONESPLIT_API ABSPlayerState : public APlayerState, public IAbilitySystemInterface, public IBSInventoryInterface
+class BONESPLIT_API ABSPlayerState : public APlayerState, 
+public IAbilitySystemInterface, 
+public IBSInventoryInterface,
+public IBSEquipmentInterface
 {
 	GENERATED_BODY()
 	
@@ -32,9 +38,17 @@ public:
 	
 	explicit ABSPlayerState(const FObjectInitializer& ObjectInitializer);
 	
+	virtual UBSEquipmentComponent* GetEquipmentComponent() const override { return EquipmentComponent; }
+	
+	virtual void ApplyEquipment(const FBSEquipPickupInfo& Pickup) override;
+	
+	UCharacterAbilitySystem* GetCharacterAbilitySystem() const;
+	
 	virtual void PostInitializeComponents() override;
 	
 	virtual void BeginPlay() override;
+	
+	virtual void ClientInitialize(AController* C) override;
 	
 	virtual void CopyProperties(APlayerState* PlayerState) override;
 	
@@ -49,8 +63,6 @@ public:
 	
 	//Checks if the server received save data and has set up Asc.
 	bool GetHasAscData() const;
-	
-	UBSAbilitySystemComponent* GetBSAbilitySystem() const;
 	
 	UFUNCTION(Server, Reliable)
 	void Server_ReceiveWantPause();
@@ -73,6 +85,9 @@ public:
 
 protected:
 	
+	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
+	TObjectPtr<UBSEquipmentComponent> EquipmentComponent;
+	
 	void OnDamageOther(FGameplayTag EventTag, const FGameplayEventData* Payload);
 	
 	UFUNCTION(Client, Reliable)
@@ -88,7 +103,9 @@ protected:
 	TObjectPtr<UBSTalentComponent> TalentComponent;
 	
 	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
-	TObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
+	TObjectPtr<UCharacterAbilitySystem> AbilitySystemComponent;
+	
+
 	
 	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
 	TObjectPtr<UBSInventoryComponent> InventoryComponent;

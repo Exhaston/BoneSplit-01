@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Components/PawnComponent.h"
 #include "BSPatrolComponent.generated.h"
 
 
+class ABSMobController;
 struct FPathFollowingResult;
 struct FAIRequestID;
 
@@ -24,44 +26,70 @@ class BONESPLIT_API UBSPatrolComponent : public UActorComponent
 	GENERATED_BODY()
 	
 public:
+    explicit UBSPatrolComponent(const FObjectInitializer& ObjectInitializer);
 
-	UBSPatrolComponent();
+    virtual void BeginPlay() override;
+    
+    UFUNCTION()
+    void OnPawnControllerSet(APawn* OwnerPawn, AController* OldController, AController* NewController);
+    
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType,
+        FActorComponentTickFunction* ThisTickFunction) override;
 
-	virtual void StartPatrol();
-	virtual void StopPatrol();
+    UFUNCTION(BlueprintCallable, Category="Patrol")
+    void StartPatrol();
 
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+    UFUNCTION(BlueprintCallable, Category="Patrol")
+    void StopPatrol();
 
 protected:
+    void MoveToCurrentPoint();
+    void MoveToFollowActor();
+    void AdvancePatrolIndex();
+    
+    void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
 
-	virtual void BeginPlay() override;
-	virtual void MoveToFollowActor();
-	void MoveToCurrentPoint();
-	void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
-	void AdvancePatrolIndex();
+    // --- Config ---
 
-	AAIController* GetOwnerController();
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Patrol")
-	bool bStartReversed = false;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patrol")
+    TObjectPtr<ABSPatrolPath> PatrolPathActor;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Patrol")
-	TObjectPtr<ABSPatrolPath> PatrolPathActor;
-	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Patrol")
-	TObjectPtr<AActor> FollowActor;
-	
-	UPROPERTY()
-	FVector FollowActorOffset;
-	
-	UPROPERTY()
-	TWeakObjectPtr<AAIController> CachedOwnerController;
+    // If set, the AI will shadow this actor instead of walking a patrol path
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patrol")
+    TObjectPtr<AActor> FollowActor;
 
-private:
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patrol")
+    bool bStartReversed = false;
 
-	int32  CurrentPointIndex  = 0;
-	int32  Direction          = 1;       // 1 = forward, -1 = reverse
-	bool   bPatrolActive      = false;
-	bool   bWaiting           = false;
-	float  WaitTimeRemaining  = 0.f;
+    // Minimum distance the follow target must move before re-issuing a move request
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patrol", meta=(ClampMin="1.0"))
+    float FollowMoveThreshold = 50.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Patrol", meta=(ClampMin="1.0"))
+    float AcceptanceRadius = 50.f;
+
+    // --- Runtime state ---
+
+    UPROPERTY(Transient)
+    int32 CurrentPointIndex = 0;
+
+    UPROPERTY(Transient)
+    int32 Direction = 1;
+
+    UPROPERTY(Transient)
+    bool bPatrolActive = false;
+
+    UPROPERTY(Transient)
+    bool bWaiting = false;
+
+    UPROPERTY(Transient)
+    float WaitTimeRemaining = 0.f;
+
+    // Last location we issued a follow-move to, used for threshold check
+    FVector LastIssuedFollowLocation = FVector::ZeroVector;
+
+    FVector FollowActorOffset = FVector::ZeroVector;
+
+    UPROPERTY(BlueprintReadOnly, Transient)
+    TObjectPtr<ABSMobController> MobController;
 };

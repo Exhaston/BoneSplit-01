@@ -2,22 +2,8 @@
 
 
 #include "Components/AbilitySystem/AbilityBases/BSAbilityBase_Combo.h"
-
 #include "AbilitySystemComponent.h"
 #include "Components/AbilitySystem/AbilityTasks/BSPlayMontageWaitForEvent.h"
-#include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
-
-bool UBSAbilityBase_Combo::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,
-                                              const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags,
-                                              const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
-{
-	if (bRequireGrounded && ActorInfo->AvatarActor.IsValid() && Cast<ACharacter>(ActorInfo->AvatarActor.Get()))
-	{
-		if (Cast<ACharacter>(ActorInfo->AvatarActor.Get())->GetCharacterMovement()->IsFalling()) return false;
-	}
-	return Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags);
-}
 
 void UBSAbilityBase_Combo::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
                                            const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
@@ -79,7 +65,6 @@ void UBSAbilityBase_Combo::HandleMontageComboEnd(FGameplayTag Tag, FGameplayEven
 			if (const UAnimInstance* AnimInstance = GetCurrentActorInfo()->GetAnimInstance(); 
 				AnimInstance && !bAutoBlendFromSectionEnd)
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("DID IT"));
 				const FName CurrentSection = AnimInstance->Montage_GetCurrentSection(GetCurrentMontage());
 				
 				const FName NextSection = 
@@ -93,3 +78,4 @@ void UBSAbilityBase_Combo::HandleMontageComboEnd(FGameplayTag Tag, FGameplayEven
 		}
 	}
 }
+

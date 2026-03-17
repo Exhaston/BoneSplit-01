@@ -3,9 +3,10 @@
 
 #include "Components/AbilitySystem/AbilityBases/BSAbilityBase.h"
 
+#include "AbilitiesExtensionLib.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayTask.h"
-#include "Actors/Predictables/BSPredictableActor.h"
+#include "Abilities/BSExtendedAttributeSet.h"
 #include "Actors/Predictables/BSProjectileBase.h"
 #include "Camera/CameraComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
@@ -14,14 +15,33 @@ UBSAbilityBase::UBSAbilityBase()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+}
+
+float UBSAbilityBase::GetCostModifier() const
+{
+	return 1 - GetAbilitySystemComponentFromActorInfo()->GetNumericAttribute(UBSExtendedAttributeSet::GetAbilityCostModifierAttribute());
+}
+
+float UBSAbilityBase::GetCooldownModifier() const
+{
+	float Cdr = GetAbilitySystemComponentFromActorInfo()->GetNumericAttribute(UBSExtendedAttributeSet::GetCooldownReductionModifierAttribute());
+	Cdr = UAbilitiesExtensionLib::AsymptoticDr(Cdr, 1);
+	return Cdr;
+}
+
+void UBSAbilityBase::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnAvatarSet(ActorInfo, Spec);
 	
-	//*Most* abilities will block other abilities
-	BlockAbilitiesWithTag = FGameplayTagContainer(BSTags::Ability);
+	if (FGameplayAbilitySpec* MutableSpec = GetCurrentAbilitySpec(); MutableSpec && InputID > 0)
+	{
+		MutableSpec->InputID = InputID;
+	}
 }
 
 void UBSAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
-	const FGameplayEventData* TriggerEventData)
+                                     const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
+                                     const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	
@@ -31,30 +51,15 @@ void UBSAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		FGameplayEventTagMulticastDelegate::FDelegate::CreateUObject(
 		this, &UBSAbilityBase::Native_OnGameplayEventReceived));
 	}
+	else
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+	}
 }
 
 TSoftObjectPtr<UTexture2D> UBSAbilityBase::GetIcon_Implementation() const
 {
 	return AbilityIcon;
-}
-
-bool UBSAbilityBase::CheckCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
-	FGameplayTagContainer* OptionalRelevantTags) const
-{
-	if (CooldownGameplayEffectClass)
-	{
-		if (const UGameplayEffect* CDO = GetDefault<UGameplayEffect>(CooldownGameplayEffectClass); 
-			CDO && CDO->StackLimitCount > 0)
-		{
-			//Check if we haven't reached stack count -> aka ability stacks
-			if (GetAbilitySystemComponentFromActorInfo()->GetGameplayEffectCount(
-			CooldownGameplayEffectClass, nullptr) < CDO->StackLimitCount)
-			{
-				return true;
-			} 
-		}
-	}
-	return Super::CheckCooldown(Handle, ActorInfo, OptionalRelevantTags);
 }
 
 void UBSAbilityBase::Native_OnGameplayEventReceived(const FGameplayTag EventTag, const FGameplayEventData* Payload)
@@ -104,11 +109,13 @@ void UBSAbilityBase::SpawnProjectileForPlayer(TSubclassOf<ABSProjectileBase> Pro
 
 void UBSAbilityBase::SpawnProjectileForMob(const TSubclassOf<ABSProjectileBase> Projectile, const FTransform SpawnTransform, const int32 NumProjectiles, float ConeAngle, const bool bScaleWithMultiHit)
 {
+	/*
 	if (GetBSAbilitySystemComponent()->IsOwnerActorAuthoritative() && NumProjectiles > 0 && Projectile)
 	{
 		GetBSAbilitySystemComponent()->NetMulticast_SpawnProjectileForMob(GetAvatarActorFromActorInfo(), Projectile, SpawnTransform, NumProjectiles, ConeAngle, bScaleWithMultiHit);
 	}
 
+*/
 }
 
 void UBSAbilityBase::GetTargetRotationForProjectile(const FVector& ProjectileOrigin, FVector& BaseAimDirection, FVector& OutProjectileBaseAimPoint, FVector& OutCameraBaseAimPoint) const
@@ -161,3 +168,5 @@ UBSAbilitySystemComponent* UBSAbilityBase::GetBSAbilitySystemComponent() const
 {
 	return Cast<UBSAbilitySystemComponent>(GetAbilitySystemComponentFromActorInfo());
 }
+
+

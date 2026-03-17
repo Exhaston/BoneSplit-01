@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NavigationSystem.h"
+#include "AI/NavigationSystemConfig.h"
 #include "GameFramework/WorldSettings.h"
 #include "BSWorldSettings.generated.h"
 
@@ -17,4 +19,6 @@ class BONESPLIT_API ABSWorldSettings : public AWorldSettings
 public:
 	
 	explicit ABSWorldSettings(const FObjectInitializer& Initializer);
+	
+	
 };

@@ -13,6 +13,11 @@
 #include "GameFramework/Character.h"
 #include "BSMobCharacter.generated.h"
 
+class ABSMobController;
+class UBSProjectileSpawnerComponent;
+class UBSCharacterInitData;
+class UCharacterAbilitySystem;
+class UNavigationInvokerComponent;
 class UBSPatrolComponent;
 class UBSAggroComponent;
 class UPlayMontageCallbackProxy;
@@ -27,6 +32,9 @@ class UGameplayAbility;
 class UGameplayEffect;
 class UBSAbilitySystemComponent;
 class UBSMobMovementComponent;
+class ABSMobCharacter;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBSOnMobDied, ABSMobCharacter*, MobCharacter);
 
 UCLASS(Blueprintable, Abstract, BlueprintType, DisplayName="Mob Character")
 class BONESPLIT_API ABSMobCharacter : public ACharacter, public IBSAbilitySystemInterface, public IBSGenericMobInterface, 
@@ -36,6 +44,14 @@ public IBSThreatInterface
 
 public:
 	
+	ABSMobController* GetMobController() const;
+	
+	FBSOnMobDied OnMobDiedDelegate;
+	
+	UFUNCTION()
+	void OnMobDied(UAbilitySystemComponent* InstigatorAsc, UAbilitySystemComponent* TargetAsc, FGameplayTagContainer EffectTags, float BaseDamage, float TotalDamage);
+	
+	virtual void Destroyed() override;
 	// =================================================================================================================
 	// Defaults
 	// =================================================================================================================
@@ -43,6 +59,8 @@ public:
 	explicit ABSMobCharacter(const FObjectInitializer& ObjectInitializer);
 	
 	virtual void BeginPlay() override;
+	
+	virtual void PossessedBy(AController* NewController) override;
 	
 	virtual void PostInitializeComponents() override;
 	
@@ -67,7 +85,7 @@ public:
 	bool bInRange = false;
 	
 	UPROPERTY()
-	float AbilityCheckTimeInterval = 0.5;
+	float AbilityCheckTimeInterval = 1;
 	
 	UPROPERTY()
 	float ElapsedAbilityCheckTime = 0;
@@ -160,6 +178,12 @@ public:
 protected:
 	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UBSProjectileSpawnerComponent* ProjectileSpawnerComponent;
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UBSCharacterInitData* InitData;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TObjectPtr<UBSPatrolComponent> PatrolComponent;
 	
 	virtual void SetRandomColor();
@@ -205,8 +229,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleDefaultsOnly)
 	UWidgetComponent* WidgetComponent;
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="BS|Initialization")
-	UBSAbilitySystemComponent* AbilitySystemComponent;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="BS|Initialization")
+	UCharacterAbilitySystem* AbilitySystemComponent;
+	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="BS|Initialization")
+	UNavigationInvokerComponent* NavigationInvokerComponent;
 	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UBSAggroComponent* AggroComponent;

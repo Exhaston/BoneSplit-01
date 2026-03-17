@@ -25,6 +25,7 @@ UBSMobMovementComponent::UBSMobMovementComponent()
 	NavWalkingFloorDistTolerance = 0;
 	bSweepWhileNavWalking = true;
 	
+	
 	// =================================================================================================================
 	// Character Properties
 	// =================================================================================================================   

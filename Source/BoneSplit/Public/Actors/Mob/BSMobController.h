@@ -26,6 +26,8 @@ public:
 	void StopChasing();
 	
 	bool IsOnValidNavMesh();
+	
+	virtual bool IsNavSysValid();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Movement")

@@ -4,13 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "CharacterAbilitySystem.h"
 #include "ClientAuthoritativeCharacter.h"
+#include "GameplayCueInterface.h"
 #include "Components/AbilitySystem/BSAbilitySystemInterface.h"
 #include "Components/Inventory/BSEquipment.h"
 #include "Components/Inventory/BSEquipmentMeshComponent.h"
 #include "Components/Inventory/BSInventoryComponent.h"
+#include "Equipment/BSEquipmentInterface.h"
 #include "BSPlayerCharacter.generated.h"
 
+class UBSEquipmentAsset;
+class UBSCharacterInitData;
+class UPawnInitializationComponent;
+class ABSPlayerController;
+class UNavigationInvokerComponent;
 class UBSInteractionComponent;
 class UTextRenderComponent;
 struct FGameplayEffectSpec;
@@ -62,11 +70,39 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(FBSOnSkeletalMesh, FGameplayTag SlotTag, US
 UCLASS(DisplayName="Player Character", Blueprintable, BlueprintType, 
 	Category="BoneSplit", ClassGroup="BoneSplit", Abstract)
 class BONESPLIT_API ABSPlayerCharacter : public AClientAuthoritativeCharacter, 
-public IBSAbilitySystemInterface, public IBSInventoryInterface
+public IBSAbilitySystemInterface, 
+public IBSInventoryInterface, 
+public IGameplayTagAssetInterface, 
+public IGameplayCueInterface,
+public IBSEquipmentInterface
 {
 	GENERATED_BODY()
 	
 public:
+	
+	UFUNCTION()
+	void OnAbilitySystemInitialized();
+	
+	virtual bool CanJumpInternal_Implementation() const override;
+	
+	UFUNCTION()
+	void OnAbilitySystemUninitialized();
+	
+	ABSPlayerState* GetBSPlayerState() const;
+	ABSPlayerController* GetBSPlayerController() const;
+	UCharacterAbilitySystem* GetCharacterAbilitySystemComponent() const; 
+	
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+	virtual bool HasMatchingGameplayTag(FGameplayTag TagToCheck) const override;
+	virtual bool HasAllMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
+	virtual bool HasAnyMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
+	
+	UPROPERTY()
+	UPawnInitializationComponent* InitializationComponent;
+
+	virtual UBSEquipmentComponent* GetEquipmentComponent() const override;
+	
+	virtual void ApplyEquipment(const FBSEquipPickupInfo& Pickup) override;
 
 #pragma region Defaults
 	                                     
@@ -76,15 +112,21 @@ public:
 	
 	explicit ABSPlayerCharacter(const FObjectInitializer& ObjectInitializer);
 	
-	virtual void BeginPlay() override;
-	
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	virtual void PossessedBy(AController* NewController) override;
 	
+	virtual void OnPlayerStateChanged(APlayerState* NewPlayerState, APlayerState* OldPlayerState) override;
+	
+	virtual void UnPossessed() override;
+	
+	virtual void OnRep_Controller() override;
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	virtual void OnRep_PlayerState() override;
+	
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
 #pragma endregion
 	
@@ -182,17 +224,14 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
 	virtual UBSInventoryComponent* GetInventoryComponent() override;
-	
-	UFUNCTION(BlueprintPure)
-	ABSPlayerState* GetBSPlayerState() const;
 
 protected:
 	
 	UPROPERTY(meta=(AllowPrivateAccess=true))
 	TObjectPtr<UBSInteractionComponent>	InteractionComponent;
 	
-	UPROPERTY(meta=(AllowPrivateAccess=true))
-	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, meta=(AllowPrivateAccess=true))
+	TObjectPtr<UNavigationInvokerComponent> NavigationInvokerComponent;
 	
 #pragma endregion
 	
@@ -206,6 +245,9 @@ protected:
 	void UpdateMeshColors(FColor NewColor);
 	
 public:
+	
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	TArray<UBSEquipmentAsset*> DefaultEquipment;
 	
 	virtual void AddEquipmentMesh(const UBSEquipmentEffect* InSource);
 	virtual void RemoveEquipmentMesh(const UBSEquipmentEffect* InSource);
@@ -222,12 +264,8 @@ protected:
 	
 #pragma region Initialization&Replication
 	
-	// =================================================================================================================
-	// Initialization And Replication
-	// ================================================================================================================= 
-	
-	//Initializes the character from default data and additional save data. Needs to run for all clients and server.
-	virtual void InitializeCharacter();
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
+	UBSCharacterInitData* CharacterInitializationData;
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 	UAnimMontage* BlockMontage;

@@ -3,7 +3,41 @@
 
 #include "Widgets/HUD/BSWDamageNumber.h"
 
+#include "AbilitiesExtensionLib.h"
 #include "BoneSplit/BoneSplit.h"
+
+void UBSWDamageNumber::InitializeDamageNumber(AActor* TargetActor, float Number, FGameplayTagContainer Tags)
+{
+	if (!TargetActor) return;
+	WorldLocation = TargetActor->GetActorLocation();
+	RandomScreenOffset = {FMath::RandRange(-100.f, 100.f), 0};
+	SetLocation();
+	RichDamageText->SetText(FText::FromString(FString::FromInt(FMath::RoundToInt(Number))));
+	
+	UWidgetAnimation* AnimToPlay = nullptr;
+	
+	if (Tags.HasTagExact(BSTags::EffectTag_Critical))
+	{
+		RichDamageText->SetStyle(CritStyle);
+		AnimToPlay = CritAnimation;
+	}
+	if (!AnimToPlay && Tags.HasTagExact(BSTags::EffectTag_Important))
+	{
+		RichDamageText->SetStyle(ImportantStyle);
+		AnimToPlay = ImpactAnimation;
+	}
+	if (!AnimToPlay)
+	{
+		RichDamageText->SetStyle(NormalStyle);
+		AnimToPlay = FloatAnimation;
+	}
+	
+	PlayAnimation(AnimToPlay).GetAnimationState()->GetOnWidgetAnimationFinished().AddWeakLambda(
+		this, [this] (FWidgetAnimationState& State)
+	{
+		RemoveFromParent();
+	});
+}
 
 void UBSWDamageNumber::InitializeDamageNumber(FGameplayEventData EventData)
 {

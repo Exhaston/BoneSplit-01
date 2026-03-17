@@ -3,13 +3,18 @@
 
 #include "Widgets/HUD/BSWHud.h"
 
+#include "CharacterAbilitySystem.h"
+#include "CommonLazyImage.h"
+#include "Abilities/BSBuffEffect.h"
 #include "Actors/Player/BSPlayerController.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
+#include "Components/AbilitySystem/AbilityBases/BSAbilityBase_PlayerHook.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 #include "Widgets/HUD/BSAttributeBar.h"
 #include "Widgets/HUD/BSActionButton.h"
+#include "Widgets/HUD/BSBuffIcon.h"
 
-void UBSWHud::InitializePlayerHUD(UBSAbilitySystemComponent* InAbilitySystemComponent)
+void UBSWHud::InitializePlayerHUD(UCharacterAbilitySystem* InAbilitySystemComponent)
 {
 	AbilitySystemComponent = InAbilitySystemComponent;
 	if (AbilitySystemComponent.IsValid())
@@ -29,6 +34,39 @@ void UBSWHud::InitializePlayerHUD(UBSAbilitySystemComponent* InAbilitySystemComp
 		if (ActionButton4) ActionButton4->InitializeActionButton(InAbilitySystemComponent);
 		
 		if (ActionButton5) ActionButton5->InitializeActionButton(InAbilitySystemComponent);
+		
+		/*
+		AbilitySystemComponent->OnActiveGameplayEffectAddedDelegateToSelf.AddWeakLambda(this, [this]
+			(UAbilitySystemComponent* Asc, const FGameplayEffectSpec& Spec, FActiveGameplayEffectHandle Handle)
+		{
+			if (!Spec.Def.IsA(UBSBuffEffect::StaticClass())) return;
+			const UBSBuffEffect* SourceEffect = Cast<UBSBuffEffect>(Spec.Def);
+			
+			if (!SourceEffect) return;
+			
+			UBSBuffIcon* EffectIcon = BuffMap.FindOrAdd(SourceEffect);
+			
+			if (!EffectIcon)
+			{
+				EffectIcon = CreateWidget<UBSBuffIcon>(this, BuffIconClass);
+			}
+			
+			BuffParentSlot->AddChild(EffectIcon);
+			EffectIcon->InitializeBuffIcon(SourceEffect);
+		});
+		
+		AbilitySystemComponent->OnAnyGameplayEffectRemovedDelegate().AddWeakLambda(this, [this]
+			(const FActiveGameplayEffect& EndedEffect)
+		{
+			if (!EndedEffect.Spec.Def.IsA(UBSBuffEffect::StaticClass())) return;
+			const UBSBuffEffect* SourceEffect = Cast<UBSBuffEffect>(EndedEffect.Spec.Def);
+			if (BuffMap[SourceEffect])
+			{
+				BuffMap[SourceEffect]->RemoveFromParent();
+			}
+			BuffMap.Remove(SourceEffect);
+		});
+		*/
 	}
 }
 
@@ -52,5 +90,32 @@ void UBSWHud::NativeOnActivated()
 	if (ABSPlayerController* OwningPS = GetOwningPlayer<ABSPlayerController>())
 	{
 
+	}
+}
+
+void UBSWHud::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	
+	if (AbilitySystemComponent.IsValid())
+	{
+		TArray<FGameplayAbilitySpec> SpecHandles = AbilitySystemComponent->GetActivatableAbilities();
+
+		for (auto& SpecHandle : SpecHandles)
+		{
+			UGameplayAbility* AbilityInstance = SpecHandle.GetPrimaryInstance();
+			if (!AbilityInstance) continue;
+			if (AbilityInstance->IsA(UBSAbilityBase_PlayerHook::StaticClass()))
+			{
+				const bool CanActivate = 
+					AbilityInstance->CommitCheck(
+						AbilityInstance->GetCurrentAbilitySpecHandle(), 
+						AbilityInstance->GetCurrentActorInfo(), 
+						AbilityInstance->GetCurrentActivationInfoRef());
+				
+				HookCrosshairs->SetVisibility(CanActivate ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+				break;
+			}
+		}
 	}
 }

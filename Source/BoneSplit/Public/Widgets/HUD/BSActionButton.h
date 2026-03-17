@@ -5,16 +5,18 @@
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
 #include "GameplayAbilitySpecHandle.h"
-#include "GameplayTagContainer.h"
-#include "BoneSplit/BoneSplit.h"
 #include "BSActionButton.generated.h"
 
+class UAbilityBufferComponent;
+class UCharacterAbilitySystem;
 class UBSAbilitySystemComponent;
 class UCommonRichTextBlock;
 class UGameplayAbility;
 struct FGameplayAbilitySpec;
 class UAbilitySystemComponent;
 class UCommonLazyImage;
+
+extern TAutoConsoleVariable<bool> CVarToggleCooldownNumbers;
 
 //TODO: NEEDS REWORK. INEFFICIENT LOOPING DURING TICK.
 /**
@@ -27,7 +29,7 @@ class BONESPLIT_API UBSActionButton : public UCommonUserWidget
 	
 public:
 	
-	virtual void InitializeActionButton(UBSAbilitySystemComponent* InAbilitySystemComponent);
+	virtual void InitializeActionButton(UCharacterAbilitySystem* InAbilitySystemComponent);
 	
 	virtual void NativeConstruct() override;
 	
@@ -46,7 +48,7 @@ protected:
 	virtual void TrySetAbilityIcon(const UGameplayAbility* AbilityInstance);
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta=(Categories="Ability"))
-	FGameplayTag AbilityTag;
+	int32 InputID = -1;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FName TextureParamName = FName("IconTexture");
@@ -64,13 +66,16 @@ protected:
 	UCommonLazyImage* AbilityIcon;
 	
 	UPROPERTY(meta=(BindWidget))
+	UCommonRichTextBlock* CooldownNumberText;
+	
+	UPROPERTY(meta=(BindWidget))
 	UCommonRichTextBlock* AbilityChargeText;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	UTexture2D* FallbackIcon;
 	
 	UPROPERTY(Transient)
-	TWeakObjectPtr<UBSAbilitySystemComponent> AbilitySystemComponent;
+	TObjectPtr<UCharacterAbilitySystem> AbilitySystemComponent;
 	
 	UPROPERTY()
 	FGameplayAbilitySpecHandle CurrentCachedHandle;
@@ -80,4 +85,7 @@ protected:
 	
 	UPROPERTY()
 	float CurrentBufferElapsed = 0;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilityBufferComponent> AbilityBufferComponent;
 };

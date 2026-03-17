@@ -12,19 +12,6 @@ BSConsoleVariables::CVarBSDebugHitDetection.GetValueOnGameThread()
 
 #define BS_AGGRO_DEBUG \
 BSConsoleVariables::CVarBSDebugAggroSpheres.GetValueOnGameThread()
-			                                         
-UENUM(BlueprintType)
-enum EBSAbilityInputID : uint8                         
-{
-	None = 0,
-	Jump = 1,
-	Special = 2,
-	Soul = 3,
-	Head = 4,
-	PrimaryArm = 5,
-	SecondaryArm = 6,
-	Legs = 7
-};
 	
 UENUM(BlueprintType)
 enum class EBSReadyStatus : uint8
@@ -138,7 +125,7 @@ namespace BSTags
 	// Player Ability Tags
 	// =================================================================================================================
 
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability);
+
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Player_Head);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Player_PrimaryArm);
@@ -225,8 +212,6 @@ namespace BSTags
 	// Faction Tags
 	// =================================================================================================================
 	
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction_Player);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction_Rats);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Faction_Slimes);
 	

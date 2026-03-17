@@ -3,6 +3,10 @@
 
 #include "Actors/Player/BSPlayerCharacter.h"
 
+#include "NavigationInvokerComponent.h"
+#include "PawnInitializationComponent.h"
+#include "Abilities/BSCharacterInitData.h"
+#include "Actors/Player/BSPlayerController.h"
 #include "Actors/Player/BSPlayerMovementComponent.h"
 #include "Actors/Player/BSPlayerState.h"
 #include "Animation/BSAnimInstance.h"
@@ -15,7 +19,10 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "BoneSplit/BoneSplit.h"
+#include "CharacterAbilityBase.h"
+#include "Abilities/BSGameplayLibrary.h"
 #include "Components/InteractionSystem/BSInteractionComponent.h"
+#include "Equipment/BSEquipmentComponent.h"
 
 #define CREATE_EQUIPMENT_MESH(ComponentName, DisplayName, ParentMesh, ParentBoneName, SetLeader) \
 ComponentName = CreateDefaultSubobject<UBSEquipmentMeshComponent>(TEXT(DisplayName)); \
@@ -24,6 +31,16 @@ ComponentName->SetupAttachment(ParentMesh, ParentBoneName); \
 ComponentName->SetLeaderPoseComponent(SetLeader ? ParentMesh : nullptr, true); \
 ComponentName->SetReceivesDecals(false); \
 ComponentName->SetCollisionProfileName("CharacterMesh");
+
+UBSEquipmentComponent* ABSPlayerCharacter::GetEquipmentComponent() const
+{
+	return GetBSPlayerState()->GetEquipmentComponent();
+}
+
+void ABSPlayerCharacter::ApplyEquipment(const FBSEquipPickupInfo& Pickup)
+{
+	GetEquipmentComponent()->Server_RequestEquipFromDrop(Pickup);
+}
 
 ABSPlayerCharacter::ABSPlayerCharacter(const FObjectInitializer& ObjectInitializer) : 
 Super(ObjectInitializer
@@ -84,11 +101,12 @@ Super(ObjectInitializer
 	PlayerNameTextComponent->SetVerticalAlignment(EVRTA_TextCenter);
 	
 	InteractionComponent = CreateDefaultSubobject<UBSInteractionComponent>(TEXT("InteractionComponent"));
-}
-
-void ABSPlayerCharacter::BeginPlay()
-{
-	Super::BeginPlay();
+	
+	NavigationInvokerComponent = CreateDefaultSubobject<UNavigationInvokerComponent>(TEXT("NavigationInvokerComponent"));
+	
+	InitializationComponent = CreateDefaultSubobject<UPawnInitializationComponent>(TEXT("PawnExtensionComponent"));
+	InitializationComponent->OnAbilitySystemInitialized_RegisterAndCall(FSimpleMulticastDelegate::FDelegate::CreateUObject(this, &ThisClass::OnAbilitySystemInitialized));
+	InitializationComponent->OnAbilitySystemUninitialized_Register(FSimpleMulticastDelegate::FDelegate::CreateUObject(this, &ThisClass::OnAbilitySystemUninitialized));
 }
 
 void ABSPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -103,7 +121,43 @@ void ABSPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ABSPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	InitializeCharacter(); //Init for server
+	
+	if (ABSPlayerState* PS = GetBSPlayerState())
+	{
+		InitializationComponent->TryInitAbilitySystemForPlayer(PS->GetCharacterAbilitySystem(), PS);
+	}
+
+	
+	InitializationComponent->HandleControllerChanged();
+}
+
+void ABSPlayerCharacter::OnPlayerStateChanged(APlayerState* NewPlayerState, APlayerState* OldPlayerState)
+{
+	Super::OnPlayerStateChanged(NewPlayerState, OldPlayerState);
+	
+	if (ABSPlayerState* PS = GetBSPlayerState())
+	{
+		InitializationComponent->TryInitAbilitySystemForPlayer(PS->GetCharacterAbilitySystem(), PS);
+	}
+}
+
+void ABSPlayerCharacter::UnPossessed()
+{
+	Super::UnPossessed();
+	
+	InitializationComponent->HandleControllerChanged();
+}
+
+void ABSPlayerCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	
+	if (ABSPlayerState* PS = GetBSPlayerState())
+	{
+		InitializationComponent->TryInitAbilitySystemForPlayer(PS->GetCharacterAbilitySystem(), PS);
+	}
+	
+	InitializationComponent->HandleControllerChanged();
 }
 
 void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -116,7 +170,21 @@ void ABSPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 void ABSPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-	InitializeCharacter(); //Init for Client(s)
+	
+	if (ABSPlayerState* PS = GetBSPlayerState())
+	{
+		InitializationComponent->TryInitAbilitySystemForPlayer(PS->GetCharacterAbilitySystem(), PS);
+	}
+}
+
+void ABSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	
+	if (ABSPlayerState* PS = GetBSPlayerState())
+	{
+		InitializationComponent->TryInitAbilitySystemForPlayer(PS->GetCharacterAbilitySystem(), PS);
+	}
 }
 
 void ABSPlayerCharacter::SetMenuCamera()
@@ -129,66 +197,6 @@ void ABSPlayerCharacter::ResetCamera()
 {
 	SpringArmComponent->bUsePawnControlRotation = true;
 	SpringArmComponent->SetRelativeRotation({0, 90, 0});
-}
-
-void ABSPlayerCharacter::InitializeCharacter()
-{
-	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
-	{
-		SetupFloatingName(PS);
-		
-		AbilitySystemComponent = PS->GetBSAbilitySystem();
-		check(AbilitySystemComponent.IsValid());
-		GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
-		
-		if (HasAuthority())
-		{	
-			AbilitySystemComponent->GenericGameplayEventCallbacks.FindOrAdd(BSTags::GameplayEvent_Block).AddWeakLambda(
-			this,[this](const FGameplayEventData* Payload)
-			{
-				if (Payload)
-				{
-					OnDamageBlocked();
-				}
-			});
-		}
-		
-		UBSInventoryComponent* InventoryComponent = PS->GetInventoryComponent();
-	
-		//Initialize Asc on the character movement comp for stat tracking
-		GetCharacterMovement<UBSPlayerMovementComponent>()->InitializeAsc(GetAbilitySystemComponent());
-	
-		//Bind Anim Instance to the ability system component.
-		if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
-		{
-			AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
-		}
-	
-		//Update meshes to equipment then subscribe to future events
-		for (const auto ExistingEquipment : PS->GetInventoryComponent()->GetEquipment())
-		{
-			AddEquipmentMesh(ExistingEquipment);
-		}
-	
-		PS->GetInventoryComponent()->GetEquipmentRemovedDelegate().AddWeakLambda(this, [this]
-			(const UBSEquipmentEffect* OldEquipment)
-		{
-			RemoveEquipmentMesh(OldEquipment);
-		});
-	
-		PS->GetInventoryComponent()->GetEquipmentEquippedDelegate().AddWeakLambda(
-			this, [this](const UBSEquipmentEffect* Equipment)
-		{
-				AddEquipmentMesh(Equipment);
-		});
-	
-		//Update Colors and subscribe to future events
-		UpdateMeshColors(InventoryComponent->GetPlayerColor());
-		InventoryComponent->GetPlayerColorChangedDelegate().AddWeakLambda(this, [this](FColor NewColor)
-		{
-			UpdateMeshColors(NewColor);
-		});      
-	}
 }
 
 void ABSPlayerCharacter::OnDamageBlocked_Implementation()
@@ -245,7 +253,7 @@ FBSOnCombatChangedDelegate& ABSPlayerCharacter::GetOnCombatChangedDelegate()
 
 UAbilitySystemComponent* ABSPlayerCharacter::GetAbilitySystemComponent() const
 {
-	return AbilitySystemComponent.IsValid() ? AbilitySystemComponent.Get() : nullptr;
+	return InitializationComponent->GetCharacterAbilitySystem();
 }
 
 UBSInventoryComponent* ABSPlayerCharacter::GetInventoryComponent()
@@ -253,9 +261,172 @@ UBSInventoryComponent* ABSPlayerCharacter::GetInventoryComponent()
 	return GetBSPlayerState()->GetInventoryComponent();
 }
 
+void ABSPlayerCharacter::OnAbilitySystemInitialized()
+{
+	UCharacterAbilitySystem* CharAsc = GetCharacterAbilitySystemComponent();
+	check(CharAsc);
+	
+	if (HasAuthority())
+	{	
+		
+		if (CharacterInitializationData)
+		{
+			UBSGameplayLibrary::ApplyCharacterDataTo(
+				CharacterInitializationData, 
+				CharAsc, 
+				CharacterInitializationData->StartLevel);
+		}
+		
+		CharAsc->GenericGameplayEventCallbacks.FindOrAdd(BSTags::GameplayEvent_Block).AddWeakLambda(
+		this,[this](const FGameplayEventData* Payload)
+		{
+			if (Payload)
+			{
+				OnDamageBlocked();
+			}
+		});
+	}
+	
+	if (ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
+	{
+		SetupFloatingName(PS);
+		
+		UBSInventoryComponent* InventoryComponent = PS->GetInventoryComponent();
+	
+		//Initialize Asc on the character movement comp for stat tracking
+		GetCharacterMovement<UBSPlayerMovementComponent>()->InitializeAsc(GetAbilitySystemComponent());
+	
+		//Bind Anim Instance to the ability system component.
+		if (UBSAnimInstance* AnimInstance = Cast<UBSAnimInstance>(GetMesh()->GetAnimInstance()))
+		{
+			AnimInstance->InitializeAbilitySystemComponent(GetAbilitySystemComponent());
+		}
+	
+		//Update meshes to equipment then subscribe to future events
+		for (const auto ExistingEquipment : PS->GetInventoryComponent()->GetEquipment())
+		{
+			AddEquipmentMesh(ExistingEquipment);
+		}
+	
+		PS->GetInventoryComponent()->GetEquipmentRemovedDelegate().AddWeakLambda(this, [this]
+			(const UBSEquipmentEffect* OldEquipment)
+		{
+			RemoveEquipmentMesh(OldEquipment);
+		});
+	
+		PS->GetInventoryComponent()->GetEquipmentEquippedDelegate().AddWeakLambda(
+			this, [this](const UBSEquipmentEffect* Equipment)
+		{
+				AddEquipmentMesh(Equipment);
+		});
+	
+		//Update Colors and subscribe to future events
+		UpdateMeshColors(InventoryComponent->GetPlayerColor());
+		InventoryComponent->GetPlayerColorChangedDelegate().AddWeakLambda(this, [this](FColor NewColor)
+		{
+			UpdateMeshColors(NewColor);
+		});   
+		
+		GetEquipmentComponent()->SetEquipmentOwner(this, GetCharacterAbilitySystemComponent());
+		
+		if (HasAuthority())
+		{
+			for (const auto DefEquip : DefaultEquipment)
+			{
+				GetEquipmentComponent()->ApplyEquipmentByClass(DefEquip);
+			}
+		}
+	}
+	
+	if (GetBSPlayerController()) //Only for server and locally controlled
+	{
+		GetBSPlayerController()->InitializeWithAbilitySystem(CharAsc);
+	}
+}
+
+bool ABSPlayerCharacter::CanJumpInternal_Implementation() const
+{
+	bool bJumpIsAllowed = GetCharacterMovement()->CanAttemptJump();
+    
+	const bool bCoyoteActive = 
+		GetCharacterMovement<UBSPlayerMovementComponent>()->IsCoyoteTimeActive();
+
+	if (bJumpIsAllowed || bCoyoteActive)
+	{
+		if (!bWasJumping || GetJumpMaxHoldTime() <= 0.0f)
+		{
+			if (bCoyoteActive)
+			{
+				// Coyote jump always allowed regardless of jump count
+				bJumpIsAllowed = true;
+			}
+			else if (JumpCurrentCount == 0 && GetCharacterMovement()->IsFalling())
+			{
+				bJumpIsAllowed = JumpCurrentCount + 1 < JumpMaxCount;
+			}
+			else
+			{
+				bJumpIsAllowed = JumpCurrentCount < JumpMaxCount;
+			}
+		}
+	}
+
+	return bJumpIsAllowed;
+}
+
+void ABSPlayerCharacter::OnAbilitySystemUninitialized()
+{
+	
+}
+
 ABSPlayerState* ABSPlayerCharacter::GetBSPlayerState() const
 {
-	return GetPlayerState<ABSPlayerState>();
+	return CastChecked<ABSPlayerState>(GetPlayerState(), ECastCheckedType::NullAllowed);
+}
+
+ABSPlayerController* ABSPlayerCharacter::GetBSPlayerController() const
+{
+	return CastChecked<ABSPlayerController>(GetController(), ECastCheckedType::NullAllowed);
+}
+
+UCharacterAbilitySystem* ABSPlayerCharacter::GetCharacterAbilitySystemComponent() const
+{
+	return Cast<UCharacterAbilitySystem>(GetAbilitySystemComponent());
+}
+
+void ABSPlayerCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
+{
+	if (const UCharacterAbilitySystem* CharAsc = GetCharacterAbilitySystemComponent())
+	{
+		CharAsc->GetOwnedGameplayTags(TagContainer);
+	}
+}
+
+bool ABSPlayerCharacter::HasMatchingGameplayTag(FGameplayTag TagToCheck) const
+{
+	if (const UCharacterAbilitySystem* CharAsc = GetCharacterAbilitySystemComponent())
+	{
+		return CharAsc->HasMatchingGameplayTag(TagToCheck);
+	}  
+	return false;
+}
+
+bool ABSPlayerCharacter::HasAllMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const
+{
+	if (const UCharacterAbilitySystem* CharAsc = GetCharacterAbilitySystemComponent())
+	{
+		return CharAsc->HasAllMatchingGameplayTags(TagContainer);
+	}  
+	return false;
+}
+
+bool ABSPlayerCharacter::HasAnyMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const
+{
+	if (const UCharacterAbilitySystem* CharAsc = GetCharacterAbilitySystemComponent())
+	{
+		return CharAsc->HasAnyMatchingGameplayTags(TagContainer);
+	}  
+	return false;
 }
 
 void ABSPlayerCharacter::Client_LaunchCharacter_Implementation(const FVector LaunchVelocity, const bool bXYOverride,
@@ -272,9 +443,9 @@ void ABSPlayerCharacter::Client_LaunchCharacter_Implementation(const FVector Lau
 
 void ABSPlayerCharacter::Launch(const FVector LaunchMagnitude, const bool bAdditive)
 {
-	if (AbilitySystemComponent.IsValid())
+	if (GetCharacterAbilitySystemComponent())
 	{
-		AbilitySystemComponent.Get()->CancelAbilitiesWithTag(BSTags::Ability_Player_Legs);
+		GetCharacterAbilitySystemComponent()->CancelAbilitiesWithTag(BSTags::Ability_Player_Legs);
 	}
 	
 	if (HasAuthority() || IsLocallyControlled())

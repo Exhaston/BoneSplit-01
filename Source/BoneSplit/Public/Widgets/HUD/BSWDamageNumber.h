@@ -19,6 +19,7 @@ class BONESPLIT_API UBSWDamageNumber : public UCommonUserWidget
 	
 public:
 	
+	virtual void InitializeDamageNumber(AActor* TargetActor, float Number, FGameplayTagContainer Tags);
 	virtual void InitializeDamageNumber(FGameplayEventData EventData);
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;

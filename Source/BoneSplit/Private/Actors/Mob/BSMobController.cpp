@@ -4,6 +4,7 @@
 #include "Actors/Mob/BSMobController.h"
 
 #include "NavigationSystem.h"
+#include "Actors/Mob/BSMobCharacter.h"
 #include "Navigation/PathFollowingComponent.h"
 
 ABSMobController::ABSMobController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -25,7 +26,7 @@ void ABSMobController::OnUnPossess()
 
 void ABSMobController::StartChasing()
 {
-	if (!GetWorld() || GetWorld()->bIsTearingDown) return;
+	if (!IsNavSysValid()) return;
 	ReceiveMoveCompleted.AddDynamic(this, &ABSMobController::CustomOnMoveCompleted);
 	
 	GetWorldTimerManager().SetTimer(
@@ -39,7 +40,7 @@ void ABSMobController::StartChasing()
 
 void ABSMobController::StopChasing()
 {
-	if (!GetWorld() || GetWorld()->bIsTearingDown) return;
+	if (!IsNavSysValid()) return;
 	GetWorldTimerManager().ClearTimer(ChaseTimerHandle);
 	ReceiveMoveCompleted.RemoveDynamic(this, &ABSMobController::CustomOnMoveCompleted);
 	StopMovement();
@@ -47,7 +48,7 @@ void ABSMobController::StopChasing()
 
 bool ABSMobController::IsOnValidNavMesh()
 {
-	if (!GetWorld() || !GetPawn() || GetWorld()->bIsTearingDown) return false;
+	if (!IsNavSysValid()) return false;
 
 	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetPawn()->GetWorld());
 	if (!NavSys) return false;
@@ -64,31 +65,38 @@ bool ABSMobController::IsOnValidNavMesh()
 	return bOnNav;
 }
 
+bool ABSMobController::IsNavSysValid()
+{
+	const UWorld* CurrentWorld = GetWorld();
+	return CurrentWorld && !CurrentWorld->bIsTearingDown;
+}
+
 void ABSMobController::ChasePlayer()
 {
-	if (!GetWorld() || GetWorld()->bIsTearingDown) return;
-	const APawn* AIPawn = GetPawn();
+	if (!IsNavSysValid()) return;
+	const ABSMobCharacter* AIPawn = GetPawn<ABSMobCharacter>();
 	const AActor* PlayerPawn = GetFocusActor();
 
-	if (!AIPawn || !PlayerPawn)
-		return;
+	if (!AIPawn || !PlayerPawn) return;
 
+	const bool bHasLOS = LineOfSightTo(PlayerPawn);
 	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), PlayerPawn->GetActorLocation());
-	
-	if (Distance <= AcceptanceRadius)
+
+	// Only stop if BOTH close enough AND can see the player
+	if (bHasLOS && Distance <= AIPawn->FollowDistance)
 	{
 		StopMovement();
 		return;
 	}
-	
-	if (Distance > RestartDistance || GetMoveStatus() == EPathFollowingStatus::Idle)
+
+	// Restart path if: too far, idle, or lost LOS
+	if (Distance > RestartDistance || GetMoveStatus() == EPathFollowingStatus::Idle || !bHasLOS)
 	{
 		FAIMoveRequest MoveRequest;
-		FVector VelocityAdjust = { PlayerPawn->GetVelocity().X, PlayerPawn->GetVelocity().Y, 0 };
 		MoveRequest.SetGoalLocation(PlayerPawn->GetActorLocation());
 		MoveRequest.SetReachTestIncludesGoalRadius(false);
 		MoveRequest.SetReachTestIncludesAgentRadius(false);
-		MoveRequest.SetAcceptanceRadius(AcceptanceRadius);
+		MoveRequest.SetAcceptanceRadius(bHasLOS ? AcceptanceRadius : 0.f);
 		MoveRequest.SetProjectGoalLocation(true);
 		MoveRequest.SetUsePathfinding(IsOnValidNavMesh());
 
@@ -98,6 +106,8 @@ void ABSMobController::ChasePlayer()
 
 void ABSMobController::CustomOnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
 {
+	if (!IsNavSysValid()) return;
+	
 	if (Result == EPathFollowingResult::Success)
 	{
 		// Reached the player — stop the chase loop

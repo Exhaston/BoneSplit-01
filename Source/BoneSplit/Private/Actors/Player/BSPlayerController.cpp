@@ -3,7 +3,10 @@
 
 #include "Actors/Player/BSPlayerController.h"
 
+#include "AbilityBufferComponent.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
+#include "CharacterAbilitySystem.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Actors/Player/BSPlayerState.h"
@@ -11,6 +14,7 @@
 #include "Components/TimelineComponent.h"
 #include "Components/AbilitySystem/BSAbilitySystemComponent.h"
 #include "Components/InteractionSystem/BSInteractionComponent.h"
+#include "Equipment/BSEquipmentComponent.h"
 #include "GameFramework/Character.h"
 #include "GameInstance/BSLoadingScreenSubsystem.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
@@ -23,7 +27,7 @@
 
 ABSPlayerController::ABSPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	
+	AbilityBufferComponent = CreateDefaultSubobject<UAbilityBufferComponent>("AbilityBufferComponent");
 }
 
 void ABSPlayerController::SetupInputComponent()
@@ -32,6 +36,8 @@ void ABSPlayerController::SetupInputComponent()
 	
 	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
 	check(EnhancedInputComponent);
+	
+	AbilityBufferComponent->BindAbilityInputActions(EnhancedInputComponent);
 	
 	// =================================================================================================================
 	// Movement and Looking
@@ -120,8 +126,6 @@ void ABSPlayerController::SetupInputComponent()
 		}
 	});
 	
-	BindJumpToAction(EnhancedInputComponent, JumpAction);
-	
 	EnhancedInputComponent->BindActionValueLambda(InteractAction, ETriggerEvent::Started, 
 	[this](const FInputActionValue& Value)
 	{
@@ -167,23 +171,22 @@ void ABSPlayerController::SetupInputComponent()
 	// Abilities
 	// =================================================================================================================
 	
-	BindAbilityToAction(EnhancedInputComponent, 
-	SpecialAction, 6);
+}
+
+void ABSPlayerController::OnUnPossess()
+{
+	if (APawn* PawnBeingUnpossessed = GetPawn())
+	{
+		if (UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(PlayerState))
+		{
+			if (ASC->GetAvatarActor() == PawnBeingUnpossessed)
+			{
+				ASC->SetAvatarActor(nullptr);
+			}
+		}
+	}
 	
-	BindAbilityToAction(EnhancedInputComponent, 
-	SoulAction, 5);
-	
-	BindAbilityToAction(EnhancedInputComponent,
-	HeadAction, 3);
-	
-	BindAbilityToAction(EnhancedInputComponent,
-	PrimaryArmAction, 1, true);
-	
-	BindAbilityToAction(EnhancedInputComponent,
-	SecondaryArmAction,2);
-	
-	BindAbilityToAction(EnhancedInputComponent,
-	LegsAction, 4);
+	Super::OnUnPossess();
 }
 
 void ABSPlayerController::Tick(const float DeltaSeconds)
@@ -191,122 +194,12 @@ void ABSPlayerController::Tick(const float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	
 	TurnTimeline.TickTimeline(DeltaSeconds);
-	
-	//Only need the local owner to buffer their abilities, 
-	//server doesn't handle input here
-	if (!IsLocalController()) return; 
-	
-	for (auto& BufferedAbility : BufferedAbilities)
-	{
-		if (BufferedAbility.TimeRemaining <= 0 || TryActivatePawnAbility(BufferedAbility.AbilityID, false))
-		{
-			BufferedAbility.bExpired = true;
-		}
-		else
-		{
-			BufferedAbility.TimeRemaining -= DeltaSeconds;
-		}
-	}
-	
-	BufferedAbilities.RemoveAll([](const FBSBufferedAbility& Ability)
-	{
-		return Ability.bExpired;
-	});
-}
-
-void ABSPlayerController::OnPossess(APawn* InPawn)
-{
-	Super::OnPossess(InPawn);
-	
-	InitAscFromPS();
-	
-	if (IsLocalPlayerController())
-	{
-		AddPlayerUI();
-	}
-}
-
-void ABSPlayerController::OnRep_PlayerState()
-{
-	Super::OnRep_PlayerState();
-	
-	InitAscFromPS();
-	
-	if (IsLocalPlayerController())
-	{
-		AddPlayerUI();
-	}
 }
 
 void ABSPlayerController::QuickTurnTimelineTick(const float Alpha)
 {
 	const FRotator NewRotation = FMath::Lerp(InitialRotation, TargetRotation, Alpha);
 	SetControlRotation(NewRotation);
-}
-
-bool ABSPlayerController::TryActivatePawnAbility(const int32 ID, const bool bBuffer)
-{
-	if (!GetPawn()) return false;
-
-	if (UAbilitySystemComponent* Asc = GetAbilitySystemComponent())
-	{
-		if (const FGameplayAbilitySpec* Spec = Asc->FindAbilitySpecFromInputID(ID))
-		{
-			bool Success = false;
-			if (const UGameplayAbility* AbilityInstance = Spec->GetPrimaryInstance())
-			{
-				Success = Asc->TryActivateAbility(AbilityInstance->GetCurrentAbilitySpecHandle());
-			}
-			
-			if (!Success && bBuffer)
-			{
-				BufferAbility(ID);
-			}
-			return Success;
-		}
-	}
-	return false;
-}
-
-void ABSPlayerController::ReleaseAbilityForPawn(const int32 ID)
-{
-	if (UAbilitySystemComponent* Asc = GetAbilitySystemComponent())
-	{
-		Asc->ReleaseInputID(ID);
-	}
-}
-
-void ABSPlayerController::BufferAbility(int32 ID)
-{
-	BufferedAbilities.RemoveAll([ID](const FBSBufferedAbility& Ability)
-	{
-		return Ability.AbilityID == ID;
-	});
-	
-	FBSBufferedAbility NewBufferedAbility;
-	NewBufferedAbility.AbilityID = ID;
-	NewBufferedAbility.TimeRemaining = BufferTime;
-	NewBufferedAbility.bExpired = false;
-	BufferedAbilities.Add(NewBufferedAbility);
-}
-
-void ABSPlayerController::BindAbilityToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action, int32 ID, const bool bCanReTrigger)
-{
-	if (!Action) return;
-	EnhancedInputComponent->BindActionValueLambda(Action, bCanReTrigger ? ETriggerEvent::Triggered : ETriggerEvent::Started,
-	[this, ID, bCanReTrigger](const FInputActionValue& Value)
-	{
-		TryActivatePawnAbility(ID, !bCanReTrigger);
-		if (GetAbilitySystemComponent())
-		{
-			GetAbilitySystemComponent()->PressInputID(ID);
-		}
-	});
-	EnhancedInputComponent->BindActionValueLambda(Action, ETriggerEvent::Completed,
-	[this, ID](const FInputActionValue& Value)
-	{
-		ReleaseAbilityForPawn(ID);
-	});
 }
 
 void ABSPlayerController::BindJumpToAction(UEnhancedInputComponent* EnhancedInputComponent, UInputAction* Action)
@@ -332,13 +225,7 @@ void ABSPlayerController::BindJumpToAction(UEnhancedInputComponent* EnhancedInpu
 
 UAbilitySystemComponent* ABSPlayerController::GetAbilitySystemComponent() const
 {
-	if (!GetPawn()) return nullptr;
-	if (AbilitySystemComponent.IsValid())
-	{
-		return AbilitySystemComponent.Get();
-	}
-	
-	return nullptr;
+	return CharacterAbilitySystem;
 }
 
 UCommonActivatableWidgetStack* ABSPlayerController::GetWidgetStack()
@@ -346,19 +233,38 @@ UCommonActivatableWidgetStack* ABSPlayerController::GetWidgetStack()
 	return GameplayRootWidgetInstance ? GameplayRootWidgetInstance->WidgetStack : nullptr;
 }
 
-UBSAbilitySystemComponent* ABSPlayerController::GetBSAbilitySystem()
+UCharacterAbilitySystem* ABSPlayerController::GetCharacterAbilitySystem()
 {
-	return AbilitySystemComponent.IsValid() ? AbilitySystemComponent.Get() : nullptr;
+	return CharacterAbilitySystem;
 }
 
-void ABSPlayerController::InitAscFromPS()
+void ABSPlayerController::OnDamageDealt(UAbilitySystemComponent* InstigatorAsc, UAbilitySystemComponent* TargetAsc,
+	FGameplayTagContainer EffectTags, float BaseDamage, float TotalDamage)
 {
-	if (const ABSPlayerState* PS = GetPlayerState<ABSPlayerState>())
+	if (!IsLocalController() || !GetPawn() || !TargetAsc || !TargetAsc->GetAvatarActor()) return;
+	
+	//TODO: Convert to be added to a subwidget, so we can just toggle the owners visiblity instead of individual numbers.
+	bool bBlocked = false;
+	
+	if (GetPawn() == TargetAsc->GetAvatarActor())
 	{
-		check(PS);
-		check(PS->GetBSAbilitySystem());
-		AbilitySystemComponent = PS->GetBSAbilitySystem();
+		if (!BSConsoleVariables::CVarBSShowIncomingDamageNumbers.GetValueOnGameThread()) bBlocked = true;
 	}
+	else
+	{
+		if (!BSConsoleVariables::CVarBSShowDamageNumbers.GetValueOnGameThread()) bBlocked = true;
+	}
+	
+	if (bBlocked) return;
+	
+	UBSWDamageNumber* NewDamageNumber = CreateWidget<UBSWDamageNumber>(this, FloatingDamageNumberClass);
+	NewDamageNumber->AddToPlayerScreen();
+	NewDamageNumber->InitializeDamageNumber(TargetAsc->GetAvatarActor(), TotalDamage, EffectTags);
+}
+
+void ABSPlayerController::SpawnFloatingNumber(UAbilitySystemComponent* InstigatorAsc,
+	UAbilitySystemComponent* TargetAsc, FGameplayTagContainer EffectTags, float Number)
+{
 }
 
 void ABSPlayerController::AddPlayerUI()
@@ -373,7 +279,29 @@ void ABSPlayerController::AddPlayerUI()
 	GameplayRootWidgetInstance->AddToPlayerScreen();
 	
 	UBSWHud* HUDWidget = GameplayRootWidgetInstance->WidgetStack->AddWidget<UBSWHud>(HudWidgetClass);
-	HUDWidget->InitializePlayerHUD(AbilitySystemComponent.Get());
+	HUDWidget->InitializePlayerHUD(CharacterAbilitySystem);
+}
+
+void ABSPlayerController::InitializeWithAbilitySystem(UCharacterAbilitySystem* InCharacterAbilitySystem)
+{
+	CharacterAbilitySystem = InCharacterAbilitySystem;
+	CharacterAbilitySystem->OnDamageDealt.AddDynamic(this, &ABSPlayerController::OnDamageDealt);
+	AbilityBufferComponent->SetAbilitySystemComponent(CharacterAbilitySystem);
+	
+	if (IsLocalController() && !IsRunningDedicatedServer())
+	{
+		AddPlayerUI();
+	}
+}
+
+UBSEquipmentComponent* ABSPlayerController::GetEquipmentComponent() const
+{
+	return GetPlayerState<ABSPlayerState>()->GetEquipmentComponent();
+}
+
+void ABSPlayerController::ApplyEquipment(const FBSEquipPickupInfo& Pickup)
+{
+	GetEquipmentComponent()->Server_RequestEquipFromDrop(Pickup);
 }
 
 void ABSPlayerController::DestroyPlayerUI()

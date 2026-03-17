@@ -7,6 +7,10 @@
 #include "CommonActivatableWidget.h"
 #include "BSWHud.generated.h"
 
+class UBSBuffIcon;
+class UBSBuffEffect;
+class UCharacterAbilitySystem;
+class UCommonLazyImage;
 class UBSAbilitySystemComponent;
 class UBSActionButton;
 class UBSAttributeBar;
@@ -20,15 +24,26 @@ class BONESPLIT_API UBSWHud : public UCommonActivatableWidget
 	
 public:
 	
-	virtual void InitializePlayerHUD(UBSAbilitySystemComponent* InAbilitySystemComponent);
+	virtual void InitializePlayerHUD(UCharacterAbilitySystem* InAbilitySystemComponent);
 	
 	virtual void NativePreConstruct() override;
 	
 	virtual void NativeConstruct() override;
 	
 	virtual void NativeOnActivated() override;
+	
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 protected:
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSBuffIcon> BuffIconClass;
+	
+	UPROPERTY()
+	TMap<const UBSBuffEffect*, UBSBuffIcon*> BuffMap;
+	
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UCommonLazyImage> HookCrosshairs;
 	
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBSAttributeBar> HealthBar;
@@ -53,6 +68,9 @@ protected:
 	
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBSActionButton> ActionButton5;
+	
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UPanelWidget> BuffParentSlot;
 	
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;

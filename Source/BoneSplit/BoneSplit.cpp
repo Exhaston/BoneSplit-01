@@ -161,8 +161,6 @@ namespace BSTags
 	UE_DEFINE_GAMEPLAY_TAG(Cooldown_Ability_Mob_Special5, "Cooldown.Ability.Mob.Special5");
 	UE_DEFINE_GAMEPLAY_TAG(Cooldown_Ability_Mob_Dodge, "Cooldown.Ability.Mob.Dodge");
 	
-	UE_DEFINE_GAMEPLAY_TAG(Faction, "Faction");
-	UE_DEFINE_GAMEPLAY_TAG(Faction_Player, "Faction.Player");
 	UE_DEFINE_GAMEPLAY_TAG(Faction_Rats, "Faction.Rats");
 	UE_DEFINE_GAMEPLAY_TAG(Faction_Slimes, "Faction.Slimes");
 }
