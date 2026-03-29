@@ -6,6 +6,7 @@
 #include "CommonButtonBase.h"
 #include "BSWTalentNode.generated.h"
 
+class UBSTalentData;
 class ABSPlayerState;
 class UCommonTextBlock;
 class UCommonNumericTextBlock;
@@ -41,5 +42,5 @@ public:
 	TObjectPtr<UCommonLazyImage> TalentIconImage;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	TSubclassOf<UBSTalentEffect> TalentData;
+	TObjectPtr<UBSTalentData> TalentData;
 };

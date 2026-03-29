@@ -3,7 +3,6 @@
 
 #include "Widgets/Inventory/BSColorPickerButton.h"
 
-#include "Actors/Player/BSPlayerState.h"
 #include "GameSettings/BSDeveloperSettings.h"
 
 void UBSColorPickerButton::NativePreConstruct()
@@ -23,6 +22,7 @@ void UBSColorPickerButton::NativeOnClicked()
 {
 	Super::NativeOnClicked();
 	
+	/*
 	if (ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>())
 	{
 		if (const UBSDeveloperSettings* DeveloperSettings = GetDefault<UBSDeveloperSettings>())
@@ -33,4 +33,5 @@ void UBSColorPickerButton::NativeOnClicked()
 			}
 		}
 	}
+	*/
 }

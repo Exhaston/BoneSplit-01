@@ -21,6 +21,8 @@ public class BoneSplit : ModuleRules
 			"AIModule",
 			"CommonUI",
 			"UMG",
+			"Slate",
+			"SlateCore",
 			"Niagara",
 			"NavigationSystem",
 			"DeveloperSettings",
@@ -36,7 +38,10 @@ public class BoneSplit : ModuleRules
 			"OnlineSubsystem",
 			"ControlRig",
 			"RigVM", 
-			"GameplayAbilitiesExtension"
+			"CharacterAbilities",
+			"ShapeOverlapLibrary",
+			"Mobs",
+			"AdvancedProgressBar"
 		]);
 	}
 }

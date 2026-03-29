@@ -4,10 +4,8 @@
 #include "Widgets/Base/BSPauseMenu.h"
 
 #include "CommonButtonBase.h"
-#include "Actors/Player/BSLocalSaveSubsystem.h"
-#include "Actors/Player/BSPlayerState.h"
 #include "GameSystems/BSGameManagerSubsystem.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "Player/BSPlayerStateBase.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
 UBSPauseMenu::UBSPauseMenu()
@@ -21,12 +19,7 @@ void UBSPauseMenu::NativeConstruct()
 	
 	Button_Quit->OnClicked().AddWeakLambda(this, [this]()
 	{
-		if (const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>())
-		{
-			UBSLocalSaveSubsystem* SaveSubsystem = GetGameInstance()->GetSubsystem<UBSLocalSaveSubsystem>();
-			SaveSubsystem->SaveAscDataSync(GetOwningPlayer(), PS->GetAbilitySystemComponent());
-			UBSGameManagerSubsystem::Get(GetOwningPlayer())->QuitToMenu();
-		}
+		UBSGameManagerSubsystem::Get(GetOwningPlayer())->QuitToMenu();
 	});
 	
 	Button_Resume->OnClicked().AddWeakLambda(this, [this]()
@@ -39,9 +32,9 @@ void UBSPauseMenu::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	
-	if (ABSPlayerState* OwningPS = GetOwningPlayerState<ABSPlayerState>())
+	if (ABSPlayerStateBase* OwningPS = GetOwningPlayerState<ABSPlayerStateBase>())
 	{
-		OwningPS->OnPlayerPaused();
+		//OwningPS->OnPlayerPaused();
 	}
 }
 
@@ -49,8 +42,8 @@ void UBSPauseMenu::NativeOnDeactivated()
 {
 	Super::NativeOnDeactivated();
 	
-	if (ABSPlayerState* OwningPS = GetOwningPlayerState<ABSPlayerState>())
+	if (ABSPlayerStateBase* OwningPS = GetOwningPlayerState<ABSPlayerStateBase>())
 	{
-		OwningPS->OnPlayerResumed();
+		//OwningPS->OnPlayerResumed();
 	}
 }

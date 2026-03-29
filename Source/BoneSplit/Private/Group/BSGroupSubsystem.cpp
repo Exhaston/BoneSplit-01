@@ -11,6 +11,12 @@ UBSGroupSubsystem* UBSGroupSubsystem::Get(const UWorld* World)
 	return World->GetSubsystem<UBSGroupSubsystem>();
 }
 
+void UBSGroupSubsystem::AddPlayerToGroup(ACharacter* InCharacter, UAbilitySystemComponent* PlayerAsc)
+{
+	JoinedPlayers.AddUnique(InCharacter);
+	OnPlayerJoinedDelegate.Broadcast(InCharacter, PlayerAsc);
+}
+
 void UBSGroupSubsystem::SetPlayerReady(APawn* PlayerPawn, const bool bReady)
 {
 	bReady ? ReadyPlayers.AddUnique(PlayerPawn) : ReadyPlayers.Remove(PlayerPawn);

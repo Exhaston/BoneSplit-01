@@ -4,8 +4,8 @@
 #include "Widgets/HUD/BSAttributeText.h"
 
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "CommonTextBlock.h"
-#include "Actors/Player/BSPlayerState.h"
 
 void UBSAttributeText::NativePreConstruct()
 {
@@ -22,10 +22,9 @@ void UBSAttributeText::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
-	const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>();
-	check(PS);
+	IAbilitySystemInterface* AscI = GetOwningPlayer<IAbilitySystemInterface>();
 	
-	UAbilitySystemComponent* Asc = PS->GetAbilitySystemComponent();
+	UAbilitySystemComponent* Asc = AscI->GetAbilitySystemComponent();
 	
 	SetAttributeText();
 
@@ -40,15 +39,10 @@ void UBSAttributeText::NativeDestruct()
 {
 	if (IsValid(this))
 	{
-		if (const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>()) //Might not be valid if quitting editor etc.
-		{
-			UAbilitySystemComponent* Asc = PS->GetAbilitySystemComponent();
-
-			if (Asc)
-			{
-				Asc->GetGameplayAttributeValueChangeDelegate(Attribute).RemoveAll(this);
-			}
-		}
+		IAbilitySystemInterface* AscI = GetOwningPlayer<IAbilitySystemInterface>();
+	
+		UAbilitySystemComponent* Asc = AscI->GetAbilitySystemComponent();
+		Asc->GetGameplayAttributeValueChangeDelegate(Attribute).RemoveAll(this);
 	}
 
 	
@@ -57,10 +51,8 @@ void UBSAttributeText::NativeDestruct()
 
 void UBSAttributeText::SetAttributeText()
 {
-	const ABSPlayerState* PS = GetOwningPlayerState<ABSPlayerState>();
-	check(PS);
-	
-	UAbilitySystemComponent* Asc = PS->GetAbilitySystemComponent();
+	IAbilitySystemInterface* AscI = GetOwningPlayer<IAbilitySystemInterface>();
+	UAbilitySystemComponent* Asc = AscI->GetAbilitySystemComponent();
 	
 	float Value = FMath::RoundToInt(Asc->GetNumericAttribute(Attribute) * Multiplier);
 	

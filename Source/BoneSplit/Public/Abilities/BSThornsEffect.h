@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/AbilitySystem/EffectBases/BSGameplayEffect.h"
+#include "GameplayEffect.h"
 #include "BSThornsEffect.generated.h"
 
 /**
  * 
  */
 UCLASS(NotBlueprintable, NotBlueprintType)
-class BONESPLIT_API UBSThornsEffect : public UBSGameplayEffect
+class BONESPLIT_API UBSThornsEffect : public UGameplayEffect
 {
 	GENERATED_BODY()
 	

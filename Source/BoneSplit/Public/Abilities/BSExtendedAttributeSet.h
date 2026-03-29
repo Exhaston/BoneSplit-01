@@ -9,11 +9,16 @@
 namespace BSExtendedAttributeTags
 {
 	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_SuccessfulBlock);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_God);
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_HealthLeeching);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_ManaLeeching);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SoulCharging);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Blockable);
 	
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attribute_Knockback);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(SetByCaller_Knockback);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_PVPFlagged);
 }
 

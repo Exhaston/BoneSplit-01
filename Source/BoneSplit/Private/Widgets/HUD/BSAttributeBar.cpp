@@ -36,29 +36,7 @@ void UBSAttributeBar::NativePreConstruct()
 void UBSAttributeBar::NativeConstruct()
 {
 	Super::NativeConstruct();
-
-	const bool bShouldDisplayNumbers = BSConsoleVariables::CVarBSBarsShowNumbers.GetValueOnGameThread();
-	const bool bShouldDisplayPercent = BSConsoleVariables::CVarBSBarsShowPercentages.GetValueOnGameThread();
 	
-	HealthBarText->SetVisibility(bShouldDisplayNumbers ? 
-		ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
-	
-	HealthBarPercentText->SetVisibility(bShouldDisplayPercent ? 
-		ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
-	
-	BSConsoleVariables::CVarBSBarsShowNumbers->OnChangedDelegate().AddWeakLambda(
-	this,[this] (IConsoleVariable* Variable)
-	{
-		HealthBarText->SetVisibility(Variable->GetBool() ? 
-		ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
-	});	
-	
-	BSConsoleVariables::CVarBSBarsShowPercentages->OnChangedDelegate().AddWeakLambda(
-	this,[this] (IConsoleVariable* Variable)
-	{
-		HealthBarPercentText->SetVisibility(Variable->GetBool() ? 
-		ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
-	});
 }
 
 void UBSAttributeBar::RemoveFromParent()

@@ -6,6 +6,8 @@
 #include "CommonActivatableWidget.h"
 #include "BSWMainMenu.generated.h"
 
+class UCommonButtonBase;
+class UBSWidget_SettingsRoot;
 class UCommonRichTextBlock;
 class UBSWButtonBase;
 /**
@@ -20,20 +22,20 @@ public:
 	
 	virtual void NativeConstruct() override;
 	
-	UPROPERTY(meta=(BindWidgetOptional))
-	UBSWButtonBase* ReconnectButton;
+	UPROPERTY(meta=(BindWidget))
+	UCommonButtonBase* SinglePlayerButton;
 	
 	UPROPERTY(meta=(BindWidget))
-	UBSWButtonBase* SinglePlayerButton;
+	UCommonButtonBase* MultiPlayerButton;
 	
 	UPROPERTY(meta=(BindWidget))
-	UBSWButtonBase* MultiPlayerButton;
+	UCommonButtonBase* SettingsButton;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<UBSWidget_SettingsRoot> SettingsRootClass;
 	
 	UPROPERTY(meta=(BindWidget))
-	UBSWButtonBase* SettingsButton;
-	
-	UPROPERTY(meta=(BindWidget))
-	UBSWButtonBase* QuitButton;
+	UCommonButtonBase* QuitButton;
 	
 	UPROPERTY(meta=(BindWidget))
 	UCommonRichTextBlock* VersionText;

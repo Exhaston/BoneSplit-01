@@ -16,7 +16,7 @@ struct FGameplayAbilitySpec;
 class UAbilitySystemComponent;
 class UCommonLazyImage;
 
-extern TAutoConsoleVariable<bool> CVarToggleCooldownNumbers;
+
 
 //TODO: NEEDS REWORK. INEFFICIENT LOOPING DURING TICK.
 /**

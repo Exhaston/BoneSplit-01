@@ -10,6 +10,7 @@
 #include "Widgets/MainMenu/BSWServerButton.h"
 #include "BoneSplit/BoneSplit.h"
 #include "GameSystems/BSGameManagerSubsystem.h"
+#include "Match/BSOnlineSubsystem.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 #include "Widgets/Base/BSToggleButton.h"
 #include "Widgets/Base/BSWButtonBase.h"
@@ -40,29 +41,7 @@ void UBSWServerBrowser::NativeConstruct()
 	
 	HostButton->OnClicked().AddWeakLambda(this, [this]()
 	{
-		const TArray<FSessionPropertyKeyPair> Filters;
-		
-		UCreateSessionCallbackProxyAdvanced* SessionCallbackProxy = 
-			UCreateSessionCallbackProxyAdvanced::CreateAdvancedSession(
-			GetOwningPlayer(), 
-			Filters, 
-			GetOwningPlayer(),
-			bPrivateSession ? 0 : MaxSessionPlayers, 
-			bPrivateSession ? MaxSessionPlayers : 0, 
-			bEnableLan, 
-			true, 
-			false, 
-			true, 
-			true, 
-			false, 
-			false, 
-			false, 
-			true, 
-			false, 
-			true);
-		
-		SessionCallbackProxy->OnSuccess.AddDynamic(this, &UBSWServerBrowser::OnHostComplete);
-		SessionCallbackProxy->Activate();
+		UBSOnlineSubsystem::Get(this)->StartGame(true);
 	});
 }
 

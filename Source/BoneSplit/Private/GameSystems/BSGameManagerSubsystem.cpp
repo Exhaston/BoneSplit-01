@@ -13,18 +13,6 @@ void UBSGameManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	const UBSDeveloperSettings* DeveloperSettings = GetDefault<UBSDeveloperSettings>();
-	HubLevel = DeveloperSettings->HubLevel;
-	MainMenuLevel = DeveloperSettings->MainMenuLevel;
-
-	for (auto& OverrideClass : DeveloperSettings->ActorOverrideClasses)
-	{
-		if (!OverrideClass.Key.IsValid()) continue;
-		if (OverrideClass.Value.IsNull()) continue;
-		if (UClass* LoadedClass = OverrideClass.Value.LoadSynchronous())
-		{
-			ActorOverrideClasses.Add({OverrideClass.Key, LoadedClass} );
-		}
-	}
 }
 
 UBSGameManagerSubsystem* UBSGameManagerSubsystem::Get(const UObject* WorldContext)

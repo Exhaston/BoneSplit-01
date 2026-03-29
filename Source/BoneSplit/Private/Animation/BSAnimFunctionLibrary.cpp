@@ -9,11 +9,9 @@
 #include "Audio/ActorSoundParameterInterface.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Components/AbilitySystem/BSDynamicDecalComponent.h"
-#include "Components/AbilitySystem/BSShapeLibrary.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameSettings/BSDeveloperSettings.h"
 
 #define ENSURE_OWNER \
 if (!MeshComp || !MeshComp->GetOwner()) return;
@@ -80,6 +78,7 @@ void UBSAnimNotify_WedgeOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimS
 	// Overlap Actors
 	// ================================================================================================================= 
 
+	/*
 	TArray<AActor*> OverlappedActors = 
 		UBSShapeLibrary::OverlapShapeWedge(
 			World, 
@@ -98,6 +97,7 @@ void UBSAnimNotify_WedgeOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimS
 			EventPayloadData.SendPayload(AscInterface->GetAbilitySystemComponent(), OverlappedActor);
 		}
 	}
+	*/
 	
 	// =================================================================================================================
 	// Editor only debug, might change to build as well if needed
@@ -105,6 +105,7 @@ void UBSAnimNotify_WedgeOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimS
 
 #if WITH_EDITOR 
 	
+	/*
 	if (BS_HIT_DEBUG || !World->IsGameWorld())
 	{	
 		UBSShapeLibrary::DebugDrawWedge(
@@ -117,6 +118,7 @@ void UBSAnimNotify_WedgeOverlap::Notify(USkeletalMeshComponent* MeshComp, UAnimS
 			GetEditorColor().ToFColor(true), 
 			true);
 	}
+	*/
 	
 #endif
 }
@@ -519,7 +521,7 @@ void UBSNotify_SpawnStaticMesh::NotifyEnd(USkeletalMeshComponent* MeshComp, UAni
 	
 	if (StaticMeshInstances.Contains(MeshComp))
 	{
-		StaticMeshInstances[MeshComp]->DestroyComponent();
+		if (IsValid(StaticMeshInstances[MeshComp])) StaticMeshInstances[MeshComp]->DestroyComponent();
 		StaticMeshInstances.Remove(MeshComp);
 	}
 }

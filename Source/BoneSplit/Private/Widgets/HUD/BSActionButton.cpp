@@ -9,18 +9,24 @@
 #include "CommonLazyImage.h"
 #include "CommonRichTextBlock.h"
 #include "IconThumbnailInterface.h"
-#include "Actors/Player/BSPlayerState.h"
-#include "Components/AbilitySystem/BSAbilitySystemComponent.h"
+#include "BoneSplit/BoneSplit.h"
+#include "Player/BSPlayerControllerBase.h"
 
-TAutoConsoleVariable<bool> CVarToggleCooldownNumbers(
-TEXT("BS.UI.ToggleCooldownNumbers"),
-true,
-TEXT("true = Default"),
-ECVF_Default);
 
 void UBSActionButton::InitializeActionButton(UCharacterAbilitySystem* InAbilitySystemComponent)
 {
 	AbilitySystemComponent = InAbilitySystemComponent;
+
+}
+
+void UBSActionButton::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	const ABSPlayerControllerBase* PC = GetOwningPlayer<ABSPlayerControllerBase>();
+	
+	AbilitySystemComponent = Cast<UCharacterAbilitySystem>(PC->GetAbilitySystemComponent());
+	
 	if (!AbilitySystemComponent)
 	{
 		const FString MissingAscInfo = "No Ability System found from owning player state. " + GetName();
@@ -30,23 +36,20 @@ void UBSActionButton::InitializeActionButton(UCharacterAbilitySystem* InAbilityS
 	
 	AbilityBufferComponent = UAbilityBufferComponent::GetBufferComponentFromController(GetOwningPlayer());
 	
-	AbilitySystemComponent->NotifyAbilitiesTo(FBSOnAbilityGranted::FDelegate::CreateWeakLambda(
+	AbilitySystemComponent->NotifyAbilitiesTo(FOnAbilityGranted::FDelegate::CreateWeakLambda(
 	this, [this](FGameplayAbilitySpec& Spec)
 	{
 		AttemptSetNewSpec(&Spec);
 	}));
-}
-
-void UBSActionButton::NativeConstruct()
-{
-	Super::NativeConstruct();
 	
+	/*
 	CVarToggleCooldownNumbers->OnChangedDelegate().AddWeakLambda(this, [this](IConsoleVariable* Var)
 	{
 		CooldownNumberText->SetVisibility(Var->GetBool() ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	});
 	
 	CooldownNumberText->SetVisibility(CVarToggleCooldownNumbers.GetValueOnGameThread() ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+	*/
 }
 
 bool UBSActionButton::AttemptSetNewSpec(FGameplayAbilitySpec* Spec)

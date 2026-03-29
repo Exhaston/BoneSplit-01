@@ -2,8 +2,6 @@
 
 
 #include "BoneSplit/Public/GameState/BSGameState.h"
-
-#include "Actors/Player/BSPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
 ABSGameState::ABSGameState(const FObjectInitializer& Initializer) : Super(Initializer)

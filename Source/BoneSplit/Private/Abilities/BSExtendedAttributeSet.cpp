@@ -8,20 +8,26 @@
 #include "GameplayEffectExtension.h"
 #include "Abilities/BSThornsEffect.h"
 #include "BoneSplit/BoneSplit.h"
-#include "Components/AbilitySystem/BSAbilitySystemInterface.h"
-#include "Components/Targeting/BSThreatComponent.h"
-#include "Components/Targeting/BSThreatInterface.h"
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "Player/Abilities/BSPlayerAbilityBase_Montage.h"
+#include "Player/HUD/BSWidget_FloatingText.h"
+#include "Threat/MThreatComponent.h"
+#include "Threat/MThreatInterface.h"
 
 namespace BSExtendedAttributeTags
 {
+	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_SuccessfulBlock, "GameplayEvent.SuccessfulBlock");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Status_God, "Status.God");
+	
 	UE_DEFINE_GAMEPLAY_TAG(Effect_HealthLeeching, "Effect.HealthLeeching");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_ManaLeeching, "Effect.ManaLeeching");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SoulCharging, "Effect.SoulCharging");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Blockable, "Effect.Blockable");
 	
-	UE_DEFINE_GAMEPLAY_TAG(Attribute_Knockback, "Attribute.Knockback");
+	UE_DEFINE_GAMEPLAY_TAG(SetByCaller_Knockback, "Attribute.Knockback");
 	UE_DEFINE_GAMEPLAY_TAG(Player_PVPFlagged, "Player.PVPFlagged");
 }
 
@@ -91,6 +97,7 @@ void UBSExtendedAttributeSet::PostAttributeChange(const FGameplayAttribute& Attr
 float UBSExtendedAttributeSet::GetMaxForAttribute(const FGameplayAttribute& Attribute) const
 {
 	if (Attribute == GetCurrentManaAttribute() && GetMaxMana() > 0) return GetMaxMana();
+	if (Attribute == GetSoulChargeAttribute() && GetMaxSoulCharge() > 0) return GetMaxSoulCharge();
 	return Super::GetMaxForAttribute(Attribute);
 }
 
@@ -104,23 +111,20 @@ float UBSExtendedAttributeSet::GetMinForAttribute(const FGameplayAttribute& Attr
 
 void UBSExtendedAttributeSet::HandleKnockback(UAbilitySystemComponent* TargetAsc, float& KnockbackToApply, const FVector Origin)
 {
-	ACharacter* TargetCharacter = Cast<ACharacter>(TargetAsc->GetAvatarActor());
-	
-	IBSAbilitySystemInterface* Asci = Cast<IBSAbilitySystemInterface>(TargetCharacter);
-	
-	if (!TargetCharacter || !TargetAsc || !Asci) return;
-	
-	if (FMath::IsNearlyZero(KnockbackToApply)) return;
+	if (ACharacter* TargetCharacter = Cast<ACharacter>(TargetAsc->GetAvatarActor()))
+	{
+		if (FMath::IsNearlyZero(KnockbackToApply)) return;
 
-	FVector Direction = (TargetAsc->GetAvatarActor()->GetActorLocation() - Origin).GetSafeNormal2D();
+		const FVector Direction = (TargetAsc->GetAvatarActor()->GetActorLocation() - Origin).GetSafeNormal2D();
 
-	// Horizontal direction respects knockback sign (push away or pull toward)
-	FVector LaunchVelocity = Direction * KnockbackToApply;
+		// Horizontal direction respects knockback sign (push away or pull toward)
+		FVector LaunchVelocity = Direction * KnockbackToApply;
 
-	// Upward force is always positive regardless of knockback direction
-	LaunchVelocity.Z = FMath::Abs(KnockbackToApply) * 0.75f;
+		// Upward force is always positive regardless of knockback direction
+		LaunchVelocity.Z = FMath::Abs(KnockbackToApply) * 0.75f;
 
-	Asci->Launch(LaunchVelocity, false);
+		TargetCharacter->LaunchCharacter(LaunchVelocity, true, true);
+	}
 }
 
 void UBSExtendedAttributeSet::HandleHealing(UCharacterAbilitySystem* InstigatorAsc, UCharacterAbilitySystem* TargetAsc,
@@ -164,9 +168,20 @@ void UBSExtendedAttributeSet::HandleHealing(UCharacterAbilitySystem* InstigatorA
 void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAsc, UCharacterAbilitySystem* TargetAsc,
 	float BaseDamage, float& DamageToApply, FGameplayTagContainer EffectTags, const FGameplayEffectSpec& EffectSpec)
 {
-	if (UKismetMathLibrary::RandomBoolWithWeight(UAbilitiesExtensionLib::AsymptoticDr(GetBlockChance(), 1)))
+	
+	if (!IsValid(TargetAsc->GetAvatarActor())) return;
+	
+	if (EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_Blockable) && 
+		UKismetMathLibrary::RandomBoolWithWeight(UAbilitiesExtensionLib::AsymptoticDr(GetBlockChance(), 1)))
 	{
-		return; //TODO: Send Event.
+		FGameplayEventData BlockPayload;
+		BlockPayload.ContextHandle = TargetAsc->MakeEffectContext();
+		BlockPayload.EventMagnitude = 1;
+		BlockPayload.EventTag = BSExtendedAttributeTags::GameplayEvent_SuccessfulBlock;
+		BlockPayload.Instigator = InstigatorAsc->GetAvatarActor();
+		BlockPayload.Target = TargetAsc->GetAvatarActor();
+		TargetAsc->HandleGameplayEvent(BSExtendedAttributeTags::GameplayEvent_SuccessfulBlock, &BlockPayload);
+		return;
 	}
 	
 	FGameplayEffectSpec EffectCopy = EffectSpec;
@@ -199,6 +214,7 @@ void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAs
 		TotalCritMod = FMath::Clamp(TotalCritMod, 1, FLT_MAX);
 		
 		DamageToApply *= TotalCritMod;
+		EffectTags.AddTagFast(BSGameplayTags::Widget_FloatingText_Crit);
 		EffectTags.AddTag(BSTags::EffectTag_Critical);
 	}
 	
@@ -211,7 +227,7 @@ void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAs
 		if (!SpecHandle.IsValid()) return;
 	
 		SpecHandle.Data->SetSetByCallerMagnitude(
-			DefaultSetByCallerTags::SetByCaller_Damage, DamageToApply * GetThorns()
+			DefaultSetByCallerTags::SetByCaller_Damage,GetThorns()
 		);
 		
 		TargetAsc->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data, InstigatorAsc);
@@ -223,12 +239,23 @@ void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAs
 		DamageToApply /= TotalArmor;
 	}
 	
+	FGameplayEventData DamagePayload;
+	DamagePayload.ContextHandle = TargetAsc->MakeEffectContext();
+	DamagePayload.Target = TargetAsc->GetAvatarActor();
+	DamagePayload.EventTag = BSTags::GameplayEvent_DamageTaken;
+	DamagePayload.Instigator = InstigatorAsc->GetAvatarActor();
+	
+	TargetAsc->HandleGameplayEvent(BSTags::GameplayEvent_DamageTaken, &DamagePayload);
+	
 	Super::HandleDamage(InstigatorAsc, TargetAsc, BaseDamage, DamageToApply, EffectTags, EffectSpec);
 	
-	if (IBSThreatInterface* ThreatInterface = Cast<IBSThreatInterface>(TargetAsc->GetAvatarActor()))
+	if (IMThreatInterface* ThreatInterface = Cast<IMThreatInterface>(TargetAsc->GetAvatarActor()))
 	{
-		ThreatInterface->GetThreatComponent()->AddThreat(InstigatorAsc->GetAvatarActor(), DamageToApply);
-	}
+		if (UMThreatComponent* ThreatComponent = ThreatInterface->GetThreatComponent())
+		{
+			ThreatComponent->AddThreat(InstigatorAsc->GetAvatarActor(), DamageToApply); //Lives on the controller, could be null
+		}
+	}                                        
 	
 	if (const float SourceLeech = InstigatorAsc->GetNumericAttribute(GetLeechAttribute()); 
 		SourceLeech > 0 && EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_HealthLeeching))

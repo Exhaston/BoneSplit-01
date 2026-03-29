@@ -171,24 +171,6 @@ namespace BSConsoleVariables
 	// User Settings CVars
 	// =================================================================================================================
 	
-	TAutoConsoleVariable<float> CVarBSLookSensitivityX(
-	TEXT("BS.UserSettings.MouseSensitivity.X"),
-	1,
-	TEXT("1 = Default"),
-	ECVF_Default);
-
-	TAutoConsoleVariable<float> CVarBSLookSensitivityY(
-	TEXT("BS.UserSettings.MouseSensitivity.Y"),
-	1,
-	TEXT("1 = Default"),
-	ECVF_Default);
-
-	TAutoConsoleVariable<float> CVarBSCameraOffset(
-	TEXT("BS.UserSettings.CameraOffset"),
-	1,
-	TEXT("1 = Default"),
-	ECVF_Default);
-	
 	TAutoConsoleVariable<bool> CVarBSBloomEnabled(
 	TEXT("BS.UserSettings.BloomEnabled"),
 	true,
@@ -218,18 +200,6 @@ namespace BSConsoleVariables
 	false,
 	TEXT("false = Default"),
 	ECVF_Default);
-	
-	TAutoConsoleVariable<bool> CVarBSBarsShowNumbers(
-	TEXT("BS.NamePlates.ShowNumbers"),
-	false,
-	TEXT("false = Default"),
-	ECVF_Default);
-	
-	TAutoConsoleVariable<bool> CVarBSBarsShowPercentages(
-	TEXT("BS.NamePlates.ShowPercentages"),
-	false,
-	TEXT("false = Default"),
-	ECVF_Default);	
 	
 	TAutoConsoleVariable<bool> CVarShowPlayerHoverNames(
 	TEXT("BS.PlayerNames.ShowOthers"),

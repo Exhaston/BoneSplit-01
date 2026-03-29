@@ -6,13 +6,10 @@
 #include "CharacterAbilitySystem.h"
 #include "CommonLazyImage.h"
 #include "Abilities/BSBuffEffect.h"
-#include "Actors/Player/BSPlayerController.h"
-#include "Components/AbilitySystem/BSAbilitySystemComponent.h"
-#include "Components/AbilitySystem/AbilityBases/BSAbilityBase_PlayerHook.h"
+#include "Player/Abilities/BSPlayerAbilityBase_HookShot.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 #include "Widgets/HUD/BSAttributeBar.h"
 #include "Widgets/HUD/BSActionButton.h"
-#include "Widgets/HUD/BSBuffIcon.h"
 
 void UBSWHud::InitializePlayerHUD(UCharacterAbilitySystem* InAbilitySystemComponent)
 {
@@ -87,10 +84,6 @@ void UBSWHud::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	
-	if (ABSPlayerController* OwningPS = GetOwningPlayer<ABSPlayerController>())
-	{
-
-	}
 }
 
 void UBSWHud::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -105,7 +98,7 @@ void UBSWHud::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		{
 			UGameplayAbility* AbilityInstance = SpecHandle.GetPrimaryInstance();
 			if (!AbilityInstance) continue;
-			if (AbilityInstance->IsA(UBSAbilityBase_PlayerHook::StaticClass()))
+			if (AbilityInstance->IsA(UBSPlayerAbilityBase_HookShot::StaticClass()))
 			{
 				const bool CanActivate = 
 					AbilityInstance->CommitCheck(

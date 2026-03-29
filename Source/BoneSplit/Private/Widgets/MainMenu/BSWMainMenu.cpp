@@ -3,8 +3,9 @@
 
 #include "Widgets/MainMenu/BSWMainMenu.h"
 #include "Widgets/MainMenu/BSWServerBrowser.h"
-#include "GameSystems/BSGameManagerSubsystem.h"
+#include "UserSettings/BSWidget_SettingsRoot.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Match/BSOnlineSubsystem.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 #include "Widgets/Base/BSWUserConfirmContext.h"
 #include "Widgets/Base/BSWButtonBase.h"
@@ -33,12 +34,19 @@ void UBSWMainMenu::NativeConstruct()
 		
 		ConfirmWindow->OnConfirmed.AddWeakLambda(this, [this]()
 		{
-			UBSGameManagerSubsystem::Get(GetOwningPlayer())->InitializeHost();
+			UBSOnlineSubsystem::Get(this)->StartGame(false);
 		});
 		
 		ConfirmWindow->AddToPlayerScreen();
 
 	});
+	
+	SettingsButton->OnClicked().AddWeakLambda(this, [this]()
+	{
+		ABSMainMenuHud* MainMenuHud = GetOwningPlayer()->GetHUD<ABSMainMenuHud>();
+		MainMenuHud->GetWidgetStack()->AddWidget(SettingsRootClass);
+	});
+	
 	QuitButton->OnClicked().AddWeakLambda(this, [this]()
 	{
 		const ABSMainMenuHud* MainMenuHud = GetOwningPlayer()->GetHUD<ABSMainMenuHud>();

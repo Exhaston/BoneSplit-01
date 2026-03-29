@@ -6,12 +6,14 @@
 #include "GameFramework/GameState.h"
 #include "BSGameState.generated.h"
 
+struct FStreamableHandle;
 class ABSPlayerState;
 class UGameplayEffect;
 class UBSEquipmentEffect;
 class UBSTravelManager;
 
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMapLoadProgress, float, Percent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMapLoadComplete);
 
 UCLASS()
 class BONESPLIT_API ABSGameState : public AGameState

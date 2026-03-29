@@ -24,7 +24,7 @@ UBSDamageEffect::UBSDamageEffect()
 	ModKnockback.Attribute = UBSExtendedAttributeSet::GetKnockbackAttribute();
 		
 	FSetByCallerFloat KnockbackCaller;
-	KnockbackCaller.DataTag = BSExtendedAttributeTags::Attribute_Knockback;
+	KnockbackCaller.DataTag = BSExtendedAttributeTags::SetByCaller_Knockback;
 	ModKnockback.ModifierMagnitude = FGameplayEffectModifierMagnitude(KnockbackCaller);
 	ModKnockback.ModifierOp = EGameplayModOp::Override;
 	

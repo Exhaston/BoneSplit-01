@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/PawnComponent.h"
 #include "BSInteractionsComponent.generated.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FBSOnInteractionDelegate, const FGuid&);

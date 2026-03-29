@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
-#include "Components/AbilitySystem/BSAttributeSet.h"
+#include "Abilities/BSExtendedAttributeSet.h"
 #include "BSAttributeBar.generated.h"
 
 class UCommonTextBlock;
@@ -60,9 +60,9 @@ protected:
 	FLinearColor Color = FLinearColor::Red;
 	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	FGameplayAttribute CurrentAttribute = UBSAttributeSet::GetHealthAttribute();
+	FGameplayAttribute CurrentAttribute = UBSExtendedAttributeSet::GetCurrentHealthAttribute();
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	FGameplayAttribute MaxAttribute = UBSAttributeSet::GetMaxHealthAttribute();
+	FGameplayAttribute MaxAttribute = UBSExtendedAttributeSet::GetMaxHealthAttribute();
 	
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;

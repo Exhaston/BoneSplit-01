@@ -10,7 +10,9 @@
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
 				"AdvancedSessions",
-				"AdvancedSteamSessions"
+				"AdvancedSteamSessions",
+				"Mobs",
+				"CharacterAbilities"
 			]
 		}
 	],

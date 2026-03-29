@@ -30,21 +30,6 @@ enum class EBSPartyMode : uint8
 	Party_Open = 2
 };
 
-UENUM(BlueprintType)
-enum class EBSMoveState : uint8
-{
-	Moving,
-	Stopped,
-	InvalidPath
-};
-
-UENUM(BlueprintType)
-enum class EBSMovementRotationMode : uint8
-{
-	Ebs_Locked,
-	Ebs_ControlRotation
-};
-
 namespace BSTags
 {
 	// =================================================================================================================
@@ -124,8 +109,6 @@ namespace BSTags
 	// =================================================================================================================
 	// Player Ability Tags
 	// =================================================================================================================
-
-
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Player_Head);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Player_PrimaryArm);
@@ -167,10 +150,6 @@ namespace BSTags
 	// =================================================================================================================
 	// Effect Tags
 	// =================================================================================================================
-	
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Persistent);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Crit);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Saved);
 	
 	// =================================================================================================================
 	// Season Tags
@@ -219,9 +198,6 @@ namespace BSTags
 
 namespace BSConsoleVariables
 {
-	extern TAutoConsoleVariable<float> CVarBSLookSensitivityX;
-	extern TAutoConsoleVariable<float> CVarBSLookSensitivityY;
-	extern TAutoConsoleVariable<float> CVarBSCameraOffset;
 	extern TAutoConsoleVariable<bool> CVarBSBloomEnabled;
 	
 	extern TAutoConsoleVariable<bool> CVarBSDebugHitDetection;
@@ -230,8 +206,7 @@ namespace BSConsoleVariables
 	extern TAutoConsoleVariable<bool> CVarBSDebugAggroSpheres;
 	extern TAutoConsoleVariable<bool> CVarBSDebugPatrolPaths;
 	
-	extern TAutoConsoleVariable<bool> CVarBSBarsShowNumbers;
-	extern TAutoConsoleVariable<bool> CVarBSBarsShowPercentages;
+
 	
 	extern TAutoConsoleVariable<bool> CVarShowPlayerHoverNames;
 	extern TAutoConsoleVariable<bool> CVarShowOwnHoverName;

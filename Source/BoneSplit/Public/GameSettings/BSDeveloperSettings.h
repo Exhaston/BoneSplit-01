@@ -4,24 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "Actors/InteractableBases/BSEquipmentDropBase.h"
-#include "Actors/Player/BSSaveGame.h"
 #include "BoneSplit/BoneSplit.h"
 #include "Engine/DeveloperSettings.h"
 #include "GameInstance/BSCalendarEventSubsystem.h"
-#include "Widgets/Base/BSLoadingScreenWidget.h"
-#include "Widgets/HUD/BSWHud.h"
-#include "Widgets/Base/BSWRoot.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
-#include "Widgets/HUD/BSCharacterPane.h"
-#include "Widgets/Base/BSPauseMenu.h"
 #include "Widgets/Base/BSWToolTipBase.h"
-#include "Widgets/Base/BSWUserConfirmContext.h"
-#include "Widgets/HUD/BSFloatingNamePlate.h"
-#include "Widgets/HUD/BSWDamageNumber.h"
-#include "Widgets/MainMenu/BSWServerBrowser.h"
 #include "BSDeveloperSettings.generated.h"
 
+class UBSWidget_UnitPlate;
 /**
  * 
  */
@@ -32,6 +22,8 @@ class BONESPLIT_API UBSDeveloperSettings : public UDeveloperSettings
 	
 public:
 	
+	static const UBSDeveloperSettings* GetProjectSettings() { return GetDefault<UBSDeveloperSettings>(); }
+
 #if WITH_EDITOR
 	
 	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
@@ -45,31 +37,13 @@ public:
 	UPROPERTY(Config, EditDefaultsOnly, Category="CalendarEvents")
 	TArray<FBSSeasonalEvent> SeasonalEvents;
 	
+	UPROPERTY(Config, EditDefaultsOnly, Category="Mobs")
+	TSoftClassPtr<UBSWidget_UnitPlate> DefaultUnitPlate;
+	
 	//Used to convert a conventional gameplay tag into an in game UI name
 	UPROPERTY(Config, EditDefaultsOnly, Category="Tags")
 	TMap<FGameplayTag, FText> TagReadableNames;
 	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Data")
-	TSoftClassPtr<UBSSaveGame> SaveGameClass;
-	
-	UPROPERTY(Config, EditDefaultsOnly, Category="Data")
-	FGameplayTagContainer SavedGameplayTags = FGameplayTagContainer::CreateFromArray( 
-		TArray{ BSTags::Talent_Jump.GetTag().RequestDirectParent() });
-	
 	UPROPERTY(Config, EditDefaultsOnly, Category="Player")
 	TArray<FColor> PlayerColors;                           
-	
-	//Widget Classes that can be loaded and loaded instead of native cpp one. 
-	UPROPERTY(Config, EditDefaultsOnly, Category="Classes", meta=(Categories="WidgetClasses"))
-	TMap<FGameplayTag, TSoftClassPtr<UUserWidget>> WidgetOverrideClasses;
-	
-	//Included Actors that can be loaded and loaded instead of native cpp one. 
-	UPROPERTY(Config, EditDefaultsOnly, Category="Classes", meta=(Categories="WidgetClasses"))
-	TMap<FGameplayTag, TSoftClassPtr<AActor>> ActorOverrideClasses;
-	
-	UPROPERTY(Config, BlueprintReadOnly, EditDefaultsOnly, Category="Levels")
-	TSoftObjectPtr<UWorld> HubLevel;
-	
-	UPROPERTY(Config, BlueprintReadOnly, EditDefaultsOnly, Category="Levels")
-	TSoftObjectPtr<UWorld> MainMenuLevel;
 };

@@ -3,14 +3,14 @@
 
 #include "Widgets/HUD/BSCharacterPane.h"
 
-#include "Actors/Player/BSPlayerCharacter.h"
+#include "Player/BSPlayerCharacterBase.h"
 #include "Widgets/BSLocalWidgetSubsystem.h"
 
 void UBSCharacterPane::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	
-	if (ABSPlayerCharacter* BSPlayerCharacter = GetOwningPlayerPawn<ABSPlayerCharacter>())
+	if (ABSPlayerCharacterBase* BSPlayerCharacter = GetOwningPlayerPawn<ABSPlayerCharacterBase>())
 	{
 		BSPlayerCharacter->SetMenuCamera();
 	}
@@ -18,7 +18,7 @@ void UBSCharacterPane::NativeOnActivated()
 
 void UBSCharacterPane::NativeOnDeactivated()
 {
-	if (ABSPlayerCharacter* BSPlayerCharacter = GetOwningPlayerPawn<ABSPlayerCharacter>())
+	if (ABSPlayerCharacterBase* BSPlayerCharacter = GetOwningPlayerPawn<ABSPlayerCharacterBase>())
 	{
 		BSPlayerCharacter->ResetCamera();
 	}

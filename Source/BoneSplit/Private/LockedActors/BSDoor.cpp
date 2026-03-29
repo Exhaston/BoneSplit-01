@@ -9,11 +9,10 @@
 // Sets default values
 ABSDoor::ABSDoor(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	
-	SetReplicates(true);
-	SetNetUpdateFrequency(10);
+	bReplicates = true;
+	SetNetUpdateFrequency(8);
 	bAlwaysRelevant = true;
 }
 
