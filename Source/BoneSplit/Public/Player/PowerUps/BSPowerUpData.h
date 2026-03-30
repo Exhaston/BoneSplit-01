@@ -18,8 +18,9 @@ enum EBSPowerUpRarity
 	EPR_Rare UMETA(DisplayName="Rare"),
 	EPR_Epic UMETA(DisplayName="Epic"),                               
 	EPR_Legendary UMETA(DisplayName="Legendary"),
+	EPR_Cursed UMETA(DisplayName="Cursed"),
 };
-
+												  
 /**
  * 
  */

@@ -3,15 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BSPowerUpData.h"
 #include "CommonButtonBase.h"
 #include "BSWidget_PowerChoiceButton.generated.h"
 
-enum EBSPowerUpRarity : int;
 class UCommonRichTextBlock;
 class UCommonLazyImage;
 class UTextBlock;
 class UImage;
-class UBSPowerUpData;
 /**
  * 
  */

@@ -4,6 +4,7 @@
 #include "Player/BSPlayerCharacterBase.h"
 
 #include "AbilitySystemInterface.h"
+#include "NavigationSystem.h"
 #include "Abilities/BSAbilitySystem.h"
 #include "Abilities/BSExtendedAttributeSet.h"
 #include "Abilities/BSGameplayAbilitiesLibrary.h"
@@ -128,6 +129,12 @@ void ABSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ABSPlayerCharacterBase, FactionTags);
 }
 
+void ABSPlayerCharacterBase::BeginPlay()
+{
+	Super::BeginPlay();
+	LastSafePos = GetActorLocation();
+}
+
 void ABSPlayerCharacterBase::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
@@ -175,6 +182,17 @@ void ABSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	{
 		CameraComponent->SetFieldOfView(ConsoleVariable->GetFloat());
 	});
+}
+
+void ABSPlayerCharacterBase::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	TrySavePosition(DeltaSeconds);
+}
+
+void ABSPlayerCharacterBase::TeleportToSafety()
+{
+	SetActorLocation(LastSafePos, false, nullptr, ETeleportType::ResetPhysics);
 }
 
 bool ABSPlayerCharacterBase::CanJumpInternal_Implementation() const
@@ -302,6 +320,42 @@ void ABSPlayerCharacterBase::LaunchCharacter(FVector LaunchVelocity, bool bXYOve
 	}
 	
 	Super::LaunchCharacter(LaunchVelocity, bXYOverride, bZOverride);
+}
+
+void ABSPlayerCharacterBase::TrySavePosition(const float DeltaTime)
+{
+	const UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp) return;
+
+	if (MoveComp->IsMovingOnGround() && IsOnNavMesh())
+	{
+		TimeGrounded += DeltaTime;
+
+		// Only save after the player has been grounded for a moment
+		if (TimeGrounded >= 1)
+		{
+			LastSafePos = GetActorLocation();
+		}
+	}
+	else
+	{
+		TimeGrounded = 0.f;
+	}
+}
+
+bool ABSPlayerCharacterBase::IsOnNavMesh() const
+{
+	UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavSys) return false;
+
+	FNavLocation ProjectedLocation;
+	bool bProjected = NavSys->ProjectPointToNavigation(
+		GetActorLocation(),
+		ProjectedLocation,
+		FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2)  // search extent: XY radius, Z reach down
+	);
+
+	return bProjected;
 }
 
 void ABSPlayerCharacterBase::Client_LaunchCharacter_Implementation(FVector Direction, bool OverrideXY, bool OverrideZ)

@@ -69,14 +69,16 @@ void ABSSpawnManager::BeginPlay()
     Super::BeginPlay();
     
     if (!GetWorld()->GetAuthGameMode()) return;
-
-    if (!SpawnData) return;
-
+    
     for (auto Mob : PreExistingMobs)
     {
+        if (!Mob) continue;
         LiveMobs.AddUnique(Mob);
+        Mob->GetOnMobDiedDelegate().AddUObject(this, &ABSSpawnManager::OnMobDied);
         ++TotalMobsSpawned;
     }
+    
+    if (!SpawnData) return;
     
     if (bAutoStart)
     {
@@ -307,6 +309,7 @@ bool ABSSpawnManager::IsExpectingMoreMobs() const
 void ABSSpawnManager::OnMobDied(ABSMobCharacterBase* Mob)
 {
     LiveMobs.Remove(Mob);
+    GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("MOB DIED"));
     
     if (!IsExpectingMoreMobs())
     {

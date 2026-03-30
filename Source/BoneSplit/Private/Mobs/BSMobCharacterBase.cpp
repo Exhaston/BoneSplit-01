@@ -102,7 +102,7 @@ void ABSMobCharacterBase::BeginPlay()
 		{
 			NetMulticast_MobDied();
 			
-			if (UKismetMathLibrary::RandomBoolWithWeight(0.25f))
+			if (UKismetMathLibrary::RandomBoolWithWeight(0.75f))
 			{
 				if (GetWorld())
 				{
@@ -110,7 +110,7 @@ void ABSMobCharacterBase::BeginPlay()
 					{
 						if (UBSPowerUpComponent* PowerUpComponent = UBSPowerUpComponent::GetPowerUpComponent(PS))
 						{
-							PowerUpComponent->SpawnPowerUpForPlayer(GetActorLocation(), FMath::RandRange(1, 2));
+							PowerUpComponent->SpawnPowerUpForPlayer(GetActorLocation(), FMath::RandRange(1, 3));
 						}
 					}
 				}

@@ -43,6 +43,8 @@ public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	virtual void BeginPlay() override;
+	
 	virtual void PossessedBy(AController* NewController) override;
 	
 	virtual void OnRep_Controller() override;
@@ -52,6 +54,10 @@ public:
 	virtual void OnPlayerStateChanged(APlayerState* NewPlayerState, APlayerState* OldPlayerState) override;
 	
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	
+	virtual void Tick(float DeltaSeconds) override;
+	
+	virtual void TeleportToSafety();
 	
 	//Attempts to initialize the ability system from the player state. 
 	//Should be called from multiple events (Such as possessed, OnRep_Controller etc.), 
@@ -76,6 +82,12 @@ public:
 	virtual void LaunchCharacter(FVector LaunchVelocity, bool bXYOverride, bool bZOverride) override;
 
 protected:
+	
+	virtual void TrySavePosition(float DeltaTime);
+	bool IsOnNavMesh() const;
+
+	FVector LastSafePos;
+	float TimeGrounded;
 	
 	UFUNCTION(Client, Reliable)
 	void Client_LaunchCharacter(FVector Direction, bool OverrideXY, bool OverrideZ);

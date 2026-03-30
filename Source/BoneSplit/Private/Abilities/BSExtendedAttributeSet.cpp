@@ -219,8 +219,9 @@ void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAs
 	}
 	
 	//Only apply thorns from non thorn damage.
-	if (GetThorns() > 0 && !EffectSpec.Def.IsA(UBSThornsEffect::StaticClass())) 
+	if (GetThorns() > 0 &&   EffectSpec.Def && !EffectSpec.Def.IsA(UBSThornsEffect::StaticClass())) 
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("THORNS"));
 		const FGameplayEffectSpecHandle SpecHandle = TargetAsc->MakeOutgoingSpec(
 			UBSThornsEffect::StaticClass(), 1, TargetAsc->MakeEffectContext());
 
