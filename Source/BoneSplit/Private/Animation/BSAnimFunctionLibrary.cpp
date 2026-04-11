@@ -488,6 +488,8 @@ void UBSNotify_SpawnStaticMesh::NotifyBegin(USkeletalMeshComponent* MeshComp, UA
 		StaticMeshInstances.Add(MeshComp, NewObject<UStaticMeshComponent>(MeshComp->GetOwner()));
 	
 	NewComp->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
+	NewComp->SetGenerateOverlapEvents(false);
+	NewComp->SetCollisionObjectType(ECC_WorldDynamic);
 	NewComp->SetStaticMesh(StaticMesh);
 	NewComp->SetReceivesDecals(false);
 	NewComp->SetupAttachment(MeshComp, ParentBone);

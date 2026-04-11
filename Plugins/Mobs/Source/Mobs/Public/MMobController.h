@@ -31,6 +31,7 @@ public:
 	
 	explicit AMMobController(const FObjectInitializer& ObjectInitializer);
 	
+	
 	virtual void Tick(float DeltaSeconds) override;
 	
 #if UE_BUILD_DEVELOPMENT || WITH_EDITOR
@@ -42,8 +43,6 @@ public:
 	/* Public Setters */
 	
 	virtual void StartPatrol(AMMobPatrolPath* InPatrolPath);
-	
-	virtual bool LineOfSightTo(const AActor* Other, FVector ViewPoint = FVector(ForceInit), bool bAlternateChecks = false) const override;
 	
 	//When the mob should face something or inherently target something (like an ability) this should be set. 
 	//Remember to ClearFocus() after the ability or event is over.
@@ -72,9 +71,13 @@ public:
 	//Gets all the allies gathered within the pawns vicinity and in line of sight.
 	virtual TArray<AActor*> GetAlliesInVicinity();
 	
+	virtual TArray<AActor*> GetEnemiesInVicinity();
+	
+	virtual bool HasLineOfSightToTarget(AActor* Target);
+	
 	bool GetIsMoving();
 
-	virtual FMOnTargetChanged& GetOnTargetChangedDelegate() { return OnTargetChangedDelegate; }
+	virtual FMOnTargetChanged& GetOnTargetChangedDelegate() { return ThreatComponent->GetOnTargetChangedDelegate(); }
 	
 	virtual FMOnMobTick& GetOnMobTickDelegate() { return OnMobTickDelegate; }
 	
@@ -83,6 +86,8 @@ public:
 	virtual UMThreatComponent* GetThreatComponent() override { return ThreatComponent; }
 	
 	virtual FMOnFocusTargetChanged& GetOnFocusTargetChangedDelegate() { return OnFocusTargetChanged; }
+	
+
 
 protected:
 	
@@ -137,8 +142,6 @@ protected:
 	TObjectPtr<UMMobPatrolComponent> PatrolComponent;
 	          
 	/* Threat */
-	
-	FMOnTargetChanged OnTargetChangedDelegate;
 	                                                                 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="Mob|Threat")
 	TObjectPtr<UMThreatComponent> ThreatComponent;
@@ -150,6 +153,9 @@ protected:
 	
 	UPROPERTY()
 	TArray<TWeakObjectPtr<AActor>> NearbyAllies;
+	
+	UPROPERTY()
+	TArray<TWeakObjectPtr<AActor>> NearbyEnemies;
 	
 	//Finds all the pawns in vicinity, radius defined by VicinitySphereRadius.
 	//Filtering is done by overriding CheckActorEnemy() and CheckActorAlly().

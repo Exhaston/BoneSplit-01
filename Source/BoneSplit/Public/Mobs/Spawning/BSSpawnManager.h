@@ -27,16 +27,21 @@ public:
 #if WITH_EDITOR
     
     UFUNCTION(CallInEditor)
+    void PopulateEnemiesFromLevel();
+    
+    UFUNCTION(CallInEditor)
+    void PopulateLockables();
+    
+    UFUNCTION(CallInEditor)
     void DebugConnections();
     
     UFUNCTION(CallInEditor)
     void ClearDebug();
     
 #endif
-
-    // ----------------------------------------------------------------
-    //  Public API
-    // ----------------------------------------------------------------
+    
+    UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Spawning")
+    bool bIncreaseDifficultyOnFinish = true;
     
     UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Spawning")
     bool bAutoStart = false;

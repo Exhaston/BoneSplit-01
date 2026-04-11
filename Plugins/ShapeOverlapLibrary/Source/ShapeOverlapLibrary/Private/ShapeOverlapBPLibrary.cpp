@@ -2,15 +2,98 @@
 
 #include "ShapeOverlapBPLibrary.h"
 #include "Engine/OverlapResult.h"
+#include "Kismet/KismetSystemLibrary.h"
 
-bool UShapeOverlapBPLibrary::LineOfSightTo(UObject* WorldContext, const FVector Origin, const FVector Target)
+namespace ShapeLibraryCVars
+{
+	TAutoConsoleVariable<bool> CVarDebugShapeOverlaps(
+	TEXT("ShapeLibrary.DrawDebug"),false,
+	TEXT("Default = 0"),
+	ECVF_Default);
+	
+	TAutoConsoleVariable<bool> CVarDebugShapeOverlapBounds(
+	TEXT("ShapeLibrary.DrawDebugBounds"),false,
+	TEXT("Default = 0"),
+	ECVF_Default);
+	
+	TAutoConsoleVariable<bool> CVarDebugLineOfSight(
+	TEXT("ShapeLibrary.DrawDebugLOS"),false,
+	TEXT("Default = 0"),
+	ECVF_Default);
+	
+	TAutoConsoleVariable<float> CVarDebugShapeOverlapDuration(
+		TEXT("ShapeLibrary.DrawDebugDuration"),1,
+		TEXT("Default = 1"),
+		ECVF_Default);
+}
+
+bool UShapeOverlapBPLibrary::LineOfSightToPoint(const UObject* WorldContext, FVector Origin, FVector Target,
+	const TArray<AActor*>& IgnoredActors, float Radius)
 {
 	const UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull);
 	if (!World) return false;
 	
 	FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam;
 	Params.bTraceComplex = true;
-	return World->LineTraceTestByChannel(Origin, Target, ECC_Visibility, Params);
+	Params.AddIgnoredActors(IgnoredActors);
+	
+	bool bHasLOS;
+	
+	if (Radius > 0.0f) // Sphere check
+	{
+		const ETraceTypeQuery TraceType = UEngineTypes::ConvertToTraceType(ECC_Visibility);
+		
+		FHitResult Result;
+		bHasLOS = !UKismetSystemLibrary::SphereTraceSingle(
+			World, 
+			Origin, 
+			Target, 
+			Radius, 
+			TraceType,
+			true,
+			IgnoredActors, 
+			ShapeLibraryCVars::CVarDebugLineOfSight.GetValueOnGameThread() ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, 
+			Result, 
+			false,
+			FLinearColor::Green,
+			FLinearColor::Red,
+			ShapeLibraryCVars::CVarDebugShapeOverlapDuration.GetValueOnGameThread());
+	}
+	else
+	{
+		bHasLOS = !World->LineTraceTestByChannel(Origin, Target, ECC_Visibility, Params);
+		
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT
+	
+		if (ShapeLibraryCVars::CVarDebugLineOfSight.GetValueOnGameThread())
+		{
+			DrawDebugDirectionalArrow(
+				World, 
+				Origin, 
+				Target, 
+				25, 
+				bHasLOS ? FColor::Green : FColor::Yellow, 
+				false, 
+				ShapeLibraryCVars::CVarDebugShapeOverlapDuration.GetValueOnGameThread());
+		}
+	
+#endif
+	}
+	
+	return bHasLOS;
+}
+
+bool UShapeOverlapBPLibrary::LineOfSightToActor(const AActor* Actor, const AActor* Target, const float Radius, const bool bUseTargetLocation)
+{
+	if (!Actor || !Target) return false;
+	
+	const FVector Origin = bUseTargetLocation ? Actor->GetTargetLocation() : Actor->GetActorLocation();
+	const FVector TargetLocation = bUseTargetLocation ? Target->GetTargetLocation() : Target->GetActorLocation();
+	
+	TArray<AActor*> IgnoreList;
+	IgnoreList.Add(const_cast<AActor*>(Actor));
+	IgnoreList.Add(const_cast<AActor*>(Target));
+	return LineOfSightToPoint(Actor, Origin, TargetLocation, IgnoreList, Radius);;
 }
 
 bool UShapeOverlapBPLibrary::OverlapWedgeShapeMulti(
@@ -20,9 +103,8 @@ bool UShapeOverlapBPLibrary::OverlapWedgeShapeMulti(
 	float Distance, 
 	float Height, 
 	float Angle,
-	bool bUseOverlapComponentHitOrigin,
-	TArray<AActor*> IgnoredActors,
-	TArray<TEnumAsByte<ECollisionChannel>> ObjectTypes)
+	FSLHitDetectionInfo HitDetectionInfo,
+	float InnerBiasRadius)
 {
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull);
 	if (!World) return false;
@@ -37,14 +119,31 @@ bool UShapeOverlapBPLibrary::OverlapWedgeShapeMulti(
 	
 	Distance *= ParentTransform.GetScale3D().X;
 	
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT
+	
+	if (ShapeLibraryCVars::CVarDebugShapeOverlaps.GetValueOnGameThread() || !World->IsGameWorld())
+	{
+		DrawDebugWedge(
+			WorldContext, 
+			ParentTransform, 
+			Distance, 
+			Height, 
+			Angle, 
+			ShapeLibraryCVars::CVarDebugShapeOverlapBounds.GetValueOnGameThread(), 
+			FColor::Red, 
+			ShapeLibraryCVars::CVarDebugShapeOverlapDuration.GetValueOnGameThread());
+	}
+	
+#endif
+	
     TArray<FOverlapResult> Overlaps;
 	
 	FCollisionQueryParams QueryParams;
 	QueryParams.bTraceComplex = false;
-	QueryParams.AddIgnoredActors(IgnoredActors);
+	QueryParams.AddIgnoredActors(HitDetectionInfo.IgnoredActors);
 	
 	FCollisionObjectQueryParams ObjectParams;
-	for (auto Overlap : ObjectTypes)
+	for (auto Overlap : HitDetectionInfo.ObjectTypes)
 	{
 		ObjectParams.AddObjectTypesToQuery(Overlap);
 	}
@@ -61,12 +160,13 @@ bool UShapeOverlapBPLibrary::OverlapWedgeShapeMulti(
 
     const float CosHalfAngle = FMath::Cos(FMath::DegreesToRadians(Angle * 0.5f));
 	
+	float ScaledInnerBias = InnerBiasRadius * ParentTransform.GetScale3D().X;
+	
     for (const FOverlapResult& Overlap : Overlaps)
     {
     	if (OverlappedActors.Contains(Overlap.GetActor())) continue;
     	
-    	FVector RefLocation = bUseOverlapComponentHitOrigin ?
-    	Overlap.GetComponent()->GetComponentLocation() : Overlap.GetActor()->GetActorLocation();
+    	FVector RefLocation = Overlap.GetActor()->GetTargetLocation();
     	
         FVector ToTarget = RefLocation - CenteredOrigin;
 
@@ -84,23 +184,32 @@ bool UShapeOverlapBPLibrary::OverlapWedgeShapeMulti(
     	FVector FlatToTarget = ToTarget - FVector::DotProduct(ToTarget, UpDir) * UpDir;
     	FVector FlatForward  = ForwardDir - FVector::DotProduct(ForwardDir, UpDir) * UpDir;
     	
-    	if (FlatToTarget.SizeSquared() > Distance * Distance)
+    	float FlatDistSq = FlatToTarget.SizeSquared();
+    	
+    	if (FlatDistSq > Distance * Distance)
     	{
     		continue;
     	}
-    	
+        
     	if (FlatToTarget.IsNearlyZero())
     	{
     		continue;
     	}
 
-    	FlatToTarget.Normalize();
-    	FlatForward.Normalize();
-
-        if (float Dot = FVector::DotProduct(FlatToTarget, FlatForward); 
-        	Dot < CosHalfAngle)
+    	//Inside Bias Radius
+	    if (FlatDistSq < FMath::Square(ScaledInnerBias))
     	{
-    		continue;
+    		FlatToTarget.Normalize();
+    		FlatForward.Normalize();
+
+    		if (float Dot = FVector::DotProduct(FlatToTarget, FlatForward); 
+				Dot < CosHalfAngle)
+    		{
+    			continue;
+    		}
+	    	
+	    	if (HitDetectionInfo.bTestVisibility && 
+	    		!LineOfSightToPoint(WorldContext, CenteredOrigin, RefLocation, {Overlap.GetActor()})) continue;
     	}
     	
         OverlappedActors.Add(Overlap.GetActor());
@@ -279,39 +388,204 @@ float Duration)
 	}
 }
 
-bool UShapeOverlapBPLibrary::OverlapSphereMulti(
-	UObject* WorldContext, 
-	TArray<FOverlapResult>& OverlapResults, 
-	const FVector Origin, 
-	float Radius,
-	const FCollisionQueryParams QueryParams, 
-	const FCollisionObjectQueryParams ObjectQueryParams)
+bool UShapeOverlapBPLibrary::OverlapSphereMulti(UObject* WorldContext, TArray<AActor*>& OverlappedActors,
+	FTransform ParentTransform, FVector TransformOffset, float Radius, FSLHitDetectionInfo HitDetectionInfo, bool bActorTargetLocationDistance)
 {
-	const UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull);
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull);
 	if (!World) return false;
 	
-	Radius = FMath::Clamp(Radius, 0.f, FLT_MAX);
+	FVector Origin = ParentTransform.TransformPosition(TransformOffset);
 	
-	return World->OverlapMultiByObjectType(
-		OverlapResults, 
-		Origin, 
-		FQuat::Identity, 
-		ObjectQueryParams, 
-		FCollisionShape::MakeSphere(Radius), QueryParams);
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT
+	
+	if (ShapeLibraryCVars::CVarDebugShapeOverlaps.GetValueOnGameThread() || !World->IsGameWorld())
+	{
+		DrawDebugSphere(
+			World, 
+			Origin, 
+			Radius,
+			32,
+			FColor::Red,
+			false,
+			ShapeLibraryCVars::CVarDebugShapeOverlapDuration.GetValueOnGameThread());
+	}
+	
+#endif
+	
+	TArray<FOverlapResult> Overlaps;
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.bTraceComplex = false;
+	QueryParams.AddIgnoredActors(HitDetectionInfo.IgnoredActors);
+	
+	FCollisionObjectQueryParams ObjectParams;
+	for (auto Overlap : HitDetectionInfo.ObjectTypes)
+	{
+		ObjectParams.AddObjectTypesToQuery(Overlap);
+	}
+	
+	bool OverlappedAny = World->OverlapMultiByObjectType(
+		Overlaps,
+		Origin,
+		FQuat::Identity,
+		ObjectParams,
+		FCollisionShape::MakeSphere(Radius),
+		QueryParams);
+	
+	if (!OverlappedAny) return false;
+
+	for (auto Overlap : Overlaps)
+	{
+		if (!Overlap.GetActor() || OverlappedActors.Contains(Overlap.GetActor())) continue;
+		
+		if (bActorTargetLocationDistance && 
+			FVector::DistSquared(Overlap.GetActor()->GetTargetLocation(), Origin) > FMath::Square(Radius))
+			continue;
+		
+		if (HitDetectionInfo.bTestVisibility && 
+			!LineOfSightToPoint(WorldContext, Origin, Overlap.GetActor()->GetTargetLocation(), {Overlap.GetActor()})) continue;
+		
+		OverlappedActors.Add(Overlap.GetActor());
+	}
+	
+	return true;
 }
 
-void UShapeOverlapBPLibrary::DrawDebugOverlapSphere(
-	UObject* WorldContext, 
-	const FVector Origin, 
-	float Radius, 
-	const FColor Color,
-	const float Duration)
+bool UShapeOverlapBPLibrary::OverlapBoxShape(UObject* WorldContext, TArray<AActor*>& OverlappedActors, FTransform ParentTransform, FVector TransformOffset,
+	FVector Extents, FSLHitDetectionInfo HitDetectionInfo)
 {
-	const UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull);
-	if (!World) return;
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull);
+	if (!World) return false;
 	
-	Radius = FMath::Clamp(Radius, 0.f, FLT_MAX);
+	FVector Origin = ParentTransform.TransformPosition(TransformOffset);
 	
-	DrawDebugSphere(World, Origin, Radius, 16, Color, false, Duration);
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT
+	
+	if (ShapeLibraryCVars::CVarDebugShapeOverlaps.GetValueOnGameThread() || !World->IsGameWorld())
+	{
+		DrawDebugBox(
+			World, 
+			Origin, 
+			Extents * ParentTransform.GetScale3D(), 
+			ParentTransform.GetRotation(), 
+			FColor::Red, 
+			false, 
+			ShapeLibraryCVars::CVarDebugShapeOverlapDuration.GetValueOnGameThread());
+	}
+	
+#endif
+	
+	TArray<FOverlapResult> Overlaps;
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.bTraceComplex = false;
+	QueryParams.AddIgnoredActors(HitDetectionInfo.IgnoredActors);
+	
+	FCollisionObjectQueryParams ObjectParams;
+	for (auto Overlap : HitDetectionInfo.ObjectTypes)
+	{
+		ObjectParams.AddObjectTypesToQuery(Overlap);
+	}
+	
+	bool OverlappedAny = World->OverlapMultiByObjectType(
+		Overlaps,
+		Origin,
+		ParentTransform.GetRotation(),
+		ObjectParams,
+		FCollisionShape::MakeBox(Extents * ParentTransform.GetScale3D()),
+		QueryParams);
+	
+	if (!OverlappedAny) return false;
+
+	for (auto Overlap : Overlaps)
+	{
+		if (!Overlap.GetActor() || OverlappedActors.Contains(Overlap.GetActor())) continue;
+		
+		if (HitDetectionInfo.bTestVisibility && 
+			!LineOfSightToPoint(WorldContext, Origin, Overlap.GetActor()->GetTargetLocation(), {Overlap.GetActor()})) continue;
+		
+		OverlappedActors.Add(Overlap.GetActor());
+	}
+	
+	return true;
+}
+
+bool UShapeOverlapBPLibrary::OverlapCylinderShape(UObject* WorldContext, TArray<AActor*>& OverlappedActors,
+	FTransform ParentTransform, FVector TransformOffset, float Radius, float HalfHeight,
+	FSLHitDetectionInfo HitDetectionInfo)
+{
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull);
+	if (!World) return false;
+
+	FVector Origin = ParentTransform.TransformPosition(TransformOffset);
+	FVector UpVector = ParentTransform.GetUnitAxis(EAxis::Z);
+	HalfHeight *= ParentTransform.GetScale3D().Z;
+	float ScaledRadius = Radius * FMath::Max(ParentTransform.GetScale3D().X, ParentTransform.GetScale3D().Y);
+
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT
+
+	if (ShapeLibraryCVars::CVarDebugShapeOverlaps.GetValueOnGameThread() || !World->IsGameWorld())
+	{
+		DrawDebugCylinder(
+			World,
+			Origin - UpVector * HalfHeight,
+			Origin + UpVector * HalfHeight,
+			ScaledRadius,
+			32, FColor::Red,
+			false,
+			ShapeLibraryCVars::CVarDebugShapeOverlapDuration.GetValueOnGameThread());
+		
+		if (ShapeLibraryCVars::CVarDebugShapeOverlapBounds.GetValueOnGameThread())
+		{
+			DrawDebugBox(
+				World, 
+				Origin, 
+				FVector(ScaledRadius, ScaledRadius, HalfHeight),
+				ParentTransform.GetRotation(),
+				FColor::Red, 
+				false, 
+				ShapeLibraryCVars::CVarDebugShapeOverlapDuration.GetValueOnGameThread());
+		}
+	}
+
+#endif
+
+	TArray<FOverlapResult> Overlaps;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.bTraceComplex = false;
+	QueryParams.AddIgnoredActors(HitDetectionInfo.IgnoredActors);
+
+	FCollisionObjectQueryParams ObjectParams;
+	for (auto Overlap : HitDetectionInfo.ObjectTypes)
+	{
+		ObjectParams.AddObjectTypesToQuery(Overlap);
+	}
+
+	bool OverlappedAny = World->OverlapMultiByObjectType(
+		Overlaps,
+		Origin,
+		ParentTransform.GetRotation(),
+		ObjectParams,
+		FCollisionShape::MakeBox(FVector(ScaledRadius, ScaledRadius, HalfHeight)),
+		QueryParams);
+
+	if (!OverlappedAny) return false;
+
+	for (auto& Overlap : Overlaps)
+	{
+		if (!Overlap.GetActor() || OverlappedActors.Contains(Overlap.GetActor())) continue;
+		FVector ToActor = Overlap.GetActor()->GetTargetLocation() - Origin;
+		
+		float UpDistance = FVector::DotProduct(ToActor, UpVector);   
+		if (FMath::Abs(UpDistance) > HalfHeight) continue; //Out of bounds of the top of cylinder
+		
+		FVector Radial = ToActor - UpVector * UpDistance;
+		if (Radial.SizeSquared() > ScaledRadius * ScaledRadius) continue; //Outside the radius of the cylinder
+		
+		OverlappedActors.Add(Overlap.GetActor());
+	}
+
+	return true;
 }
 

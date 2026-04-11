@@ -42,6 +42,7 @@ FGameplayAbilitySpecHandle UBSMobAbilityChooserComponent::EvaluateAndFindAbility
 
     for (const FGameplayAbilitySpecHandle& Handle : GrantedHandles)
     {
+    	if (!Handle.IsValid()) continue;
         FGameplayAbilitySpec* Spec = AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
         if (!Spec) continue;
 

@@ -3,7 +3,14 @@
 
 #include "Mobs/BSMobControllerBase.h"
 
+#include "ShapeOverlapBPLibrary.h"
 #include "Factions/FactionInterface.h"
+
+bool ABSMobControllerBase::LineOfSightTo(const AActor* Other, FVector ViewPoint, bool bAlternateChecks) const
+{
+	if (!GetPawn()) return false;
+	return UShapeOverlapBPLibrary::LineOfSightToActor(GetPawn(), Other, 15, true);
+}
 
 bool ABSMobControllerBase::IsActorAlly(AActor* InActor)
 {

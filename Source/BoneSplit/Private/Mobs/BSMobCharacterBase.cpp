@@ -8,11 +8,13 @@
 #include "Abilities/BSGameplayAbilitiesLibrary.h"
 #include "AnimInstance/MMobAnimInstance.h"
 #include "Components/CapsuleComponent.h"
+#include "Environment/BSBreakable.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameSettings/BSDeveloperSettings.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Mobs/BSMobControllerBase.h"
 #include "Mobs/BSMobMovementComponent.h"
+#include "Mobs/BSMobSubsystem.h"
 #include "Mobs/Abilities/BSMobAbilityChooserComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/HUD/BSUnitPlateComponent.h"
@@ -61,6 +63,15 @@ void ABSMobCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(ABSMobCharacterBase, FactionTags);
 }
 
+void ABSMobCharacterBase::ReInitCharacterData()
+{
+	if (CharacterInitData)
+	{
+		UBSMobSubsystem* MobSubsystem = UBSMobSubsystem::GetMobSubsystem(this);
+		UBSGameplayAbilitiesLibrary::ApplyCharacterAttributes(CharacterInitData, AbilitySystemComponent, MobSubsystem->GetCurrentDifficulty());
+	}
+}
+
 void ABSMobCharacterBase::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
@@ -79,9 +90,28 @@ void ABSMobCharacterBase::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	
-	if (CharacterInitData)
+	if (UBSMobSubsystem* MobSubsystem = UBSMobSubsystem::GetMobSubsystem(this); 
+		MobSubsystem && CharacterInitData)
 	{
-		UBSGameplayAbilitiesLibrary::ApplyCharacterDataTo(CharacterInitData, AbilitySystemComponent, 1);
+		FactionTags.AddTag(BSGameplayTags::Faction_Breakable);
+		
+		UBSGameplayAbilitiesLibrary::ApplyCharacterDataTo(
+			CharacterInitData, AbilitySystemComponent, MobSubsystem->GetCurrentDifficulty());
+		
+		MobSubsystem->RegisterMob(this);
+		
+		if (ABSMobControllerBase* MobControllerBase = Cast<ABSMobControllerBase>(NewController))
+		{
+			MobControllerBase->GetOnTargetChangedDelegate().AddWeakLambda(
+				this, [this](AActor* OldTarget, AActor* NewTarget)
+			{
+				if (NewTarget) StartCombat();
+			});
+		}
+	}
+	else
+	{
+		UE_LOG(BoneSplit, Error, TEXT("Mob spawned with no init data %s"), *GetName())
 	}
 }
 
@@ -95,8 +125,6 @@ void ABSMobCharacterBase::BeginPlay()
 	UnitPlateComponent->SetActive(true);
 	if (HasAuthority())
 	{
-		MobAbilityChooserComponent->StartAbilityChooser(AbilitySystemComponent);
-		
 		AbilitySystemComponent->OnHealthZero.AddWeakLambda(this, [this]
 			(UAbilitySystemComponent*, UAbilitySystemComponent*, FGameplayTagContainer, float, float)
 		{
@@ -139,6 +167,9 @@ void ABSMobCharacterBase::NetMulticast_MobDied_Implementation()
 	
 	if (HasAuthority())
 	{
+		MobAbilityChooserComponent->StopAbilityChooser();
+		
+		GetCharacterMovement()->bUseRVOAvoidance = false;
 		GetCharacterMovement()->DisableMovement();
 		GetCharacterMovement()->StopMovementImmediately();
 			
@@ -212,6 +243,14 @@ FGameplayTagContainer& ABSMobCharacterBase::GetFactionTags()
 bool ABSMobCharacterBase::HasAnyMatchingFactionTag(const FGameplayTagContainer InFactionTags)
 {
 	return FactionTags.HasAnyExact(InFactionTags);
+}
+
+void ABSMobCharacterBase::StartCombat()
+{
+	if (!HasAuthority()) return;
+	if (bInCombat) return;
+	bInCombat = true;
+	MobAbilityChooserComponent->StartAbilityChooser(AbilitySystemComponent);
 }
 
 UMMobAnimInstance* ABSMobCharacterBase::TryGetMobInstance()

@@ -13,6 +13,8 @@ class BONESPLIT_API ABSMobControllerBase : public AMMobController
 	
 public:
 	
+	virtual bool LineOfSightTo(const AActor* Other, FVector ViewPoint = FVector(ForceInit), bool bAlternateChecks = false) const override;
+	
 	virtual bool IsActorAlly(AActor* InActor) override;
 	virtual bool IsActorEnemy(AActor* InActor) override;
 };

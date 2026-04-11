@@ -59,6 +59,9 @@ public:
 	
 	virtual void TeleportToSafety();
 	
+	UFUNCTION(Client, Reliable)
+	void Client_TeleportToSafety();
+	
 	//Attempts to initialize the ability system from the player state. 
 	//Should be called from multiple events (Such as possessed, OnRep_Controller etc.), 
 	//and is designed to ensure everything is valid before completion.
@@ -87,7 +90,6 @@ protected:
 	bool IsOnNavMesh() const;
 
 	FVector LastSafePos;
-	float TimeGrounded;
 	
 	UFUNCTION(Client, Reliable)
 	void Client_LaunchCharacter(FVector Direction, bool OverrideXY, bool OverrideZ);

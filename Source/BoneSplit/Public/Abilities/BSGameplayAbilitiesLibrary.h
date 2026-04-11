@@ -4,15 +4,40 @@
 
 #include "CoreMinimal.h"
 #include "BSDamageEffect.h"
+#include "Abilities/GameplayAbility.h"
 #include "GameplayTagContainer.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "BSGameplayAbilitiesLibrary.generated.h"
 
+enum class ECAAbilitySystemGetResult : uint8;
 class UBSBuffEffect;
 class UBSHealingEffect;
 class UAbilitySystemComponent;
 class UCharacterAbilitySystem;
 class UBSCharacterInitData;
+
+USTRUCT(BlueprintType, Blueprintable, DisplayName="AdditionalEffects")
+struct FBSAdditionalEffectInfo
+{
+	GENERATED_BODY()
+	
+	FBSAdditionalEffectInfo() = default;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bAppendDynamicTagsFromDamage = false;
+	
+	//If 0 will use the original Duration of the spec
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TMap<TSubclassOf<UBSBuffEffect>, float> BuffDurationMap;
+};
+									 
+UENUM(BlueprintType, Blueprintable, DisplayName="Effect Application Result")
+enum class EBSEffectApplicationResult : uint8
+{
+	Success = 0 UMETA(DisplayName = "Success"),
+	Failed = 1 UMETA(DisplayName = "Failed"),
+};
+
 /**
  * 
  */
@@ -37,6 +62,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	static FVector GetTargetLocationFromActor(AActor* Actor);
 	
+	static void ApplyCharacterEffects(UBSCharacterInitData* CharacterInitData, UCharacterAbilitySystem* CharacterAbilitySystem, int32 InLevel = 0);
+	static void ApplyCharacterAbilities(UBSCharacterInitData* CharacterInitData, UCharacterAbilitySystem* CharacterAbilitySystem, int32 InLevel = 0);
+	static void ApplyCharacterAttributes(UBSCharacterInitData* CharacterInitData, UCharacterAbilitySystem* CharacterAbilitySystem, int32 InLevel = 0);
 	static void ApplyCharacterDataTo(
 		UBSCharacterInitData* CharacterInitData, UCharacterAbilitySystem* CharacterAbilitySystem, int32 InLevel = 0);
 	
@@ -47,10 +75,12 @@ public:
 	
 	//Supports instant effects by default, but accepts children of the damage effect class. 
 	//These can be modified further.
-	UFUNCTION(BlueprintCallable)
-	static bool ApplyDamageTo(
+	UFUNCTION(BlueprintCallable, meta = (ExpandEnumAsExecs = "OutResult"))
+	static void ApplyDamageTo(
 		UAbilitySystemComponent* Instigator, 
 		UAbilitySystemComponent* Target,
+		FBSAdditionalEffectInfo AdditionalEffects,
+		EBSEffectApplicationResult& OutResult,
 		bool CustomOrigin = false,
 		FVector Origin = FVector::ZeroVector,
 		bool bHitSelf = false,

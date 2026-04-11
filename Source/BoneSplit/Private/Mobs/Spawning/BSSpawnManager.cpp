@@ -6,8 +6,10 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
 #include "Group/BSReadyZone.h"
+#include "Kismet/GameplayStatics.h"
 #include "LockedActors/BSLockableInterface.h"
 #include "Mobs/BSMobCharacterBase.h"
+#include "Mobs/BSMobSubsystem.h"
 #include "Mobs/Spawning/BSSpawnBatch.h"
 #include "Mobs/Spawning/BSSpawnData.h"
 #include "Mobs/Spawning/BSSpawner.h"
@@ -23,7 +25,45 @@ ABSSpawnManager::ABSSpawnManager()
     SetRootComponent(CreateDefaultSubobject<USceneComponent>("RootComponent"));
 }
 
+
+
 #if WITH_EDITOR
+
+void ABSSpawnManager::PopulateEnemiesFromLevel()
+{
+    if (GetWorld())
+    {
+        PreExistingMobs.Empty();
+        TArray<AActor*> LevelMobs;
+        UGameplayStatics::GetAllActorsOfClass(this, ABSMobCharacterBase::StaticClass(), LevelMobs);
+
+        for (const auto MobCharacter : LevelMobs)
+        {
+            if (MobCharacter)
+            {
+                PreExistingMobs.AddUnique(Cast<ABSMobCharacterBase>(MobCharacter)); 
+            }
+        }
+    }
+}
+
+void ABSSpawnManager::PopulateLockables()
+{
+    if (GetWorld())
+    {
+        LockedActors.Empty();
+        TArray<AActor*> LevelActors;
+        UGameplayStatics::GetAllActorsOfClass(this, AActor::StaticClass(), LevelActors);
+
+        for (const auto LevelActor : LevelActors)
+        {
+            if (Cast<IBSLockableInterface>(LevelActor))
+            {
+                LockedActors.AddUnique(LevelActor);
+            }
+        }
+    }
+}
 
 void ABSSpawnManager::DebugConnections()
 {
@@ -156,6 +196,11 @@ void ABSSpawnManager::StopSpawning()
 
 void ABSSpawnManager::OnCompletion()
 {
+    if (UBSMobSubsystem* MobSubsystem = UBSMobSubsystem::GetMobSubsystem(this))
+    {
+        MobSubsystem->IncreaseDifficulty();
+    }
+    
     for (auto Lockable : LockedActors)
     {
         if (IBSLockableInterface* LockI = Cast<IBSLockableInterface>(Lockable))
@@ -173,6 +218,11 @@ void ABSSpawnManager::ScheduleNextBatch()
     {
         if (ActiveSpawnData->bLooping)
         {
+            if (UBSMobSubsystem* MobSubsystem = UBSMobSubsystem::GetMobSubsystem(this))
+            {
+                MobSubsystem->IncreaseDifficulty();
+            }
+            
             CurrentBatchIndex = 0;
             ScheduleNextBatch();
         }

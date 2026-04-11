@@ -16,9 +16,14 @@ namespace BSExtendedAttributeTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_HealthLeeching);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_ManaLeeching);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SoulCharging);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Blockable);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_NotBlockable);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_RawMagnitude);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Type_Magic);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Type_Physical);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_NoRetaliate);
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(SetByCaller_Knockback);
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Player_PVPFlagged);
 }
 
@@ -190,6 +195,16 @@ public:
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSExtendedAttributeSet, Armor, OldAttributeData);
 	}
 	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MagicResist)
+	FGameplayAttributeData MagicResist = 0;
+	ATTRIBUTE_ACCESSORS(UBSExtendedAttributeSet, MagicResist)
+	
+	UFUNCTION()
+	virtual void OnRep_MagicResist(const FGameplayAttributeData& OldAttributeData)
+	{
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSExtendedAttributeSet, MagicResist, OldAttributeData);
+	}
+	
 	// =================================================================================================================
 	// Speed - Modifier to movement
 	// ================================================================================================================= 
@@ -281,5 +296,15 @@ public:
 	virtual void OnRep_AttackSpeed(const FGameplayAttributeData& OldAttributeData)
 	{
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSExtendedAttributeSet, AttackSpeed, OldAttributeData);
+	}
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DamageModifier)
+	FGameplayAttributeData DamageModifier = 1;
+	ATTRIBUTE_ACCESSORS(UBSExtendedAttributeSet, DamageModifier)
+	
+	UFUNCTION()
+	virtual void OnRep_DamageModifier(const FGameplayAttributeData& OldAttributeData)
+	{
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBSExtendedAttributeSet, DamageModifier, OldAttributeData);
 	}
 };

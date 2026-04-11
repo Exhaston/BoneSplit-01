@@ -30,6 +30,8 @@ public:
 	UFUNCTION()
 	void OnAbilityTick(float DeltaSeconds);
 	
+	virtual void TriggerAbility();
+	
 	virtual void InputReleased(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) override;
 	
 	UFUNCTION(BlueprintNativeEvent)

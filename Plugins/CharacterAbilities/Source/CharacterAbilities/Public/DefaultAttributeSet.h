@@ -26,6 +26,12 @@ namespace DefaultSetByCallerTags
 	CHARACTERABILITIES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(SetByCaller_Duration);
 }
 
+namespace DefaultGameplayEvents
+{
+	CHARACTERABILITIES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_DamageTaken);
+	CHARACTERABILITIES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayEvent_DamageDealt);
+}
+
 /**
  * 
  */

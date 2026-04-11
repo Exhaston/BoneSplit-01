@@ -25,7 +25,11 @@ namespace BSExtendedAttributeTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_HealthLeeching, "Effect.HealthLeeching");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_ManaLeeching, "Effect.ManaLeeching");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SoulCharging, "Effect.SoulCharging");
-	UE_DEFINE_GAMEPLAY_TAG(Effect_Blockable, "Effect.Blockable");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_NotBlockable, "Effect.NotBlockable");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Effect_RawMagnitude, "Effect.RawMagnitude", "Damage effects with this tag will skip critical strikes and scaling all together");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Effect_Type_Magic, "Effect.Type.Magic", "Damage effects with this tag will be able to be mitigated using Magic Resist");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Effect_Type_Physical, "Effect.Type.Physical", "Damage effects with this tag will be able to be mitigated by Armor");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Effect_NoRetaliate, "Effect.NoRetaliate", "Damage effects with this tag will not trigger thorns or other recursive effects");
 	
 	UE_DEFINE_GAMEPLAY_TAG(SetByCaller_Knockback, "Attribute.Knockback");
 	UE_DEFINE_GAMEPLAY_TAG(Player_PVPFlagged, "Player.PVPFlagged");
@@ -62,6 +66,9 @@ void UBSExtendedAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	DOREPLIFETIME_CONDITION_NOTIFY(UBSExtendedAttributeSet, SoulChargeAmount, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBSExtendedAttributeSet, CooldownReductionModifier, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UBSExtendedAttributeSet, AttackSpeed, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UBSExtendedAttributeSet, DamageModifier, COND_None, REPNOTIFY_Always);
+	
+	DOREPLIFETIME_CONDITION_NOTIFY(UBSExtendedAttributeSet, MagicResist, COND_None, REPNOTIFY_Always);
 }
 
 void UBSExtendedAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -171,7 +178,7 @@ void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAs
 	
 	if (!IsValid(TargetAsc->GetAvatarActor())) return;
 	
-	if (EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_Blockable) && 
+	if (!EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_NotBlockable) && 
 		UKismetMathLibrary::RandomBoolWithWeight(UAbilitiesExtensionLib::AsymptoticDr(GetBlockChance(), 1)))
 	{
 		FGameplayEventData BlockPayload;
@@ -186,42 +193,56 @@ void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAs
 	
 	FGameplayEffectSpec EffectCopy = EffectSpec;
 	
-	float TotalPower = InstigatorAsc->GetNumericAttribute(GetPowerAttribute());
-	
-	if (const auto PowerAttrMod = EffectCopy.GetModifiedAttribute(GetPowerAttribute()))
+	if (!EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_RawMagnitude))
 	{
-		TotalPower += PowerAttrMod->TotalMagnitude;
-	}
+		const float DamageMod = InstigatorAsc->GetNumericAttribute(GetDamageModifierAttribute());
+		DamageToApply *= DamageMod;
+		
+		//Power
+		float TotalPower = InstigatorAsc->GetNumericAttribute(GetPowerAttribute());
+		DamageToApply += UAbilitiesExtensionLib::AsymptoticDr(TotalPower, 1000);
+		
+		//Critical Strikes
+
+		const float TotalCritChance = InstigatorAsc->GetNumericAttribute(GetCriticalChanceAttribute());
+		const float ClampedCritChance = FMath::Clamp(TotalCritChance, 0.f, 1.f);
+		const float ExcessCritChance = FMath::Max(0.f, TotalCritChance - 1.f);
 	
-	DamageToApply += UAbilitiesExtensionLib::AsymptoticDr(TotalPower, 1000);
-	
-	float TotalCritChance = InstigatorAsc->GetNumericAttribute(GetCriticalChanceAttribute());
-	
-	if (const auto CritChanceSpecMod = EffectCopy.GetModifiedAttribute(GetCriticalChanceAttribute()))
-	{
-		TotalCritChance += CritChanceSpecMod->TotalMagnitude;
-	}
-	
-	if (UKismetMathLibrary::RandomBoolWithWeight(FMath::Clamp(TotalCritChance, 0.f, 1.f)))
-	{
-		float TotalCritMod = InstigatorAsc->GetNumericAttribute(GetCriticalModifierAttribute());
-	
-		if (const auto CritModSpecMod = EffectCopy.GetModifiedAttribute(GetCriticalModifierAttribute()))
+		if (UKismetMathLibrary::RandomBoolWithWeight(ClampedCritChance))
 		{
-			TotalCritMod += CritModSpecMod->TotalMagnitude;
+			float TotalCritMod = InstigatorAsc->GetNumericAttribute(GetCriticalModifierAttribute());
+		
+			TotalCritMod = FMath::Clamp(TotalCritMod, 1, FLT_MAX);
+		
+			DamageToApply *= TotalCritMod * (1.f + ExcessCritChance);
+			EffectTags.AddTagFast(BSGameplayTags::Widget_FloatingText_Crit);
+			EffectTags.AddTag(BSTags::EffectTag_Critical);
+		}        
+		
+		//Physical Mitigation
+		
+		if (EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_Type_Physical) && GetArmor() > 0)
+		{
+			const float TotalArmor = UAbilitiesExtensionLib::AsymptoticDr(GetArmor(), 1);
+			DamageToApply /= TotalArmor;
 		}
 		
-		TotalCritMod = FMath::Clamp(TotalCritMod, 1, FLT_MAX);
+		//Magic Resist Mitigation
 		
-		DamageToApply *= TotalCritMod;
-		EffectTags.AddTagFast(BSGameplayTags::Widget_FloatingText_Crit);
-		EffectTags.AddTag(BSTags::EffectTag_Critical);
+		if (EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_Type_Magic) && GetMagicResist() > 0)
+		{
+			const float TotalMR = UAbilitiesExtensionLib::AsymptoticDr(GetMagicResist(), 1);
+			DamageToApply /= TotalMR;
+		}
 	}
 	
+	DamageToApply = FMath::RoundToInt32(DamageToApply);
+	
+	Super::HandleDamage(InstigatorAsc, TargetAsc, BaseDamage, DamageToApply, EffectTags, EffectSpec);
+	
 	//Only apply thorns from non thorn damage.
-	if (GetThorns() > 0 &&   EffectSpec.Def && !EffectSpec.Def.IsA(UBSThornsEffect::StaticClass())) 
+	if (GetThorns() > 0 && !EffectTags.HasTagExact(BSExtendedAttributeTags::Effect_NoRetaliate)) 
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Green, TEXT("THORNS"));
 		const FGameplayEffectSpecHandle SpecHandle = TargetAsc->MakeOutgoingSpec(
 			UBSThornsEffect::StaticClass(), 1, TargetAsc->MakeEffectContext());
 
@@ -231,24 +252,14 @@ void UBSExtendedAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAs
 			DefaultSetByCallerTags::SetByCaller_Damage,GetThorns()
 		);
 		
+		SpecHandle.Data->AddDynamicAssetTag(BSExtendedAttributeTags::Effect_RawMagnitude);
+		SpecHandle.Data->AddDynamicAssetTag(BSExtendedAttributeTags::Effect_NotBlockable);
+		
+		//Stop this from triggering again from the new effect
+		SpecHandle.Data->AddDynamicAssetTag(BSExtendedAttributeTags::Effect_NoRetaliate); 
+		
 		TargetAsc->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data, InstigatorAsc);
 	}
-	
-	if (GetArmor() > 0)
-	{
-		const float TotalArmor = UAbilitiesExtensionLib::AsymptoticDr(GetArmor(), 1);
-		DamageToApply /= TotalArmor;
-	}
-	
-	FGameplayEventData DamagePayload;
-	DamagePayload.ContextHandle = TargetAsc->MakeEffectContext();
-	DamagePayload.Target = TargetAsc->GetAvatarActor();
-	DamagePayload.EventTag = BSTags::GameplayEvent_DamageTaken;
-	DamagePayload.Instigator = InstigatorAsc->GetAvatarActor();
-	
-	TargetAsc->HandleGameplayEvent(BSTags::GameplayEvent_DamageTaken, &DamagePayload);
-	
-	Super::HandleDamage(InstigatorAsc, TargetAsc, BaseDamage, DamageToApply, EffectTags, EffectSpec);
 	
 	if (IMThreatInterface* ThreatInterface = Cast<IMThreatInterface>(TargetAsc->GetAvatarActor()))
 	{

@@ -3,22 +3,25 @@
 
 #include "Mobs/Abilities/BSMobAbility.h"
 
+#include "ShapeOverlapBPLibrary.h"
 #include "GameFramework/Character.h"
 #include "Mobs/BSMobControllerBase.h"
 
 bool UBSMobAbility::HasValidTarget()
 {
-	if (GetMobController() && GetMobController()->GetHighestThreatActor())
+	CurrentTarget = nullptr; // Always reset first
+	if (!GetMobController()) return false;
+
+	AActor* TargetActor = GetMobController()->GetHighestThreatActor();
+	if (TargetActor
+		&& FVector::Distance(TargetActor->GetActorLocation(), GetAvatarActorFromActorInfo()->GetActorLocation()) <= MaxRange
+		&& UShapeOverlapBPLibrary::LineOfSightToActor(GetAvatarActorFromActorInfo(), TargetActor, 15))
 	{
-		
-		AActor* TargetActor = GetMobController()->GetHighestThreatActor();
-		if (TargetActor && FVector::Distance(TargetActor->GetActorLocation(), GetAvatarActorFromActorInfo()->GetActorLocation()) <= MaxRange && GetMobController()->LineOfSightTo(TargetActor, GetAvatarActorFromActorInfo()->GetTargetLocation(), false))
-		{
-			CurrentTarget = TargetActor;
-		}
+		CurrentTarget = TargetActor;
+		return true;
 	}
-	
-	return CurrentTarget.IsValid();
+
+	return false;
 }
 
 void UBSMobAbility::ClearTarget()

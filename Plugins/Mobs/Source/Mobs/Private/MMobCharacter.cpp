@@ -34,49 +34,59 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UMMobMovementComponent>(Charact
 	GetReplicatedMovement_Mutable().RotationQuantizationLevel = ERotatorQuantization::ShortComponents;
 }
 
-void AMMobCharacter::PostInitializeComponents()
-{
-	Super::PostInitializeComponents();
-}
-
 void AMMobCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	
-
-	
 	if (AMMobController* MobController = Cast<AMMobController>(NewController))
 	{
 		MobController->SetMoveAcceptanceRadius(MoveToThreatAcceptanceRadius);
+		
 		MobController->GetOnMobTickDelegate().AddUObject(this, &AMMobCharacter::NativeOnMobTick);
 		MobController->GetThreatComponent()->GetOnTargetChangedDelegate().AddUObject(this, &AMMobCharacter::OnTargetChanged);
-		
 		MobController->GetOnFocusTargetChangedDelegate().AddUObject(this, &AMMobCharacter::OnFocusTargetChanged);
 		
-		//Cursed but the navigation system is shit
-		TWeakObjectPtr WeakThis(this);
-		GetWorldTimerManager().SetTimer(MobNavMeshTimer, [WeakThis]()
-		{
-			if (!WeakThis.IsValid())
-				return;
-
-			ThisClass* Self = WeakThis.Get();
-
-			UWorld* World = Self->GetWorld();
-			if (!World || !World->bIsWorldInitialized)
-				return;
-
-			const UNavigationSystemV1* NavSys = 
-				FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
-			
-			if (!NavSys || !NavSys->IsWorldInitDone())
-				return;
-			
-			Self->GetWorldTimerManager().ClearTimer(Self->MobNavMeshTimer);
-			Self->OnNavigationReady();
-
-		}, 1.0f, true);
+		InitNavigation();
 	}
+}
+
+void AMMobCharacter::InitNavigation()
+{
+	//Cursed but the navigation system is shit
+	TWeakObjectPtr WeakThis(this);
+	GetWorldTimerManager().SetTimer(MobNavMeshTimer, [WeakThis]()
+	{
+		if (!WeakThis.IsValid())
+			return;
+
+		ThisClass* Self = WeakThis.Get();
+
+		UWorld* World = Self->GetWorld();
+		if (!World || !World->bIsWorldInitialized)
+			return;
+
+		const UNavigationSystemV1* NavSys = 
+			FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+			
+		if (!NavSys || !NavSys->IsWorldInitDone())
+			return;
+			
+		Self->GetWorldTimerManager().ClearTimer(Self->MobNavMeshTimer);
+		Self->OnNavigationReady();
+
+	}, 1.0f, true);
+}
+
+void AMMobCharacter::UnPossessed()
+{
+	if (AMMobController* MobController = GetController<AMMobController>())
+	{
+		MobController->GetOnMobTickDelegate().RemoveAll(this);
+		MobController->GetThreatComponent()->GetOnTargetChangedDelegate().RemoveAll(this);
+		MobController->GetOnFocusTargetChangedDelegate().RemoveAll(this);
+	}
+		
+	Super::UnPossessed();
 }
 
 void AMMobCharacter::LaunchCharacter(FVector LaunchVelocity, bool bXYOverride, bool bZOverride)
@@ -89,6 +99,8 @@ void AMMobCharacter::OnFocusTargetChanged(AActor* NewFocus)
 {
 	GetCharacterMovement()->bUseControllerDesiredRotation = IsValid(NewFocus);
 	GetCharacterMovement()->bOrientRotationToMovement = !IsValid(NewFocus);
+	
+	OnFocusTargetChangedDelegate.Broadcast(NewFocus);
 }
 
 void AMMobCharacter::OnTargetChanged(AActor* OldTarget, AActor* NewTarget)
@@ -101,6 +113,8 @@ void AMMobCharacter::OnTargetChanged(AActor* OldTarget, AActor* NewTarget)
 	{
 		GetMobController()->GetMobPatrolComponent()->StartPatrol(MobPatrolPath);
 	}
+	
+	OnTargetChangedDelegate.Broadcast(OldTarget, NewTarget);
 }
 
 void AMMobCharacter::OnNavigationReady()
@@ -108,11 +122,6 @@ void AMMobCharacter::OnNavigationReady()
 	if (MobPatrolPath && !GetMobController()->GetThreatComponent()->GetHighestThreat())
 	{
 		GetMobController()->GetMobPatrolComponent()->StartPatrol(MobPatrolPath);
-	}
-	
-	if (UNavigationSystemV1* NavSys = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
-	{
-		NavSys->OnNavigationInitDone.RemoveAll(this);
 	}
 }
 

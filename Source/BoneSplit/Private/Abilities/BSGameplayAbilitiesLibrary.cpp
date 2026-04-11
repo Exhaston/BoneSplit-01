@@ -3,6 +3,7 @@
 
 #include "Abilities/BSGameplayAbilitiesLibrary.h"
 
+#include "AbilitiesExtensionLib.h"
 #include "AIController.h"
 #include "CharacterAbilitySystem.h"
 #include "CharacterAbilities/Public/CharacterAbilityBase.h"
@@ -12,6 +13,7 @@
 #include "Abilities/BSExtendedAttributeSet.h"
 #include "Abilities/BSHealingEffect.h"
 #include "Factions/FactionInterface.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 FVector UBSGameplayAbilitiesLibrary::ProjectToGround(UObject* ContextObject, FVector InLocation)
 {
@@ -36,6 +38,50 @@ FVector UBSGameplayAbilitiesLibrary::GetTargetLocationFromActor(AActor* Actor)
 {
 	if (!ensure(Actor)) return FVector::ZeroVector;
 	return Actor->GetTargetLocation();
+}
+
+void UBSGameplayAbilitiesLibrary::ApplyCharacterEffects(UBSCharacterInitData* CharacterInitData,
+	UCharacterAbilitySystem* CharacterAbilitySystem, int32 InLevel)
+{
+	if (!CharacterInitData || !CharacterAbilitySystem->IsOwnerActorAuthoritative()) return;
+	
+	for (const auto& DefaultEffectClass : CharacterInitData->GrantedEffects)
+	{
+		FGameplayEffectSpecHandle DefaultEffectHandle = 
+			CharacterAbilitySystem->MakeOutgoingSpec(
+				DefaultEffectClass, 
+				InLevel, 
+				CharacterAbilitySystem->MakeEffectContext());
+				
+		CharacterAbilitySystem->ApplyGameplayEffectSpecToSelf(*DefaultEffectHandle.Data);
+	}
+}
+
+void UBSGameplayAbilitiesLibrary::ApplyCharacterAbilities(UBSCharacterInitData* CharacterInitData,
+	UCharacterAbilitySystem* CharacterAbilitySystem, int32 InLevel)
+{
+	if (!CharacterInitData || !CharacterAbilitySystem->IsOwnerActorAuthoritative()) return;
+	
+	for (auto& DefaultAbilityClass : CharacterInitData->GrantedDefaultAbilities)
+	{
+		FGameplayAbilitySpec NewSpec = FGameplayAbilitySpec(DefaultAbilityClass);
+		NewSpec.Level = InLevel;
+		CharacterAbilitySystem->GiveAbility(NewSpec);
+	}
+}
+
+void UBSGameplayAbilitiesLibrary::ApplyCharacterAttributes(UBSCharacterInitData* CharacterInitData,
+	UCharacterAbilitySystem* CharacterAbilitySystem, int32 InLevel)
+{
+	if (!CharacterInitData || !CharacterAbilitySystem->IsOwnerActorAuthoritative()) return;
+	
+	for (auto& AttributeInfoPair : CharacterInitData->AttributeMap)
+	{
+		CharacterAbilitySystem->ApplyModToAttribute(
+			AttributeInfoPair.Key, 
+			EGameplayModOp::Override, 
+			AttributeInfoPair.Value.GetValueAtLevel(InLevel));
+	}
 }
 
 void UBSGameplayAbilitiesLibrary::ApplyCharacterDataTo(UBSCharacterInitData* CharacterInitData,
@@ -108,9 +154,11 @@ bool UBSGameplayAbilitiesLibrary::PassFactionCheck(AActor* InActor, AActor* InTa
 	return bHitEnemy;
 }
 
-bool UBSGameplayAbilitiesLibrary::ApplyDamageTo(
+void UBSGameplayAbilitiesLibrary::ApplyDamageTo(
 	UAbilitySystemComponent* Instigator, 
 	UAbilitySystemComponent* Target,
+	FBSAdditionalEffectInfo AdditionalEffects,
+	EBSEffectApplicationResult& OutResult,
 	const bool CustomOrigin,
 	const FVector Origin,
 	const bool bHitSelf,
@@ -122,14 +170,26 @@ bool UBSGameplayAbilitiesLibrary::ApplyDamageTo(
 	const float Knockback, 
 	FGameplayTagContainer EffectTags)
 {
-	if (!Target || !Instigator) return false;
-	if (!Target->GetAvatarActor() || !Instigator->GetAvatarActor()) return false;
+	if (!Target || !Instigator)
+	{
+		OutResult = EBSEffectApplicationResult::Failed;
+		return;
+	} 
+	if (!Target->GetAvatarActor() || !Instigator->GetAvatarActor())
+	{
+		OutResult = EBSEffectApplicationResult::Failed;
+		return;
+	}
 	
 	if (const IGameplayTagAssetInterface* TagAssetInterface = Cast<IGameplayTagAssetInterface>(Target->GetAvatarActor()))
 	{
 		FGameplayTagContainer OwnedTags;
 		TagAssetInterface->GetOwnedGameplayTags(OwnedTags);
-		if (OwnedTags.HasTagExact(BSExtendedAttributeTags::Status_God)) return false;
+		if (OwnedTags.HasTagExact(BSExtendedAttributeTags::Status_God))
+		{
+			OutResult = EBSEffectApplicationResult::Failed;
+			return;
+		}
 	}
 	
 	if (!DamageEffectClass)
@@ -142,12 +202,18 @@ bool UBSGameplayAbilitiesLibrary::ApplyDamageTo(
 		Target->GetAvatarActor(), 
 		bHitAllies, 
 		bHitEnemies, 
-		bHitSelf)) return false;
+		bHitSelf))
+	{
+		OutResult = EBSEffectApplicationResult::Failed;
+		return;
+	}
 	
 	if (Instigator->IsOwnerActorAuthoritative())
 	{
+		FGameplayEffectContextHandle ContextHandle = Instigator->MakeEffectContext();
+		
 		const FGameplayEffectSpecHandle SpecHandle = 
-			Instigator->MakeOutgoingSpec(DamageEffectClass, Level, Instigator->MakeEffectContext());
+			Instigator->MakeOutgoingSpec(DamageEffectClass, Level, ContextHandle);
 		
 		FVector NewOrigin = CustomOrigin ? Origin : Instigator->GetAvatarActor()->GetActorLocation();
 		
@@ -163,26 +229,32 @@ bool UBSGameplayAbilitiesLibrary::ApplyDamageTo(
 		SpecHandle.Data.Get()->SetSetByCallerMagnitude(BSExtendedAttributeTags::SetByCaller_Knockback, Knockback);
 	
 		Instigator->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data, Target);
-		
-		/*
-		for (auto GE : AdditionalEffects)
+
+		for (auto BuffEffect : AdditionalEffects.BuffDurationMap)
 		{
-			const FGameplayEffectSpecHandle NewSpec = 
-				Instigator->MakeOutgoingSpec(GE, Level, Instigator->MakeEffectContext());
+			if (!BuffEffect.Key) continue;
 			
-			NewSpec.Data->GetContext().AddOrigin(NewOrigin);
+			const FGameplayEffectSpecHandle AdditionalHandle = 
+				Instigator->MakeOutgoingSpec(BuffEffect.Key, Level, ContextHandle);
 			
 			for (auto DynamicAssetTags : EffectTags)
 			{
-				NewSpec.Data->AddDynamicAssetTag(DynamicAssetTags);
+				AdditionalHandle.Data->AddDynamicAssetTag(DynamicAssetTags);
 			}
 			
-			Instigator->ApplyGameplayEffectSpecToTarget(*NewSpec.Data, Target);
+			AdditionalHandle.Data->GetContext().AddOrigin(NewOrigin);
+			
+			if (BuffEffect.Value > 0)
+			{
+				AdditionalHandle.Data.Get()->SetSetByCallerMagnitude(
+					DefaultSetByCallerTags::SetByCaller_Duration, BuffEffect.Value);
+			}
+			
+			Instigator->ApplyGameplayEffectSpecToTarget(*AdditionalHandle.Data, Target);
 		}
-		*/
 	}
 	
-	return true;
+	OutResult = EBSEffectApplicationResult::Success;
 }
 
 bool UBSGameplayAbilitiesLibrary::ApplyHealingTo(

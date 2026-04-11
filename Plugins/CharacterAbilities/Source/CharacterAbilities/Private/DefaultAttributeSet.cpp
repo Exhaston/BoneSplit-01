@@ -17,6 +17,12 @@ namespace DefaultSetByCallerTags
 	UE_DEFINE_GAMEPLAY_TAG(SetByCaller_Duration, "SetByCaller.Duration");
 }
 
+namespace DefaultGameplayEvents
+{
+	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_DamageTaken, "GameplayEvent.DamageTaken");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayEvent_DamageDealt, "GameplayEvent.DamageDealt");
+}
+
 void UDefaultAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -150,6 +156,15 @@ void UDefaultAttributeSet::HandleDamage(UCharacterAbilitySystem* InstigatorAsc, 
 	{
 		SetCurrentHealth(FMath::Clamp(GetCurrentHealth() - MitigatedDamage, 0, GetMaxHealth()));
 	}
+	
+	FGameplayEventData DamagePayload;
+	DamagePayload.ContextHandle = TargetAsc->MakeEffectContext();
+	DamagePayload.Target = TargetAsc->GetAvatarActor();
+	DamagePayload.EventTag = DefaultGameplayEvents::GameplayEvent_DamageTaken;
+	DamagePayload.Instigator = InstigatorAsc->GetAvatarActor();
+	DamagePayload.EventMagnitude = MitigatedDamage;
+	
+	TargetAsc->HandleGameplayEvent(DefaultGameplayEvents::GameplayEvent_DamageTaken, &DamagePayload);
 	
 	TargetAsc->NetMulticast_OnDamageTaken(InstigatorAsc, TargetAsc, EffectTags, BaseDamage, DamageToApply, EffectSpec);
 	InstigatorAsc->NetMulticast_OnDamageDealt(InstigatorAsc, TargetAsc, EffectTags, BaseDamage, DamageToApply, EffectSpec);

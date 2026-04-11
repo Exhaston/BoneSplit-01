@@ -192,6 +192,14 @@ void ABSPlayerCharacterBase::Tick(float DeltaSeconds)
 
 void ABSPlayerCharacterBase::TeleportToSafety()
 {
+	if (HasAuthority())
+	{
+		Client_TeleportToSafety();
+	}
+}
+
+void ABSPlayerCharacterBase::Client_TeleportToSafety_Implementation()
+{
 	SetActorLocation(LastSafePos, false, nullptr, ETeleportType::ResetPhysics);
 }
 
@@ -241,6 +249,12 @@ void ABSPlayerCharacterBase::InitAbilitySystem()
 	if (!OwnerAbilitySystem)
 	{
 		UE_LOG(BoneSplit, Display, TEXT("Waiting for Ability System %s"), *GetName())
+		return; //For some reason if ASC isn't replicated yet
+	}
+	
+	if (GetLocalRole() == ROLE_AutonomousProxy && !OwnerAbilitySystem->IsReadyForReplication())                            
+	{
+		UE_LOG(BoneSplit, Display, TEXT("Waiting for Ability System replication %s"), *GetName())
 		return; //For some reason if ASC isn't replicated yet
 	}
 	
@@ -329,17 +343,7 @@ void ABSPlayerCharacterBase::TrySavePosition(const float DeltaTime)
 
 	if (MoveComp->IsMovingOnGround() && IsOnNavMesh())
 	{
-		TimeGrounded += DeltaTime;
-
-		// Only save after the player has been grounded for a moment
-		if (TimeGrounded >= 1)
-		{
-			LastSafePos = GetActorLocation();
-		}
-	}
-	else
-	{
-		TimeGrounded = 0.f;
+		LastSafePos = GetActorLocation();
 	}
 }
 
@@ -349,7 +353,7 @@ bool ABSPlayerCharacterBase::IsOnNavMesh() const
 	if (!NavSys) return false;
 
 	FNavLocation ProjectedLocation;
-	bool bProjected = NavSys->ProjectPointToNavigation(
+	const bool bProjected = NavSys->ProjectPointToNavigation(
 		GetActorLocation(),
 		ProjectedLocation,
 		FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2)  // search extent: XY radius, Z reach down

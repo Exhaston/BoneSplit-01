@@ -32,6 +32,8 @@ public:
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	virtual void ReInitCharacterData();
+	
 	virtual void PostInitializeComponents() override;
 	
 	virtual void PossessedBy(AController* NewController) override;
@@ -59,6 +61,10 @@ public:
 	FBSOnMobDied& GetOnMobDiedDelegate() { return OnMobDiedDelegate; }
 
 protected:
+	
+	virtual void StartCombat();
+	
+	bool bInCombat = false;
 	
 	bool bIsDead = false;
 	

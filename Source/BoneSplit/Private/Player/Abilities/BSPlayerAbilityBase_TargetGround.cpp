@@ -65,15 +65,17 @@ void UBSPlayerAbilityBase_TargetGround::OnAbilityTick(float DeltaSeconds)
 			FVector PCForward = FRotator(0, PC->GetControlRotation().Yaw, 0).Vector();
 			FRotator TargetRotation = FRotationMatrix::MakeFromZX(HitResult.ImpactNormal, PCForward).Rotator();
 			TargetingActor->SetActorRotation(TargetRotation);
+			
+			if (!GetCurrentAbilitySpec()->InputPressed)
+			{
+				TriggerAbility();
+			}
 		}
 	}
 }
 
-void UBSPlayerAbilityBase_TargetGround::InputReleased(const FGameplayAbilitySpecHandle Handle,
-                                           const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
+void UBSPlayerAbilityBase_TargetGround::TriggerAbility()
 {
-	Super::InputReleased(Handle, ActorInfo, ActivationInfo);
-	
 	if (IsActive())
 	{
 		if (TargetingActor && IsLocallyControlled())
@@ -88,9 +90,19 @@ void UBSPlayerAbilityBase_TargetGround::InputReleased(const FGameplayAbilitySpec
 			TargetingActor->Destroy();
 			TargetingActor = nullptr;
 		}
+		
+		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 	}
+}
+
+void UBSPlayerAbilityBase_TargetGround::InputReleased(const FGameplayAbilitySpecHandle Handle,
+                                                      const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
+{
+	Super::InputReleased(Handle, ActorInfo, ActivationInfo);
 	
-	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+	TriggerAbility();
+	
+
 }
 
 void UBSPlayerAbilityBase_TargetGround::OnInputReleased_Implementation(FVector TargetPos, FRotator TargetRot)

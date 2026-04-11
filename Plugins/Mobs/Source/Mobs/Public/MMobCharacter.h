@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MMobController.h"
 #include "GameFramework/Character.h"
 #include "Threat/MThreatInterface.h"
 #include "MMobCharacter.generated.h"
@@ -20,9 +21,11 @@ public:
 	
 	explicit AMMobCharacter(const FObjectInitializer& ObjectInitializer);
 	
-	virtual void PostInitializeComponents() override;
-	
 	virtual void PossessedBy(AController* NewController) override;
+	
+	virtual void InitNavigation();
+	
+	virtual void UnPossessed() override;
 	
 	virtual void LaunchCharacter(FVector LaunchVelocity, bool bXYOverride, bool bZOverride) override;
 	
@@ -43,7 +46,11 @@ public:
 	
 	virtual UMThreatComponent* GetThreatComponent() override;
 	
+	
 protected:
+	
+	FMOnFocusTargetChanged OnFocusTargetChangedDelegate;
+	FMOnTargetChanged OnTargetChangedDelegate;
 	
 	UPROPERTY()
 	FTimerHandle MobNavMeshTimer;

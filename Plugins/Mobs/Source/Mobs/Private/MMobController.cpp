@@ -169,6 +169,29 @@ TArray<AActor*> AMMobController::GetAlliesInVicinity()
 	return ValidAllies;
 }
 
+TArray<AActor*> AMMobController::GetEnemiesInVicinity()
+{
+	TArray<AActor*> ValidEnemies;
+	TArray<TWeakObjectPtr<AActor>> InvalidEnemies;
+	
+	for (auto& Enemy : NearbyEnemies)
+	{
+		Enemy.IsValid() ? ValidEnemies.Add(Enemy.Get()) : InvalidEnemies.Add(Enemy);
+	}
+	
+	for (auto& InvalidEnemy : InvalidEnemies)
+	{
+		NearbyEnemies.Remove(InvalidEnemy);
+	}
+	
+	return ValidEnemies;
+}
+
+bool AMMobController::HasLineOfSightToTarget(AActor* Target)
+{
+	return NearbyEnemies.Contains(Target);
+}
+
 bool AMMobController::GetIsMoving()
 {
 	return IsFollowingAPath();
@@ -207,7 +230,7 @@ void AMMobController::TryMoveToTarget(const float DeltaSeconds)
 	}
 	else return;
 	
-	const AActor* TargetActor = CurrentTarget.IsValid() ? CurrentTarget.Get() : nullptr;
+	AActor* TargetActor = CurrentTarget.IsValid() ? CurrentTarget.Get() : nullptr;
 	if (!TargetActor) return;
 	
 	const bool bHasLineOfSight = LineOfSightTo(TargetActor);
@@ -268,18 +291,6 @@ void AMMobController::StartPatrol(AMMobPatrolPath* InPatrolPath)
 	PatrolComponent->StartPatrol(InPatrolPath);
 }
 
-bool AMMobController::LineOfSightTo(const AActor* Other, FVector ViewPoint, bool bAlternateChecks) const
-{
-	if (GetPawn())
-	{
-		FCollisionQueryParams CollisionParams(SCENE_QUERY_STAT(LineOfSight), true, GetPawn());
-		CollisionParams.AddIgnoredActor(Other);
-		return !GetWorld()->LineTraceTestByChannel(GetPawn()->GetTargetLocation(), Other->GetTargetLocation(), ECC_Visibility, CollisionParams);
-	}
-
-	return false;
-}
-
 void AMMobController::FindPawnsInVicinity(float DeltaSeconds)
 {
 	const UWorld* World = GetWorld();
@@ -298,25 +309,40 @@ void AMMobController::FindPawnsInVicinity(float DeltaSeconds)
 
 	TArray<AActor*> CurrentAllies;
 	
+	TArray<AActor*> CurrentEnemies;
+	
 	for (auto& OverlapResult : OverlapResults)
 	{
 		AActor* OverlappedActor = OverlapResult.GetActor();
 		if (OverlappedActor == GetPawn()) continue;
 		if (!IsValid(OverlappedActor)) continue;
 		
-		if (bRequireLineOfSightForPawnGathering && !LineOfSightTo(OverlappedActor)) continue;
-		
 		if (IsActorEnemy(OverlappedActor))
 		{
+			CurrentEnemies.Add(OverlappedActor);
 			if (bAddThreatFromVicinityOnce && ThreatComponent->HasThreatForTarget(OverlappedActor))
 			{
 				continue; //Only add threat for vicinity once
 			}
+			if (bRequireLineOfSightForPawnGathering && !LineOfSightTo(OverlappedActor)) continue;
 			ThreatComponent->AddThreat(OverlappedActor, 1);
 			continue;
 		}
 
 		if (IsActorAlly(OverlappedActor)) CurrentAllies.Add(OverlappedActor);
+	}
+	
+	for (int32 i = NearbyEnemies.Num() - 1; i >= 0; i--)
+	{
+		if (!CurrentEnemies.Contains(NearbyEnemies[i]))
+		{
+			NearbyEnemies.RemoveAt(i);
+		}
+	}
+	
+	for (const auto NearbyEnemy : CurrentEnemies)
+	{
+		NearbyEnemies.AddUnique(NearbyEnemy);
 	}
 
 	//Remove allies that left vicinity
